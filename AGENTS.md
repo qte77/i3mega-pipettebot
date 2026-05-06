@@ -39,7 +39,7 @@ Single source of truth for agents working in this repo. `CLAUDE.md` and
 
 ## Architecture Overview
 
-```
+```text
 examples/showcase_v0.py
         │
         ▼

@@ -14,8 +14,6 @@ Turn an **Anycubic i3 Mega** (Marlin / Trigorilla) into a 3-axis pipetting
 robot driven by **DLAB dPette** electronic pipettes via the
 [`dpette-usb-driver`](https://github.com/Lambda-Biolab/dpette-usb-driver).
 
-![hero placeholder](.github/assets/hero.png)
-
 > **Status: v0 prototype.** A working aspirate-then-dispense demo over
 > hardcoded coordinates. Deck calibration, 8-channel, tip handling, and
 > firmware modifications are all on the [backlog](AGENT_REQUESTS.md).
@@ -53,7 +51,7 @@ over well B1 (9 mm pitch) → dispense → home.
 
 ## Architecture (v0)
 
-```
+```text
 examples/showcase_v0.py
         │
         ▼
