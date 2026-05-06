@@ -5,8 +5,6 @@ updated: "2026-05-06"
 owner: "lambda biolab"
 ---
 
-# i3mega-pipettebot
-
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![CI](https://github.com/Lambda-Biolab/i3mega-pipettebot/actions/workflows/ci.yml/badge.svg)](https://github.com/Lambda-Biolab/i3mega-pipettebot/actions/workflows/ci.yml)
 
