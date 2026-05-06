@@ -1,8 +1,21 @@
-.PHONY: init lint lint_fix test validate quick_validate check_complexity check_links check_docs all clean
+.PHONY: \
+	init \
+	lint \
+	lint_fix \
+	test \
+	validate \
+	quick_validate \
+	check_complexity \
+	check_links \
+	check_docs \
+	all \
+	clean
+
+.SILENT:
+.ONESHELL:
 
 init:
 	pip install -e ".[dev]"
-	pre-commit install
 
 lint:
 	ruff check src/ tests/ examples/
@@ -32,7 +45,7 @@ check_links:
 	lychee --config .lychee.toml .
 
 check_docs:
-	markdownlint-cli2 "**/*.md" "#node_modules"
+	markdownlint-cli2 "**/*.md" "#node_modules" "#.venv" "#.git"
 
 all: lint test
 
