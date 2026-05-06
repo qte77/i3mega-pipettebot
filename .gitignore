@@ -24,6 +24,13 @@ env/
 .pytest_cache/
 .ruff_cache/
 
+# uv lockfile (library project — let consumers resolve)
+uv.lock
+
+# Per-session Claude artifacts
+.claude/skills
+.claude/settings.local.json
+
 # Live serial captures (keep dir, ignore data)
 captures/*.log
 captures/*.bin
