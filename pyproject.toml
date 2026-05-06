@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pipettebot"
+version = "0.0.1"
+description = "Anycubic i3 Mega + DLAB dPette: a sub-$300 disposable-tip pipetting robot"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+keywords = [
+    "pipette",
+    "lab-automation",
+    "liquid-handling",
+    "i3-mega",
+    "marlin",
+    "dpette",
+    "3d-printer",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "pyserial>=3.5,<4",
+    "dpette @ git+https://github.com/Lambda-Biolab/dpette-usb-driver.git@main",
+]
+
+[project.urls]
+Homepage = "https://github.com/Lambda-Biolab/i3mega-pipettebot"
+Issues = "https://github.com/Lambda-Biolab/i3mega-pipettebot/issues"
+"Companion driver" = "https://github.com/Lambda-Biolab/dpette-usb-driver"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9",
+    "pytest-mock>=3.12,<4",
+    "ruff>=0.4,<1",
+    "mypy>=1.10,<2",
+    "types-pyserial>=3.5",
+    "pre-commit>=3.7,<4",
+    "complexipy>=0.8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pipettebot"]
+
+[tool.ruff]
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH", "C90"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"examples/*" = ["E501"]
+"tests/*" = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = "dpette.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m \"not hardware\""
+markers = [
+    "hardware: requires physical i3 Mega + dPette hookup",
+]
