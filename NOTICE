@@ -1,0 +1,17 @@
+i3mega-pipettebot
+Copyright 2026 Lambda-Biolab
+
+This product includes software developed by Lambda-Biolab
+(https://github.com/Lambda-Biolab).
+
+This project builds on and acknowledges the following upstream works
+(consumed at runtime or referenced; not redistributed in source form):
+
+  - Anycubic i3 Mega — 3D printer hardware platform
+    (https://www.anycubic.com)
+  - Marlin Firmware (GPL-3.0) — motion controller running on the i3 Mega
+    Trigorilla board (https://github.com/MarlinFirmware/Marlin).
+    Only configuration patches may be distributed in this repository;
+    full Marlin source is not redistributed.
+  - dpette-usb-driver (MIT) — Python driver for DLAB dPette pipettes
+    (https://github.com/Lambda-Biolab/dpette-usb-driver)
