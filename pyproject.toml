@@ -43,7 +43,6 @@ dev = [
     "ruff>=0.4,<1",
     "mypy>=1.10,<2",
     "types-pyserial>=3.5",
-    "pre-commit>=3.7,<4",
     "complexipy>=0.8",
 ]
 

@@ -6,9 +6,12 @@
 git clone https://github.com/Lambda-Biolab/i3mega-pipettebot.git
 cd i3mega-pipettebot
 pip install -e ".[dev]"
-pre-commit install
 make validate
 ```
+
+The Makefile is the single quality gate (`make validate` runs ruff format
+check + lint, mypy strict, and pytest mocked). No pre-commit hooks; CI runs
+the same recipes.
 
 ## Branching and PRs
 
