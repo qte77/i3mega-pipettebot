@@ -7,7 +7,7 @@ from typing import Protocol
 
 
 class _SerialPort(Protocol):
-    """Minimal subset of pyserial.Serial used by GcodeGantry (lets tests inject fakes)."""
+    """Subset of pyserial.Serial used by GcodeGantry; lets tests inject fakes."""
 
     def write(self, data: bytes) -> int: ...
     def readline(self) -> bytes: ...
