@@ -1,21 +1,24 @@
 # Agent Requests / Backlog
 
-Deferred-but-remembered work. Anything we explicitly chose **not** to do in
-v0 ends up here so it doesn't get forgotten. Promote items to issues / PRs
-when they're ready to start.
+Deferred-but-remembered work. Items below are tracked as **GitHub issues**
+once they're ready to action; this file holds the strategic *why* and
+points at the issue numbers. Edit-and-commit lifecycle.
+
+> Each unchecked item becomes a GitHub issue under the `v0.1.0` milestone
+> after the v0.0.1 tag. Once an issue exists, append `(#N)` to the entry.
 
 ## Liquid handling
 
 - [ ] 8-channel dPette support — same driver, expose `multichannel.COLUMN_PITCH_MM = 9.0`
-- [ ] Tip pickup / eject — dpette `eject_tip()` is `NotImplementedError`; needs GPIO solenoid or M280 servo
+- [ ] Tip pickup / eject — dpette `eject_tip()` is `NotImplementedError`; needs GPIO solenoid or M280 servo (depends on Stage 1 firmware patch)
 - [ ] Multi-pipette parallel control (multiple physical dPettes on independent USB ports)
 - [ ] Aspirate / dispense speed control surfaced through `PipetteBot` API
 - [ ] Mixing, splitting, dilution helpers — delegate to dpette `WorkingMode` modes
 
 ## Deck and motion
 
-- [ ] Deck geometry library — `deck.py` with `WellPlate96`, `TipRack`, named slots
-- [ ] Origin probe / calibration routine — one-shot, persisted to JSON
+- [ ] Deck geometry library — `deck.py` with `WellPlate96`, `TipRack`, named slots; replaces hardcoded `WELL_A1`/`WELL_B1` in `examples/showcase_v0.py`
+- [ ] Origin probe / calibration routine — one-shot, persisted to JSON; today users edit constants per [`docs/calibration.md`](docs/calibration.md)
 - [ ] Soft-limit + crash-guard — `safety.py` with `MIN_TRAVEL_Z`, `DISPENSE_Z_OFFSET`
 - [ ] Trajectory blending / look-ahead optimization
 
@@ -48,14 +51,26 @@ when they're ready to start.
 
 ## Documentation
 
-- [ ] Hardware photo set (mount + plate + tips + dPette)
-- [ ] Demo video / GIF (live, replacing the `.github/assets/showcase.gif` placeholder)
+- [x] Hardware setup guide — see [`docs/hardware.md`](docs/hardware.md)
+- [x] Calibration procedure — see [`docs/calibration.md`](docs/calibration.md)
+- [x] Preflight script — `examples/preflight.py`
+- [x] Social-preview PNG (`.github/social-preview.png`, 1280×640) — committed; manual upload via repo Settings → Social preview still required
+- [ ] Hardware photo set (mount + plate + tips + dPette) for `.github/assets/hero.png`
+- [ ] Demo video / GIF (live) replacing the `.github/assets/showcase.gif` placeholder
 - [ ] ADR: why PC-as-host instead of Stage 2 firmware integration
-- [ ] Social-preview PNG (1280×640) — manually upload via repo Settings → Social preview
+
+## Completed in v0.0.1
+
+- [x] v0 module scaffold (`gantry.py`, `bot.py`, `__init__.py`)
+- [x] Mocked-serial test suite (9 tests)
+- [x] CI on Python 3.11 + 3.12 (uv + ruff + mypy + pytest)
+- [x] Apache-2.0 license + NOTICE
+- [x] AGENTS.md doc hierarchy mirroring Agents-eval
+- [x] dpette dependency pinned to commit SHA
 
 ## Open assumptions to revisit
 
-- v0 supports a **single dPette only**, hardcoded coordinates, no calibration
+- v0 supports a **single dPette only**, hardcoded coordinates, no calibration library
 - `dpette` consumed as **git dep** pinned to commit SHA (not vendored)
 - Repo is **public** on GitHub
 - `.claude/settings.json` has **no hooks** in v0

@@ -28,7 +28,7 @@ classifiers = [
 ]
 dependencies = [
     "pyserial>=3.5,<4",
-    "dpette @ git+https://github.com/Lambda-Biolab/dpette-usb-driver.git@main",
+    "dpette @ git+https://github.com/Lambda-Biolab/dpette-usb-driver.git@5cc90ca18d047dcdc0b5e99ac678183980ed6b0e",
 ]
 
 [project.urls]

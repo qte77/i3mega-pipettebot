@@ -37,10 +37,19 @@ make test          # mocked-serial tests, no hardware required
 
 ### Run the v0 demo (requires hardware)
 
-Connect:
+Two separate guides cover the physical/electrical setup and the
+well-origin calibration before you run the demo:
 
-- `/dev/ttyUSB0` — i3 Mega (Marlin) @ 115200 8N1
-- `/dev/ttyUSB1` — dPette (CP2102) @ 9600 8N1
+- [`docs/hardware.md`](docs/hardware.md) — cabling, port discovery (CH340 vs CP2102), Marlin firmware sanity check
+- [`docs/calibration.md`](docs/calibration.md) — finding well A1 with `M114`, the 9 mm pitch check, where to set the constants
+
+After hookup, sanity-check ports + firmware **before any motion**:
+
+```bash
+python examples/preflight.py     # reads M115 from Marlin and dPette EEPROM; no motion
+```
+
+Then the demo:
 
 ```bash
 python examples/showcase_v0.py
@@ -89,6 +98,8 @@ but deliberately **not** part of v0.
 
 ## Documentation
 
+- [docs/hardware.md](docs/hardware.md) — i3 Mega + dPette wiring, port discovery, firmware sanity check
+- [docs/calibration.md](docs/calibration.md) — well-A1 origin procedure, 9 mm pitch check
 - [AGENTS.md](AGENTS.md) — agent rules, decision framework, architecture
 - [AGENT_LEARNINGS.md](AGENT_LEARNINGS.md) — gotchas as we discover them
 - [AGENT_REQUESTS.md](AGENT_REQUESTS.md) — deferred features and questions
