@@ -26,10 +26,12 @@ robot driven by **DLAB dPette** electronic pipettes via the
 
 ## Quickstart
 
+Requires [`uv`](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
+
 ```bash
 git clone https://github.com/Lambda-Biolab/i3mega-pipettebot.git
 cd i3mega-pipettebot
-pip install -e ".[dev]"
+make init          # uv sync --extra dev
 make test          # mocked-serial tests, no hardware required
 ```
 

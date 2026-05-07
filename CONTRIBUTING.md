@@ -2,16 +2,20 @@
 
 ## Dev setup
 
+Requires [`uv`](https://docs.astral.sh/uv/). Install once:
+`curl -LsSf https://astral.sh/uv/install.sh | sh`.
+
 ```bash
 git clone https://github.com/Lambda-Biolab/i3mega-pipettebot.git
 cd i3mega-pipettebot
-pip install -e ".[dev]"
+make init          # uv sync --extra dev
 make validate
 ```
 
 The Makefile is the single quality gate (`make validate` runs ruff format
-check + lint, mypy strict, and pytest mocked). No pre-commit hooks; CI runs
-the same recipes.
+check + lint, mypy strict, and pytest mocked). All recipes invoke tools via
+`uv run`, so the project venv stays in sync without manual activation. No
+pre-commit hooks; CI runs the same recipes.
 
 ## Branching and PRs
 
