@@ -27,9 +27,14 @@ env/
 # uv lockfile (library project — let consumers resolve)
 uv.lock
 
-# Per-session Claude artifacts
+# Per-session Claude / agent artifacts (host-local; not project content)
 .claude/skills
+.claude/scripts/
 .claude/settings.local.json
+MEMORY.md
+
+# Skill working directories (e.g., market-research scratch state)
+config/
 
 # Live serial captures (keep dir, ignore data)
 captures/*.log
