@@ -16,7 +16,7 @@ covered in the [README](../README.md) and contributor setup in
 Two USB cables, one to the printer and one to the pipette:
 
 ```text
-PC ──USB-B──► Anycubic i3 Mega   (Trigorilla, ATmega2560, Marlin) /dev/tty?  115200 8N1
+PC ──USB-B──► Anycubic i3 Mega   (Trigorilla, ATmega2560, Marlin) /dev/tty?  250000 8N1
 PC ──CP2102──► DLAB dPette                                         /dev/tty?  9600 8N1
 ```
 
@@ -29,11 +29,16 @@ other directly in v0.
 | Item | Value |
 |---|---|
 | Mainboard | Trigorilla 0.0.4 (ATmega2560 + A4988 drivers, stock) |
-| Firmware | Anycubic stock Marlin 1.4.x **or** upstream Marlin 2.x |
-| USB bridge chip | CH340 |
-| VID:PID | `1a86:7523` |
-| Baud | 115200 8N1 |
+| Firmware | Anycubic stock Marlin 1.4.x **or** upstream Marlin 2.x **or** community MARLIN-AI3M |
+| USB bridge chip | CH340 *(older boards)* **or** CP2102N *(newer batches and many MARLIN-AI3M-flashed units)* |
+| VID:PID | `1a86:7523` (CH340) **or** `10c4:ea60` (CP2102N) |
+| Baud | 250000 8N1 (Anycubic stock and MARLIN-AI3M); some custom builds use 115200 |
 | Connector | USB-B on the LCD/board housing |
+
+> The dPette also uses a Silicon Labs CP210x at `10c4:ea60` (see below). On
+> a CP2102N-equipped i3 Mega the two devices share VID:PID, so you cannot
+> tell them apart by descriptor alone — fall back on the chip's serial
+> number, or use the `M115` probe in [Distinguishing the two ports](#distinguishing-the-two-ports).
 
 We use **stock Marlin without modifications** in v0. The G-code surface we
 need is small: `G28`, `G1`, `M114`, `M115`, `M400`. Both 1.4.x and 2.x
@@ -71,7 +76,7 @@ you; manually it looks like:
 
 ```bash
 # Replace /dev/ttyUSB0 with your printer port
-stty -F /dev/ttyUSB0 115200 raw
+stty -F /dev/ttyUSB0 250000 raw
 printf 'M115\n' > /dev/ttyUSB0 && timeout 2 cat /dev/ttyUSB0
 # Expected first line: FIRMWARE_NAME:Marlin 1.1.X (Anycubic Mega ...) ...
 ```
@@ -104,19 +109,41 @@ press the dPette's button and retry.
 ## Distinguishing the two ports
 
 When both the printer and the pipette are plugged in, your `/dev/tty*`
-list has two entries. You disambiguate them by USB VID:PID, **not by
-which port number got assigned** (assignment depends on plug order).
+list has two entries. You disambiguate them by USB VID:PID **when the
+bridges differ** (CH340 i3 Mega + CP2102 dPette), or by **probing with
+`M115`** when they match (CP2102N i3 Mega + CP2102 dPette — same
+VID:PID `10c4:ea60`).
 
 ```bash
 for d in /dev/ttyUSB*; do
-  echo "$d: $(udevadm info "$d" | grep -E 'ID_VENDOR_ID|ID_MODEL_ID' | tr '\n' ' ')"
+  echo "$d: $(udevadm info "$d" | grep -E 'ID_VENDOR_ID|ID_MODEL_ID|ID_SERIAL_SHORT' | tr '\n' ' ')"
 done
 ```
 
 | Device | VID:PID | Bridge | Baud | Role |
 |---|---|---|---|---|
-| Anycubic i3 Mega | `1a86:7523` | CH340 | 115200 | gantry (G-code) |
+| Anycubic i3 Mega (older) | `1a86:7523` | CH340 | 250000 | gantry (G-code) |
+| Anycubic i3 Mega (newer / MARLIN-AI3M) | `10c4:ea60` | CP2102N | 250000 | gantry (G-code) |
 | DLAB dPette | `10c4:ea60` | CP2102 | 9600 | pipette (6-byte protocol) |
+
+### Tiebreaker when both ports are CP210x
+
+`examples/preflight.py` already handles this: it probes each candidate
+port for Marlin (`M115` @ 250000) first, then dPette (`A0` HELLO @ 9600).
+Manually:
+
+```bash
+for d in /dev/ttyUSB* /dev/cu.usbserial-* /dev/cu.wchusbserial*; do
+  [ -e "$d" ] || continue
+  stty -F "$d" 250000 raw 2>/dev/null || continue
+  printf 'M115\n' > "$d"
+  reply=$(timeout 2 head -c 200 "$d")
+  case "$reply" in
+    *FIRMWARE_NAME:Marlin*) echo "$d → i3 Mega" ;;
+    *) echo "$d → not Marlin (probably dPette)" ;;
+  esac
+done
+```
 
 ## Workspace constraints
 
