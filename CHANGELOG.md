@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 - `examples/showcase_v0_pipette_sim.py` replaces `showcase_v0.py` as the canonical hardware demo — raw-serial read-until-`ok`, plunger simulated via gantry Z, G-code tee to disk (#23)
 - `examples/preflight.py` rewritten — auto-discovers ports, 3 s boot wait, dPette stub-mode detection, configurable standby retry (#23)
+- `examples/preflight.py` passes when either i3 Mega **or** dPette is found (was: required both). Reflects v0 usage where the gantry and pipette are exercised independently. Existing `I3MEGA_PORT` / `PIPETTE_PORT` env overrides unchanged.
 - README example commands use `uv run` (#16)
 - `docs/hardware.md` documents CH340 + CP2102N USB-bridge variants and `M115` tiebreaker; corrects stock baud to 250000 (#25)
 - `.claude/rules/core-principles.md` refined for project use — AHA principle, Communication section, pre-task clarity check (#24)

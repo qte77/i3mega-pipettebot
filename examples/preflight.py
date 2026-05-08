@@ -1,4 +1,8 @@
-"""Preflight check: auto-discover the i3 Mega and the dPette, no motion.
+"""Preflight check: auto-discover the i3 Mega and/or dPette, no motion.
+
+Either device alone is enough to pass — the gantry and the pipette are
+exercised independently in v0, so requiring both to be present at the
+same time was wrong.
 
 Scans candidate `/dev/tty*` / `/dev/cu.*` ports and probes each one:
 
@@ -239,28 +243,26 @@ def _resolve_dpette_with_retry(
 def main() -> int:
     ports = discover_ports()
     if not ports:
-        print("No USB-serial ports found. Plug in the printer and dPette.")
+        print("No USB-serial ports found. Plug in the printer or dPette.")
         return 1
     print(f"Discovered ports: {ports}\n")
 
     marlin_port, _ = _resolve_marlin(ports, os.environ.get("I3MEGA_PORT"))
-    if not marlin_port:
-        print("\nERROR: no port answered as Marlin.")
-        return 1
 
     print()
     print("(press the dPette's button if it's in standby — handshake needs it awake)")
     dpette_port, _ = _resolve_dpette_with_retry(
-        ports, os.environ.get("PIPETTE_PORT"), skip=marlin_port
+        ports, os.environ.get("PIPETTE_PORT"), skip=marlin_port or ""
     )
-    if not dpette_port:
-        print("\nERROR: no port answered as dPette after retries.")
-        return 1
 
     print()
-    print("===== preflight passed =====")
-    print(f"  I3MEGA_PORT  = {marlin_port}")
-    print(f"  PIPETTE_PORT = {dpette_port}")
+    if not marlin_port and not dpette_port:
+        print("ERROR: no port answered as Marlin or dPette.")
+        return 1
+
+    print("===== preflight =====")
+    print(f"  I3MEGA_PORT  = {marlin_port or '(not found)'}")
+    print(f"  PIPETTE_PORT = {dpette_port or '(not found)'}")
     return 0
 
 
