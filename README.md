@@ -31,9 +31,12 @@ Requires [`uv`](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/in
 ```bash
 git clone https://github.com/Lambda-Biolab/i3mega-pipettebot.git
 cd i3mega-pipettebot
-make init          # uv sync --extra dev
-make test          # mocked-serial tests, no hardware required
+make init
+make test
 ```
+
+`make init` runs `uv sync --extra dev`; `make test` runs the mocked-serial
+test suite (no hardware required).
 
 ### Run the v0 demo (requires hardware)
 
@@ -46,8 +49,11 @@ well-origin calibration before you run the demo:
 After hookup, sanity-check ports + firmware **before any motion**:
 
 ```bash
-uv run examples/preflight.py     # reads M115 from Marlin and dPette EEPROM; no motion
+uv run examples/preflight.py
 ```
+
+This reads `M115` from Marlin and the EEPROM packet from the dPette;
+no motion is sent.
 
 Then the demo. v0 ships a single example that drives the gantry
 through a back-well-to-front-well pipetting cycle and tees the G-code
@@ -87,12 +93,12 @@ calibration in v0 — the caller passes raw `(x, y, z)`.
 
 ## Development
 
-```bash
-make validate         # ruff format + lint, mypy strict, pytest mocked
-make quick_validate   # lint + mypy only
-make lint_fix         # auto-fix formatting and lint
-make test             # pytest (hardware tests excluded)
-```
+| Recipe | What it runs |
+|---|---|
+| `make validate` | ruff format + lint, mypy strict, pytest mocked |
+| `make quick_validate` | lint + mypy only |
+| `make lint_fix` | auto-fix formatting and lint |
+| `make test` | pytest (hardware tests excluded) |
 
 Hardware tests are gated by `@pytest.mark.hardware`:
 
