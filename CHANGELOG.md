@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `pipettebot.gantry.open_marlin_port()` — opens a Marlin serial port at 250000 baud with a Linux `TCSETS2 + BOTHER` fallback for Python builds missing `termios.B250000`. Used by `examples/preflight.py` and `examples/showcase_v0_pipette_sim.py`.
 - `docs/sbc-deployment.md` — Path 2 (SBC-on-printer) deployment guide (#21)
 - `.claude/rules/{compound-learning,context-management,core-principles}.md` — repo-local agent governance rules (#20)
 - `AGENT_LEARNINGS.md` first entry: sandbox bind-mount untracked-files pattern (#25)
@@ -23,7 +24,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- `examples/preflight.py` Marlin probe now opens 250000 baud via Linux `TCSETS2 + BOTHER` ioctl when Python's `termios` lacks `B250000` (Fedora + 3.13). Previously crashed with `termios.error: (22, 'Invalid argument')`.
+- Marlin USB probe (`examples/preflight.py`) and the v0 hardware showcase (`examples/showcase_v0_pipette_sim.py`) now open 250000 baud via Linux `TCSETS2 + BOTHER` ioctl on any Linux Python build that omits `termios.B250000`. Previously both crashed with `termios.error: (22, 'Invalid argument')`. The shared `pipettebot.gantry.open_marlin_port` helper is gated on `sys.platform == "linux"` and is harmless on builds that do expose the constant.
 - Default Marlin baud was 115200 in gantry/preflight/docs; now 250000 to match Anycubic stock + MARLIN-AI3M (#23, closes #17)
 - Port discovery handles CP2102N on newer Anycubic batches; docs reflect both bridge variants (#23, #25, closes #18)
 - Quickstart copy-paste no longer breaks on stock zsh with `interactive_comments` off (#25, closes #15)
