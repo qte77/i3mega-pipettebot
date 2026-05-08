@@ -10,15 +10,14 @@ Drives the i3 Mega through 2 cycles of:
 5. Board sweeps to the **front** well (Y=20 mm).
 6. Same descend / stroke / lift.
 
-Companion to `showcase_v0_dry_run.py` (which prints G-code) and
-`showcase_v0.py` (which calls the real dPette). This script runs
-real motion against the printer but does **not** require the dPette
-to be plugged in — useful for proving the gantry, axis range, and
-cabling work end-to-end before introducing the pipette.
+This is the canonical v0 hardware demo. It runs real motion against
+the printer but does **not** require the dPette to be plugged in —
+useful for proving the gantry, axis range, and cabling work end-to-end
+before introducing the pipette.
 
 Talks raw serial (instead of `pipettebot.GcodeGantry`) and reads
 until `ok` so commands are properly sequenced — sidesteps the
-`GcodeGantry._send` "one-line readline" bug (issue #19).
+`GcodeGantry._send` "one-line readline" bug (issue #26).
 
 Required environment variable:
 
