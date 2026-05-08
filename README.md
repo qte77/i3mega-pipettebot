@@ -46,13 +46,13 @@ well-origin calibration before you run the demo:
 After hookup, sanity-check ports + firmware **before any motion**:
 
 ```bash
-python examples/preflight.py     # reads M115 from Marlin and dPette EEPROM; no motion
+uv run examples/preflight.py     # reads M115 from Marlin and dPette EEPROM; no motion
 ```
 
 Then the demo:
 
 ```bash
-python examples/showcase_v0.py
+uv run examples/showcase_v0.py
 ```
 
 Expected behavior: home → move over well A1 → aspirate 100 µL → move
@@ -85,7 +85,7 @@ make test             # pytest (hardware tests excluded)
 Hardware tests are gated by `@pytest.mark.hardware`:
 
 ```bash
-pytest -m hardware
+uv run pytest -m hardware
 ```
 
 ## Architecture decision: why PC-as-host (no firmware mods)
