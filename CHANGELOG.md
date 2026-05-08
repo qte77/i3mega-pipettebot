@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- `examples/preflight.py` Marlin probe now opens 250000 baud via Linux `TCSETS2 + BOTHER` ioctl when Python's `termios` lacks `B250000` (Fedora + 3.13). Previously crashed with `termios.error: (22, 'Invalid argument')`.
 - Default Marlin baud was 115200 in gantry/preflight/docs; now 250000 to match Anycubic stock + MARLIN-AI3M (#23, closes #17)
 - Port discovery handles CP2102N on newer Anycubic batches; docs reflect both bridge variants (#23, #25, closes #18)
 - Quickstart copy-paste no longer breaks on stock zsh with `interactive_comments` off (#25, closes #15)

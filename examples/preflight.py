@@ -26,10 +26,13 @@ hands out a new `/dev/cu.usbserial-XXX` is picked up automatically.
 
 from __future__ import annotations
 
+import array
 import contextlib
+import fcntl
 import glob
 import os
 import sys
+import termios
 import time
 
 import serial  # type: ignore[import-untyped]
@@ -59,11 +62,48 @@ def discover_ports() -> list[str]:
     return sorted(found)
 
 
+# Linux termios2 fallback: some Python builds (e.g. Fedora + 3.13) don't
+# expose `termios.B250000`, so pyserial's standard `tcsetattr` path bails
+# with EINVAL. The kernel still accepts arbitrary rates via TCSETS2+BOTHER.
+_TCGETS2 = 0x802C542A
+_TCSETS2 = 0x402C542B
+_BOTHER = 0o010000
+_CBAUD = 0o010017
+
+
+def _set_custom_baud_linux(fd: int, baudrate: int) -> None:
+    """Set arbitrary baud on Linux via TCSETS2 ioctl + BOTHER."""
+    buf = array.array("i", [0] * 64)
+    fcntl.ioctl(fd, _TCGETS2, buf, True)
+    buf[2] = (buf[2] & ~_CBAUD) | _BOTHER
+    buf[9] = buf[10] = baudrate  # c_ispeed, c_ospeed
+    fcntl.ioctl(fd, _TCSETS2, buf, True)
+
+
+def _open_marlin_port(port: str) -> serial.Serial | None:
+    """Open `port` at MARLIN_BAUD, falling back to Linux termios2 when
+    pyserial can't set the rate (missing `termios.B250000`)."""
+    try:
+        return serial.Serial(port, MARLIN_BAUD, timeout=1.0)
+    except (OSError, serial.SerialException, termios.error):
+        if not sys.platform.startswith("linux"):
+            return None
+    try:
+        link = serial.Serial(port, 9600, timeout=1.0)
+    except (OSError, serial.SerialException):
+        return None
+    try:
+        _set_custom_baud_linux(link.fileno(), MARLIN_BAUD)
+    except OSError:
+        link.close()
+        return None
+    return link
+
+
 def probe_marlin(port: str) -> str | None:
     """Try to identify `port` as Marlin. Returns firmware string or None."""
-    try:
-        link = serial.Serial(port, MARLIN_BAUD, timeout=1.0)
-    except (OSError, serial.SerialException):
+    link = _open_marlin_port(port)
+    if link is None:
         return None
     with link:
         time.sleep(MARLIN_BOOT_WAIT_S)  # DTR-reset boot
