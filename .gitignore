@@ -13,8 +13,8 @@ venv/
 env/
 
 # IDE
-.idea/
-.vscode/
+.idea
+.vscode
 *.swp
 *.swo
 *~
@@ -30,8 +30,22 @@ uv.lock
 # Per-session Claude / agent artifacts (host-local; not project content)
 .claude/skills
 .claude/scripts/
+.claude/agents
+.claude/commands
 .claude/settings.local.json
+.mcp.json
 MEMORY.md
+
+# Host shell / tool dotfiles surfaced by sandbox bind-mounts (not project content)
+.bash_profile
+.bashrc
+.env
+.gitconfig
+.gitmodules
+.profile
+.ripgreprc
+.zprofile
+.zshrc
 
 # Skill working directories (e.g., market-research scratch state)
 config/
