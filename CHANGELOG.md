@@ -4,9 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `docs/sbc-deployment.md` — Path 2 (SBC-on-printer) deployment guide (#21)
+- `.claude/rules/{compound-learning,context-management,core-principles}.md` — repo-local agent governance rules (#20)
+- `AGENT_LEARNINGS.md` first entry: sandbox bind-mount untracked-files pattern (#25)
+- `AGENT_REQUESTS.md` "SBC deployment (Path 2)" section migrating the doc-body backlog (#25)
+
+### Changed
+
+- `examples/showcase_v0_pipette_sim.py` replaces `showcase_v0.py` as the canonical hardware demo — raw-serial read-until-`ok`, plunger simulated via gantry Z, G-code tee to disk (#23)
+- `examples/preflight.py` rewritten — auto-discovers ports, 3 s boot wait, dPette stub-mode detection, configurable standby retry (#23)
+- README example commands use `uv run` (#16)
+- `docs/hardware.md` documents CH340 + CP2102N USB-bridge variants and `M115` tiebreaker; corrects stock baud to 250000 (#25)
+- `.claude/rules/core-principles.md` refined for project use — AHA principle, Communication section, pre-task clarity check (#24)
+- `.gitignore` excludes per-session agent state and sandbox-bind-mounted dotfiles (#19, #24)
+- README, CONTRIBUTING.md, docs/calibration.md copy-paste blocks no longer break stock zsh (#25)
+
+### Fixed
+
+- Default Marlin baud was 115200 in gantry/preflight/docs; now 250000 to match Anycubic stock + MARLIN-AI3M (#23, closes #17)
+- Port discovery handles CP2102N on newer Anycubic batches; docs reflect both bridge variants (#23, #25, closes #18)
+- Quickstart copy-paste no longer breaks on stock zsh with `interactive_comments` off (#25, closes #15)
+
 ### Removed
 
 - `.github/social-preview.png` — repo now uses GitHub's default open-graph card. The asset is unused and the asset-slot doc was updated accordingly.
+- `examples/showcase_v0.py` — superseded by `examples/showcase_v0_pipette_sim.py` (#23)
 
 ## [0.0.1] — 2026-05-07
 
