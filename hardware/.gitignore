@@ -1,0 +1,4 @@
+# Generated artifacts — rebuild from .scad with: openscad -o file.stl file.scad
+*.stl
+*.3mf
+*.gcode
