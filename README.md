@@ -49,25 +49,37 @@ After hookup, sanity-check ports + firmware **before any motion**:
 uv run examples/preflight.py     # reads M115 from Marlin and dPette EEPROM; no motion
 ```
 
-Then the demo:
+Then the demo. v0 ships a single example that drives the gantry
+through a back-well-to-front-well pipetting cycle and tees the G-code
+stream to disk for replay/SD use; the pipette plunger action is
+simulated with a 5 cm Z stroke at each well (no real dPette command
+is sent — see `AGENT_REQUESTS.md` Stage 2a for the firmware path that
+unlocks real M820 pipette pass-through):
 
 ```bash
-uv run examples/showcase_v0.py
+uv run examples/showcase_v0_pipette_sim.py
 ```
 
-Expected behavior: home → move over well A1 → aspirate 100 µL → move
-over well B1 (9 mm pitch) → dispense → home.
+Expected behavior: home → bed sweeps to back well → 5 cm Z plunger
+stroke → bed sweeps to front well → another stroke → home.
 
 ## Architecture (v0)
 
 ```text
-examples/showcase_v0.py
+examples/showcase_v0_pipette_sim.py
         │
         ▼
-PipetteBot
-    ├── GcodeGantry  ──► /dev/ttyUSB0  (Marlin, G-code)
-    └── DPetteDriver ──► /dev/ttyUSB1  (dpette-usb-driver)
+raw serial @ 250000 baud  ──► /dev/cu.usbserial-*  (Marlin, G-code)
+        │
+        └─ tee G-code stream ──► OUTPUT_GCODE file (replay / SD)
 ```
+
+In v0 the dPette is wired in via `pipettebot.PipetteBot` + a real
+`dpette.DPetteDriver`, but the canonical example simulates the
+plunger with the gantry Z axis so it runs against the printer alone.
+Real pipette I/O is exercised via `examples/preflight.py` and ad-hoc
+scripts; full integration through the same showcase awaits the
+firmware path in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md).
 
 Three modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
 `__init__.py` (re-exports). No deck library, no safety limits, no

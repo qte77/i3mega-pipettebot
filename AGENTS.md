@@ -40,13 +40,23 @@ Single source of truth for agents working in this repo. `CLAUDE.md` and
 ## Architecture Overview
 
 ```text
-examples/showcase_v0.py
+examples/showcase_v0_pipette_sim.py
         │
         ▼
-PipetteBot                    ──► aspirate_at(x,y,z,vol), dispense_at(x,y,z), home()
-    ├── GcodeGantry           ──► home(), move_to(x,y,z), wait_for_moves()
-    │       └── pyserial      ──► /dev/ttyUSB0  Marlin @ 115200
-    └── DPetteDriver (dpette) ──► /dev/ttyUSB1  CP2102 @ 9600
+raw pyserial @ 250000 baud   ──► /dev/cu.usbserial-*  Marlin (Anycubic stock / AI3M)
+        │
+        └─ optional tee       ──► .gcode file for SD replay
+
+src/pipettebot/                        (library, used by examples & tests)
+    ├── PipetteBot                    ──► aspirate_at(x,y,z,vol), dispense_at(x,y,z), home()
+    └── GcodeGantry                   ──► home(), move_to(x,y,z), wait_for_moves()
+                                          (note: GcodeGantry._send is one-line-per-ack;
+                                           the showcase example uses raw serial to
+                                           sidestep that until the lib is fixed)
+
+dpette.DPetteDriver               ──► /dev/cu.usbserial-* (different device) @ 9600
+                                       used by `preflight.py`; not exercised in the
+                                       v0 showcase (plunger simulated via gantry Z).
 ```
 
 Tests use fakes (`tests/conftest.py::FakeSerial`, `FakePipette`) to
