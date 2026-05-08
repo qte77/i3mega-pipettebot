@@ -41,7 +41,7 @@ any cabling on either device.
     or own 5 V brick)
 
    Pi runs pipettebot      ──┐
-                             ├──► same `examples/showcase_v0.py` workflow
+                             ├──► same `examples/showcase_v0_pipette_sim.py` workflow
                              │    as today, just on the Pi
    SSH from laptop / VS      │
    Code Remote-SSH for       │
@@ -157,9 +157,12 @@ CH340 the older docs assume — see
 
 ```bash
 cd ~/i3mega-pipettebot
-uv run examples/preflight.py     # confirms ports + firmware on real hardware
-uv run examples/showcase_v0.py   # the v0 demo, runs unchanged on the Pi
+uv run examples/preflight.py
+uv run examples/showcase_v0_pipette_sim.py
 ```
+
+The first command confirms ports + firmware on real hardware; the
+second runs the v0 demo unchanged on the Pi.
 
 The Pi orchestrates both devices over USB. The laptop is no longer
 required after the initial flash.
@@ -180,7 +183,7 @@ User=pi
 WorkingDirectory=/home/pi/i3mega-pipettebot
 Environment=I3MEGA_PORT=/dev/serial/by-id/...
 Environment=PIPETTE_PORT=/dev/serial/by-id/...
-ExecStart=/home/pi/.local/bin/uv run examples/showcase_v0.py
+ExecStart=/home/pi/.local/bin/uv run examples/showcase_v0_pipette_sim.py
 Restart=no
 
 [Install]
@@ -208,10 +211,7 @@ interlocks land (see `safety.py` in
   applies (see [`hardware.md`](hardware.md)). The Pi is just a
   smaller laptop.
 
-## Backlog before this doc graduates from DRAFT
+## Path from DRAFT to confirmed
 
-- [ ] First physical Pi-on-Mega build, photographed, BOM line items confirmed
-- [ ] 3D-printed mount STL committed under `hardware/sbc-mount.stl`
-- [ ] Power-piggyback test: 24 V → 5 V buck regulator off the i3 Mega PSU; confirm clean enumeration of both USB-UART chips
-- [ ] CI matrix entry: `make test` on `linux/arm64` (Pi Zero 2 W is `aarch64`) so we catch arm-only regressions before deploy
-- [ ] Issue: deferred-features audit — what fails on Pi Zero (RAM-limited) vs Pi 4 (comfortable)
+Tracking items live in [`AGENT_REQUESTS.md`](../AGENT_REQUESTS.md) under
+the **SBC deployment (Path 2)** section.

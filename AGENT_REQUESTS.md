@@ -34,6 +34,17 @@ points at the issue numbers. Edit-and-commit lifecycle.
 - [ ] Pipette mount STL + BOM — depends on physical i3-Mega X-carriage measurement
 - [ ] Level-shifter PCB (5 V ↔ 3.3 V) — for Stage 2 UART tap
 
+## SBC deployment (Path 2)
+
+Concrete follow-ups so [`docs/sbc-deployment.md`](docs/sbc-deployment.md)
+can graduate from DRAFT:
+
+- [ ] First physical Pi-on-Mega build, photographed, BOM line items confirmed
+- [ ] 3D-printed mount STL committed under `hardware/sbc-mount.stl`
+- [ ] Power-piggyback test: 24 V → 5 V buck regulator off the i3 Mega PSU; confirm clean enumeration of both USB-UART chips
+- [ ] CI matrix entry: `make test` on `linux/arm64` (Pi Zero 2 W is `aarch64`) so we catch arm-only regressions before deploy
+- [ ] Deferred-features audit — what fails on Pi Zero (RAM-limited) vs Pi 4 (comfortable)
+
 ## Tooling / quality
 
 - [ ] Hypothesis property-based tests (mirror qpcr-machine-hacking)
