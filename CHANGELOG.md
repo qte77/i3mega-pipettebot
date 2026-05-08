@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - `pipettebot.gantry.open_marlin_port()` — opens a Marlin serial port at 250000 baud with a Linux `TCSETS2 + BOTHER` fallback for Python builds missing `termios.B250000`. Used by `examples/preflight.py` and `examples/showcase_v0_pipette_sim.py`.
+- `tools/diagnose_z.py` — safe Z-axis motion diagnostic for headless-gantry use. Reports endstop state via `M119`, then steps Z by 1 mm under operator confirmation. Never homes Z, restores `G90` on exit. First entry under `tools/` per the AGENTS.md "hardware experiments" convention.
 - `docs/sbc-deployment.md` — Path 2 (SBC-on-printer) deployment guide (#21)
 - `.claude/rules/{compound-learning,context-management,core-principles}.md` — repo-local agent governance rules (#20)
 - `AGENT_LEARNINGS.md` first entry: sandbox bind-mount untracked-files pattern (#25)
