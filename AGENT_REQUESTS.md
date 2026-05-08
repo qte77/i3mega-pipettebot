@@ -17,7 +17,7 @@ points at the issue numbers. Edit-and-commit lifecycle.
 
 ## Deck and motion
 
-- [ ] Deck geometry library — `deck.py` with `WellPlate96`, `TipRack`, named slots; replaces hardcoded `BACK_WELL_Y`/`FRONT_WELL_Y` in `examples/showcase_v0_pipette_sim.py`
+- [ ] Deck geometry library — `deck.py` with `WellPlate96`, `TipRack`, named slots; replaces hardcoded `BACK_WELL_Y`/`FRONT_WELL_Y` in `examples/showcase_v0_pipette_sim.py` (#10) — **blocked on a real use case**: no caller iterates over wells today, so the API would be Opentrons-mimicry without a concrete protocol. Unblock when someone writes a multi-well protocol the constants can't express.
 - [ ] Origin probe / calibration routine — one-shot, persisted to JSON; today users edit constants per [`docs/calibration.md`](docs/calibration.md)
 - [ ] Soft-limit + crash-guard — `safety.py` with `MIN_TRAVEL_Z`, `DISPENSE_Z_OFFSET`
 - [ ] Trajectory blending / look-ahead optimization
