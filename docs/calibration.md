@@ -7,9 +7,9 @@ owner: "lambda biolab"
 
 Every i3 Mega has slightly different X/Y home offsets, and a well plate
 is mechanically taped to the bed — there is no idealized origin. Before
-running [`examples/showcase_v0.py`](../examples/showcase_v0.py) you must
-measure where well A1 actually is on **your** build and update the
-hardcoded constants.
+running [`examples/showcase_v0_pipette_sim.py`](../examples/showcase_v0_pipette_sim.py)
+you must measure where the back and front wells actually are on
+**your** build and update the hardcoded constants.
 
 In v0 calibration is a **manual edit-and-rerun** workflow. A proper
 deck-frame library with persisted JSON calibration is in
@@ -105,13 +105,15 @@ the plate is rotated relative to X — re-tape and start over from step 2.
 
 ### 5. Update the showcase script
 
-Open [`examples/showcase_v0.py`](../examples/showcase_v0.py) and replace
-the constants at the top:
+Open [`examples/showcase_v0_pipette_sim.py`](../examples/showcase_v0_pipette_sim.py)
+and replace the constants near the top:
 
 ```python
-WELL_A1 = (X_FROM_M114, Y_FROM_M114, Z_FROM_M114)   # was (100.0, 100.0, 5.0)
-WELL_B1 = (WELL_A1[0], WELL_A1[1] + 9.0, WELL_A1[2])
-TRAVEL_Z = 40.0     # adjust if your dPette + tip is taller than 35 mm
+CENTER_X = X_FROM_M114        # was 105.0 (mid-bed default)
+BACK_WELL_Y = Y_FROM_M114     # was 180.0
+FRONT_WELL_Y = ...            # was 20.0 (or any Y with clear travel)
+WELL_Z = Z_FROM_M114           # was 5.0
+TRAVEL_Z = 40.0               # raise if your dPette + tip is taller than 35 mm
 ```
 
 Run [`make validate`](../Makefile) to make sure your edits still type-check
@@ -124,7 +126,7 @@ empty B1:
 
 ```bash
 python examples/preflight.py        # confirm ports + firmware
-python examples/showcase_v0.py
+python examples/showcase_v0_pipette_sim.py
 ```
 
 Watch the first cycle carefully. If anything looks wrong, **kill power
@@ -135,7 +137,7 @@ in v0.
 
 - A proper `deck.py` with `WellPlate96`, `TipRack`, and named slots
 - An origin-probe routine (`G38.2`-style) that auto-finds A1
-- Persistence to a JSON file so you do not edit `showcase_v0.py` every time
+- Persistence to a JSON file so you do not edit `showcase_v0_pipette_sim.py` every time
 - Soft-limit `safety.py` module (`MIN_TRAVEL_Z`, `DISPENSE_Z_OFFSET`)
 
 All tracked in [AGENT_REQUESTS.md](../AGENT_REQUESTS.md) and follow-up
