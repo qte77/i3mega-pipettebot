@@ -17,7 +17,7 @@ points at the issue numbers. Edit-and-commit lifecycle.
 
 ## Deck and motion
 
-- [ ] Deck geometry library — `deck.py` with `WellPlate96`, `TipRack`, named slots; replaces hardcoded `WELL_A1`/`WELL_B1` in `examples/showcase_v0.py`
+- [ ] Deck geometry library — `deck.py` with `WellPlate96`, `TipRack`, named slots; replaces hardcoded `BACK_WELL_Y`/`FRONT_WELL_Y` in `examples/showcase_v0_pipette_sim.py`
 - [ ] Origin probe / calibration routine — one-shot, persisted to JSON; today users edit constants per [`docs/calibration.md`](docs/calibration.md)
 - [ ] Soft-limit + crash-guard — `safety.py` with `MIN_TRAVEL_Z`, `DISPENSE_Z_OFFSET`
 - [ ] Trajectory blending / look-ahead optimization
