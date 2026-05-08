@@ -8,9 +8,11 @@ Requires [`uv`](https://docs.astral.sh/uv/). Install once:
 ```bash
 git clone https://github.com/Lambda-Biolab/i3mega-pipettebot.git
 cd i3mega-pipettebot
-make init          # uv sync --extra dev
+make init
 make validate
 ```
+
+`make init` runs `uv sync --extra dev`.
 
 The Makefile is the single quality gate (`make validate` runs ruff format
 check + lint, mypy strict, and pytest mocked). All recipes invoke tools via
