@@ -7,22 +7,49 @@ owner: "lambda biolab"
 
 # Pipette mount adapter
 
-Bolts a DLAB dPette pipette onto the **L-shaped front bracket** of the
-Anycubic i3 Mega's X-carriage. That bracket has a horizontal top flange
-bolted UP into the X-carriage and a vertical face hanging DOWN with the
-4 inner M3 holes (formerly used by the hot-end's heat-block). Our
-adapter:
+Bolts a DLAB dPette pipette onto the Anycubic i3 Mega's X-carriage
+using **two attachment regions** so the pipette is supported by both
+parts of the carriage assembly — not just the L bracket alone. The L
+alone is a single point of failure: under the pipette's offset mass
+the L would flex and twist. The adapter triangulates by anchoring to
+*both*:
 
-1. Bolts to the L's **vertical face** via the 4 inner M3 holes — the
-   primary load path.
-2. Adds a **top wrap-over** that rises along the back of the L's
-   vertical face and folds back across the top of the L's horizontal
-   flange — the secondary load path. This stabilizer turns the cantilever
-   into a closed truss so the L can't pivot or twist when loaded with
-   the pipette's mass at the front of the carriage.
+1. **Lower anchor — the L bracket's vertical face** via the 4 inner
+   M3 holes (formerly the hot-end's heat-block mounts).
+2. **Upper anchor — the carriage body's top face** via 2 corner M3
+   holes (the screws visible at the upper-left/upper-right of the
+   carriage's top plate in reference photos). A back riser climbs
+   from the lower anchor up past the L and the carriage's vertical
+   face; a top arm folds back across the carriage's top to land on
+   those 2 corner holes.
 
 The pipette body hangs vertically in a split-clamp positioned forward
-of the carriage face, so the tip is in the bed coordinate frame.
+of the carriage face, supported by a forward bridge from the lower
+mount plate. With both anchors in place the load path is a closed
+two-point truss — the pipette no longer hangs off a single
+attachment.
+
+```
+                    │ X-carriage
+                    │
+                    │ ┌─────────────┐ ← top arm bolts here
+                    │ │  ○      ○   │   (2 corner M3 holes)
+                    │ ├──┬──────────┤
+                    │ ░  │
+                    │ ░  │ ← back riser (passes behind both L and
+                    │ ░  │   carriage vertical faces)
+                    │ ░  │
+                    │ ┌──┴──────────┐
+                    │ │ ▒ ◯  ◯  ▒  │ ← lower mount plate bolts to
+                    │ │ ▒ ◯  ◯  ▒  │   L's 4 inner M3 holes
+                    │ └─────┬───────┘
+                    │       │ ↓ forward bridge
+                    │       │
+                    │       ┌──────┐
+                    │       │clamp │ ← split-clamp grips dPette body
+                    │       │  ⬭  │
+                    │       └──────┘
+```
 
 > **Status: v0 draft.** This file has **not** been printed and
 > verified against a physical i3 Mega yet. Treat the dimensions as
@@ -51,8 +78,9 @@ the repo. Add them locally as `*.stl` for your slicer.
 | Qty | Item | Notes |
 |---:|---|---|
 | 1 | 3D-printed `pipette_mount.scad` (PETG, ~25 g) | See print settings in the SCAD header |
-| 4 | M3 × 12 mm socket-head screws | Mount the adapter to the carriage — reuse the originals if they're long enough |
-| 4 | M3 washers | Spread load across the printed plate |
+| 4 | M3 × 12 mm socket-head screws | **Lower anchor** — reuse the originals if they're long enough |
+| 2 | M3 × 12 mm socket-head screws | **Upper anchor** to the carriage's top corner holes |
+| 6 | M3 washers | Spread load across the printed plate / top arm |
 | 1 | M3 × 16 mm socket-head screw | Tightens the split clamp |
 | 1 | M3 hex nut (DIN 934) | Captive in the clamp's nut pocket |
 
@@ -118,51 +146,59 @@ constraints:
 Default `35 mm` is a starting point that probably needs tweaking once
 you've held the dPette next to the carriage.
 
-### 4. L-bracket geometry (for the top wrap-over)
+### 4. Carriage geometry (for the back-brace + top anchor)
 
-The wrap-over flange that ties the mount back to the carriage needs
-two L-bracket measurements:
+The dual-anchor stabilizer needs four carriage measurements:
 
 ```
-                    │  X-carriage face (front)
+                    │  Gantry rails (above)
+                    │  ─────────────
                     │
-                    │ ┌───────────────────────┐    ┐
-                    │ │ L's horizontal flange │    │
-                    │ │ (bolted up into       │    │
-                    │ │  the carriage)        │    │
-                    │ └───┬───────────────────┤    │
-                    │     │                   │    │
-                    │     │                   │    │ l_face_h
-                    │     │ L's vertical      │    │ (this height)
-                    │     │ face — has 4      │    │
-                    │     │ inner M3 holes    │    │
-                    │     │                   │    │
-                    │     └───────────────────┘    ┘
-                          ↑                  ↑
-                          back               front
-                          (carriage          (forward)
-                           side)
-                          ←— wrap_depth_y →
-
+                    │ ┌─────────────────┐  ┐
+                    │ │  X-carriage     │  │ carriage_above_l_h
+                    │ │   body          │  │ (height of carriage
+                    │ │                 │  │  body above L's top)
+                    │ │  ○         ○    │  │
+                    │ └─┬───────────────┘  ┘   ← top corner holes here:
+                    │   │                          their X-spacing is
+                    │ ┌─┴───────────────┐  ┐       top_mount_pattern_w;
+                    │ │ L horizontal     │  │       Y from carriage front
+                    │ │  flange          │  │       face is top_mount_offset_y
+                    │ ├──┬───────────────┤  │
+                    │   │                   │ l_face_h
+                    │   │ L vertical face   │ (height of L's
+                    │   │ (4 inner M3 holes)│  vertical face)
+                    │   │                   │
+                    │   └───────────────────┘  ┘
+                        ↑                ↑
+                        back             front
+                        (carriage        (forward)
+                         side)
 ```
 
 - `l_face_h` — height of the L's vertical face from where it joins
   the horizontal flange down to its bottom edge. Measure with
-  calipers or a ruler. **Default 55 mm.** Critical: too tall and
-  the wrap riser collides with the L's bottom; too short and the
-  wrap doesn't reach the L's top.
+  calipers or a ruler. **Default 55 mm.**
 
-- `wrap_depth_y` — how far the wrap's horizontal arm extends back
-  across the top of the L's horizontal flange. Should not extend
-  past the carriage face itself or it'll collide with the gantry
-  rails. **Default 22 mm.**
+- `carriage_above_l_h` — height of the carriage body above the L's
+  top flange (measured from L's top up to the top surface of the
+  carriage body where the corner mount screws live). **Default 25 mm.**
+  Set to **0** to disable the upper anchor entirely (e.g. if your
+  carriage has no usable top corner holes, or you want to print a
+  shorter version for early bench testing).
 
-Optional: enable a single M3 through-hole in the wrap (`wrap_bolt_d`
-= 3.4) so a longer M3 bolt can pass through the wrap, the L's top
-flange, and into the carriage's mounting plate above for a positive
-mechanical lock (eliminates any reliance on the wrap's printed
-contact area). You'll need to confirm a usable hole on the carriage
-side first; not all i3 Mega revisions have one in the right place.
+- `top_mount_pattern_w` — X-axis spacing between the two corner
+  mount holes on the carriage's top face. **Default 50 mm.**
+  Measure with calipers between the two visible upper corner screws.
+
+- `top_mount_offset_y` — how far back from the carriage's vertical
+  face those corner holes sit. **Default 8 mm.** Determines where the
+  top arm puts its M3 holes; getting this wrong by more than a
+  millimetre will mean the bolts won't drop in cleanly.
+
+The top arm extends `top_arm_y` back across the carriage's top
+(default 30 mm). Make sure that depth doesn't foul the gantry rails
+or any cable harness.
 
 ### Other tunables (less critical)
 

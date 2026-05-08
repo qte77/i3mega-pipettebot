@@ -66,27 +66,43 @@ bridge_t           = 6.0;    // [mm] thickness of the bridge wall
 bridge_offset_y    = 32.0;   // [mm] forward offset of clamp center from plate face
 bridge_rib_w       = 12.0;   // [mm] gusset width on each side for stiffness
 
-// ---------- Top wrap-over stabilizer ----------
-// The L-shaped carriage bracket cantilevers off the X-carriage with
-// only its top flange bolted up. Adding a pipette puts a forward
-// moment on it and the L will flex / twist. The wrap-over:
-//   1. Extends UP from the mount plate's top edge by `l_face_h`
-//      (the height of the L's vertical face — measure on yours).
-//   2. Folds BACK by `wrap_depth_y` across the TOP of the L's
-//      horizontal flange.
-// Net effect: the mount's load path now reaches the carriage via
-// both the L's vertical face (4 inner M3 screws) AND the L's top
-// flange (this wrap resting on it), turning the cantilever into
-// a closed truss. No new holes need to be drilled.
+// ---------- Back brace + carriage-top anchor (replaces wrap-over) ----------
+// The L bracket alone is a single mounting region. The user observed
+// (image #13 in design discussion) that the pipette needs to be
+// supported by BOTH parts of the carriage — the L bracket AND the
+// carriage body's top face above it.
 //
-// Optional: a single M3 through-hole in the wrap (`wrap_bolt_d` > 0)
-// lets you use a longer-than-stock bolt that goes through wrap +
-// L flange + carriage in one shot for positive lock.
-l_face_h           = 55.0;   // [mm] height of the L's vertical face — MEASURE
-wrap_depth_y       = 22.0;   // [mm] how far back the wrap extends over the L's top
-wrap_t             = 4.0;    // [mm] thickness of the wrap walls
-wrap_bolt_d        = 0.0;    // [mm] M3 clearance through-hole; 0 to disable
-wrap_bolt_offset_y = 11.0;   // [mm] bolt position from L vertical face (along wrap)
+// This stabilizer is one continuous structure:
+//   1. Back riser: vertical wall extending UP from the mount plate
+//      top edge, passing BEHIND the L's vertical face (offset back
+//      by `back_riser_t`) and BEHIND the carriage's vertical face
+//      above the L. Total height = l_face_h + carriage_above_l_h.
+//      This assumes the L's vertical face and the carriage's
+//      vertical face are roughly flush in Y; if your unit has a
+//      step, increase `back_riser_t` to bridge the gap.
+//   2. Top arm: horizontal flange at the very top, extends BACK
+//      across the carriage's top face by `top_arm_y`. Has 2 M3
+//      bolt holes that align with the carriage's top corner mount
+//      holes (the screws visible at the upper-left and upper-right
+//      of the carriage's top plate in reference photos).
+//
+// Net effect: the load path now reaches the carriage via two
+// regions — the L (4 lower M3 screws) and the carriage top
+// (2 upper M3 screws). True triangulation; the cantilever
+// becomes a fully-closed two-anchor truss.
+//
+// Set `carriage_above_l_h = 0` to disable the upper anchor entirely
+// (e.g. if your carriage doesn't have usable top corner holes).
+
+l_face_h            = 55.0;  // [mm] height of L's vertical face — MEASURE
+carriage_above_l_h  = 25.0;  // [mm] height of carriage body above L's top — MEASURE; 0 disables
+back_riser_t        = 4.0;   // [mm] thickness of the back riser wall
+
+top_arm_y           = 30.0;  // [mm] depth of top arm across carriage top
+top_arm_t           = 4.0;   // [mm] thickness of top arm
+top_mount_pattern_w = 50.0;  // [mm] X spacing of carriage top corner holes — MEASURE
+top_mount_offset_y  = 8.0;   // [mm] Y offset from carriage front face to corner holes — MEASURE
+top_mount_d         = 3.4;   // [mm] M3 clearance for top corner mount screws
 
 // ---------- Split clamp ----------
 clamp_wall_t       = 4.0;    // [mm] wall around the bore
@@ -194,57 +210,50 @@ module clamp() {
     }
 }
 
-// Top wrap-over: rises above the mount plate to span the L's vertical
-// face, then folds back over the L's horizontal top flange. Bolts to
-// the same plate (printed monolithic) so all loads transfer through
-// the printed material — no fasteners needed unless `wrap_bolt_d > 0`.
+// Back brace + carriage-top anchor: one continuous riser from the
+// mount plate top up past the L's vertical face AND the carriage
+// body's vertical face, terminating in a horizontal flange that
+// bolts to the carriage's top corner holes.
 //
-// Geometry (cross-section in the YZ plane, looking from +X):
+// Cross-section in the YZ plane, looking from +X:
 //
 //        +Z
 //         │
-//         │   ┌──────────────────┐ ← horizontal arm of wrap (rests on
-//         │   │                  │   top of L's horizontal flange)
-//         │   │                  │
-//   ──────┼───┴──────────────────┴─── y=0 plane (top of L's vertical face)
-//         │   │ ↑
-//         │   │ │
-//         │   │ │ rises along the BACK side of the L's vertical face,
-//         │   │ │ aligned with the mount plate's back edge
-//         │   │ ↓
-//   ──────┼───┴────────────────────── top of mount plate (z = plate_t)
-//         │   ░
-//         │   ░ ← mount plate (here)
-//         │   ░
-//         └─────► +Y (forward, away from carriage)
+//         │  ┌────────────────────┐ ← top arm (sits on carriage top,
+//         │  │  ○             ○   │   2 M3 holes for corner mounts)
+//         │  └─┬──────────────────┘
+//         │    ░  ← back riser (passes BEHIND L + carriage faces)
+//         │    ░     `carriage_above_l_h` mm of carriage body height
+//         │    ░
+//   ──────┼────░──────────────────── top of L's vertical face
+//         │    ░     `l_face_h` mm of L's vertical face height
+//         │    ░
+//   ──────┼────┴────────────────── top of mount plate (z = plate_t)
+//         │  ▒▒▒
+//         │  ▒▒▒  ← mount plate (4 M3 holes into L's vertical face)
+//         │  ▒▒▒
+//         └────────► +Y (forward, away from carriage)
 //
-// Note: the wrap's vertical riser is OUTSIDE the L (against the back
-// of the L's vertical face, i.e. the side facing the carriage), so it
-// doesn't fight the 4 M3 mount screws. It does increase the standoff
-// of the mount plate from the L's vertical face by `wrap_t` — bake
-// that into bolt-length selection (M3 × 12 instead of M3 × 8).
-module top_wrap() {
-    // Wrap rises at the BACK edge of the mount plate (y = -plate_h/2),
-    // goes up by l_face_h, then folds back further by wrap_depth_y.
-    // The riser hugs the top edge of the L's vertical face.
-    union() {
-        // Vertical riser (against back of L's vertical face).
-        // Extend DOWN through the plate so the riser shares a clean
-        // face with the plate (rather than meeting it edge-to-edge,
-        // which CGAL flags as non-manifold).
-        translate([-plate_w/2, -plate_h/2 - wrap_t, 0])
-            cube([plate_w, wrap_t, l_face_h + plate_t]);
+// Two anchor regions = triangulated load path. Pipette no longer
+// hangs off a single attachment point.
+module back_brace() {
+    // Back riser — extend down through the plate by plate_t for a
+    // clean union (avoids CGAL non-manifold-edge warning).
+    total_riser_h = plate_t + l_face_h + carriage_above_l_h;
+    translate([-plate_w/2, -plate_h/2 - back_riser_t, 0])
+        cube([plate_w, back_riser_t, total_riser_h]);
 
-        // Horizontal arm (sits on top of L's horizontal flange).
-        // Overlaps the riser by `wrap_t` on the +Z side for the same
-        // manifold reason.
-        translate([-plate_w/2, -plate_h/2 - wrap_t, l_face_h + plate_t - 0.01])
-            difference() {
-                cube([plate_w, wrap_t + wrap_depth_y, wrap_t + 0.01]);
-                if (wrap_bolt_d > 0)
-                    translate([0, wrap_t + wrap_bolt_offset_y, -0.1])
-                        cylinder(d=wrap_bolt_d, h=wrap_t + 0.4);
-            }
+    // Top arm — only emit if the carriage anchor is enabled.
+    if (carriage_above_l_h > 0) {
+        translate([-plate_w/2, -plate_h/2 - back_riser_t, total_riser_h - 0.01])
+        difference() {
+            cube([plate_w, back_riser_t + top_arm_y, top_arm_t + 0.01]);
+            // 2 M3 holes for carriage top corner mounts
+            for (xc = [(plate_w - top_mount_pattern_w)/2,
+                       (plate_w + top_mount_pattern_w)/2])
+                translate([xc, back_riser_t + top_mount_offset_y, -0.1])
+                    cylinder(d=top_mount_d, h=top_arm_t + 0.4);
+        }
     }
 }
 
@@ -256,5 +265,5 @@ union() {
     carriage_plate();
     bridge();
     clamp();
-    top_wrap();
+    back_brace();
 }
