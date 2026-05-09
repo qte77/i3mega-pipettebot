@@ -53,7 +53,15 @@ uv run tools/preflight.py
 ```
 
 This reads `M115` from Marlin and the EEPROM packet from the dPette;
-no motion is sent.
+no motion is sent. Preflight passes when **either** device is found —
+the gantry and the pipette are exercised independently in v0.
+
+To chain discovery directly into the next command, use `--export`:
+
+```bash
+eval "$(uv run python tools/preflight.py --export)" \
+  && uv run python examples/showcase_v0_pipette_sim.py
+```
 
 Then the demo. v0 ships a single example that drives the gantry
 through a back-well-to-front-well pipetting cycle and tees the G-code
@@ -65,6 +73,19 @@ unlocks real M820 pipette pass-through):
 ```bash
 uv run examples/showcase_v0_pipette_sim.py
 ```
+
+### Hardware diagnostics (`tools/`)
+
+For headless-gantry bring-up, debugging, and post-removal sanity checks:
+
+| Tool                        | Purpose                                                  |
+|-----------------------------|----------------------------------------------------------|
+| `tools/preflight.py`        | Port discovery + Marlin/dPette firmware probe.           |
+| `tools/diagnose_axis.py`    | Per-axis (`AXIS=X\|Y\|Z`) stepped motion under operator confirmation. Reports `M119` first, never homes. |
+| `tools/marlin_repl.py`      | Interactive G-code REPL with built-in command cheat-sheet (`?`). For ad-hoc `M119`, `M999`, `M114`, `M503`, etc. |
+
+See [`docs/marlin-commands.md`](docs/marlin-commands.md) for the full
+G/M-code reference and i3 Mega coordinate orientation.
 
 Expected behavior: home → bed sweeps to back well → 5 cm Z plunger
 stroke → bed sweeps to front well → another stroke → home.
@@ -83,8 +104,8 @@ raw serial @ 250000 baud  ──► /dev/cu.usbserial-*  (Marlin, G-code)
 In v0 the dPette is wired in via `pipettebot.PipetteBot` + a real
 `dpette.DPetteDriver`, but the canonical example simulates the
 plunger with the gantry Z axis so it runs against the printer alone.
-Real pipette I/O is exercised via `tools/preflight.py` and ad-hoc
-scripts; full integration through the same showcase awaits the
+The dPette is exercised in isolation via the `dpette` driver's own
+test suite; full integration through the same showcase awaits the
 firmware path in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md).
 
 Three modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
@@ -118,6 +139,8 @@ but deliberately **not** part of v0.
 
 - [docs/hardware.md](docs/hardware.md) — i3 Mega + dPette wiring, port discovery, firmware sanity check
 - [docs/calibration.md](docs/calibration.md) — well-A1 origin procedure, 9 mm pitch check
+- [docs/marlin-commands.md](docs/marlin-commands.md) — Marlin G/M-code reference + i3 Mega coordinate orientation
+- [docs/sbc-deployment.md](docs/sbc-deployment.md) — Path 2 (SBC-on-printer) deployment
 - [AGENTS.md](AGENTS.md) — agent rules, decision framework, architecture
 - [AGENT_LEARNINGS.md](AGENT_LEARNINGS.md) — gotchas as we discover them
 - [AGENT_REQUESTS.md](AGENT_REQUESTS.md) — deferred features and questions
