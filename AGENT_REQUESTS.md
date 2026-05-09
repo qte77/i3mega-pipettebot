@@ -64,7 +64,7 @@ can graduate from DRAFT:
 
 - [x] Hardware setup guide — see [`docs/hardware.md`](docs/hardware.md)
 - [x] Calibration procedure — see [`docs/calibration.md`](docs/calibration.md)
-- [x] Preflight script — `examples/preflight.py`
+- [x] Preflight script — `tools/preflight.py`
 - [ ] Hardware photo set (mount + plate + tips + dPette) for `.github/assets/hero.png`
 - [ ] Demo video / GIF (live) replacing the `.github/assets/showcase.gif` placeholder
 - [ ] ADR: why PC-as-host instead of Stage 2 firmware integration

@@ -125,7 +125,7 @@ Re-run preflight, then run the showcase with **water in well A1** and an
 empty B1:
 
 ```bash
-uv run examples/preflight.py
+uv run tools/preflight.py
 uv run examples/showcase_v0_pipette_sim.py
 ```
 

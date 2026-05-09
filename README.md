@@ -49,7 +49,7 @@ well-origin calibration before you run the demo:
 After hookup, sanity-check ports + firmware **before any motion**:
 
 ```bash
-uv run examples/preflight.py
+uv run tools/preflight.py
 ```
 
 This reads `M115` from Marlin and the EEPROM packet from the dPette;
@@ -83,7 +83,7 @@ raw serial @ 250000 baud  ──► /dev/cu.usbserial-*  (Marlin, G-code)
 In v0 the dPette is wired in via `pipettebot.PipetteBot` + a real
 `dpette.DPetteDriver`, but the canonical example simulates the
 plunger with the gantry Z axis so it runs against the printer alone.
-Real pipette I/O is exercised via `examples/preflight.py` and ad-hoc
+Real pipette I/O is exercised via `tools/preflight.py` and ad-hoc
 scripts; full integration through the same showcase awaits the
 firmware path in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md).
 

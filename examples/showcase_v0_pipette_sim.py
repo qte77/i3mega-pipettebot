@@ -21,7 +21,7 @@ until `ok` so commands are properly sequenced — sidesteps the
 
 Required environment variable:
 
-    I3MEGA_PORT   Marlin USB-serial path. Run `examples/preflight.py`
+    I3MEGA_PORT   Marlin USB-serial path. Run `tools/preflight.py`
                   first to discover it.
 
 Optional:
@@ -191,7 +191,7 @@ def main() -> int:
     if not port:
         sys.stderr.write(
             "ERROR: set I3MEGA_PORT to your printer's serial port.\n"
-            "       Run `uv run examples/preflight.py` to discover it.\n"
+            "       Run `uv run tools/preflight.py` to discover it.\n"
         )
         return 1
     baud = int(os.environ.get("I3MEGA_BAUD", str(DEFAULT_BAUD)))
@@ -201,7 +201,7 @@ def main() -> int:
     if link is None:
         sys.stderr.write(
             f"ERROR: could not open {port} @ {baud} baud.\n"
-            "       Run `uv run examples/preflight.py` to verify the port.\n"
+            "       Run `uv run tools/preflight.py` to verify the port.\n"
         )
         return 1
     with link:

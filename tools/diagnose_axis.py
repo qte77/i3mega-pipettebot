@@ -100,7 +100,7 @@ def main() -> int:
     if not port:
         sys.stderr.write(
             "ERROR: set I3MEGA_PORT to your printer's serial port.\n"
-            "       Run `uv run examples/preflight.py` to discover it.\n"
+            "       Run `uv run tools/preflight.py` to discover it.\n"
         )
         return 1
     axis = os.environ.get("AXIS", "").upper()

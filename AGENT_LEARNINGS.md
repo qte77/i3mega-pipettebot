@@ -8,7 +8,7 @@ that earlier."
 
 Symptom: `serial.Serial(port, 250000, timeout=...)` raises
 `termios.error: (22, 'Invalid argument')` from `_reconfigure_port`'s
-`tcsetattr` call. Hit in `examples/preflight.py` (#30) and
+`tcsetattr` call. Hit in `tools/preflight.py` (#30) and
 `examples/showcase_v0_pipette_sim.py` (same root cause, separate script).
 
 Root cause: pyserial 3.5's `BAUDRATE_CONSTANTS` doesn't list 250000, and
