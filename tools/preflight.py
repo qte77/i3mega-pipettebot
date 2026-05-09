@@ -12,6 +12,16 @@ Scans candidate `/dev/tty*` / `/dev/cu.*` ports and probes each one:
 Env vars `I3MEGA_PORT` and `PIPETTE_PORT` win over discovery — useful
 when discovery picks the wrong port or you want a stable mapping.
 
+Pass `--export` to suppress probe chatter on stdout and print only
+`export I3MEGA_PORT=...` / `export PIPETTE_PORT=...` lines, suitable
+for shell `eval`:
+
+    eval "$(uv run python tools/preflight.py --export)" \
+      && uv run python examples/showcase_v0_pipette_sim.py
+
+Probe chatter still goes to stderr in export mode, so you can see
+what was happening if the discovery failed.
+
 The dPette will silently power-gate its USB chip off when it goes to
 standby — its `/dev/` node disappears entirely, not just the
 handshake. To survive that, the dPette probe retries with a
@@ -116,7 +126,7 @@ def probe_dpette(port: str) -> int | None:
 def _resolve_marlin(
     ports: list[str], override: str | None
 ) -> tuple[str | None, str | None]:
-    """Find the Marlin port (or use override). Returns (port, firmware) or (None, None)."""
+    """Find the Marlin port (or use override). Returns (port, firmware)."""
     if override:
         print(f"[probe] {override} for Marlin (env override) ... ", end="", flush=True)
         fw = probe_marlin(override)
@@ -198,30 +208,44 @@ def _resolve_dpette_with_retry(
 
 
 def main() -> int:
-    ports = discover_ports()
-    if not ports:
-        print("No USB-serial ports found. Plug in the printer and dPette.")
-        return 1
-    print(f"Discovered ports: {ports}\n")
+    export_mode = "--export" in sys.argv
+    original_stdout = sys.stdout
+    if export_mode:
+        # Route probe chatter to stderr; stdout stays clean for `eval` consumers.
+        sys.stdout = sys.stderr
 
-    marlin_port, _ = _resolve_marlin(ports, os.environ.get("I3MEGA_PORT"))
-    if not marlin_port:
-        print("\nERROR: no port answered as Marlin.")
-        return 1
+    try:
+        ports = discover_ports()
+        if not ports:
+            print("No USB-serial ports found. Plug in the printer and dPette.")
+            return 1
+        print(f"Discovered ports: {ports}\n")
 
-    print()
-    print("(press the dPette's button if it's in standby — handshake needs it awake)")
-    dpette_port, _ = _resolve_dpette_with_retry(
-        ports, os.environ.get("PIPETTE_PORT"), skip=marlin_port
-    )
-    if not dpette_port:
-        print("\nERROR: no port answered as dPette after retries.")
-        return 1
+        marlin_port, _ = _resolve_marlin(ports, os.environ.get("I3MEGA_PORT"))
+        if not marlin_port:
+            print("\nERROR: no port answered as Marlin.")
+            return 1
 
-    print()
-    print("===== preflight passed =====")
-    print(f"  I3MEGA_PORT  = {marlin_port}")
-    print(f"  PIPETTE_PORT = {dpette_port}")
+        print()
+        print("(press the dPette's button if it's asleep — handshake needs it awake)")
+        dpette_port, _ = _resolve_dpette_with_retry(
+            ports, os.environ.get("PIPETTE_PORT"), skip=marlin_port
+        )
+        if not dpette_port:
+            print("\nERROR: no port answered as dPette after retries.")
+            return 1
+
+        print()
+    finally:
+        sys.stdout = original_stdout
+
+    if export_mode:
+        print(f"export I3MEGA_PORT={marlin_port}")
+        print(f"export PIPETTE_PORT={dpette_port}")
+    else:
+        print("===== preflight passed =====")
+        print(f"  I3MEGA_PORT  = {marlin_port}")
+        print(f"  PIPETTE_PORT = {dpette_port}")
     return 0
 
 
