@@ -34,7 +34,7 @@ Single source of truth for agents working in this repo. `CLAUDE.md` and
 | Where does new code go?                         | `src/pipettebot/`. Three modules only: `gantry`, `bot`, `__init__`. |
 | Where does deck geometry live?                  | Deferred. Caller passes raw `(x, y, z)` in v0.                   |
 | How is dpette imported?                         | Git dep, pinned to a commit SHA before v0.0.1 tag.               |
-| Where do hardware experiments go?               | `tools/` (not yet created), with logs to `captures/`.            |
+| Where do hardware experiments go?               | `tools/` — diagnostics (`preflight.py`, `diagnose_axis.py`, `marlin_repl.py`), CAD (`tools/cad/`), slicer (`tools/slicer/`). Logs to `captures/`. |
 | What goes in AGENT_REQUESTS.md?                 | Anything deferred — features, ADRs, hardware photos, firmware tracks. |
 
 ## Architecture Overview
@@ -83,5 +83,43 @@ cover both layers without hardware.
 | Add a deck or calibration feature        | Don't yet — file under AGENT_REQUESTS.md. v0 stays raw `(x,y,z)`. |
 | Send a raw dPette packet                 | Don't. Use `dpette.DPetteDriver` methods.                        |
 | Modify Marlin firmware                   | Don't yet. Open an ADR in AGENT_REQUESTS.md.                     |
+| Add a 3D-printable part                  | Add `build_*()` to a script under `tools/cad/<area>/`, register it in `tools/cad/parts.json`, run `make render_all`. See `.claude/rules/cad-script-conventions.md`. |
+| Tune slicer settings                     | Edit a profile in `tools/slicer/profiles/*.ini` — never inline. See `.claude/rules/slicer-profile-source-of-truth.md`. |
+| Mount something on the i3 print head     | Add to `tools/cad/i3/`, annotate the `build_*()` with `# Mass:`, keep total payload &lt; 300 g. See `.claude/rules/i3-carriage-payload-budget.md`. |
 | Track a deferred feature                 | AGENT_REQUESTS.md.                                               |
 | Record a gotcha you hit                  | AGENT_LEARNINGS.md.                                              |
+
+## 3D Parts Pipeline
+
+`tools/cad/` (build123d) generates STL+SVG; `tools/slicer/` (OrcaSlicer-first,
+PrusaSlicer fallback) gates printability. Outputs land in top-level
+`hardware/{stl,svg,gcode}/` (gitignored).
+
+```text
+tools/cad/parts.json                ── manifest: name, cad path, build_func, status
+tools/cad/render.py                 ── manifest dispatcher (build123d only)
+tools/cad/util/{export,stl_to_svg,theme_svgs}.py
+tools/cad/labware/                  ── universal SBS parts (tip rack, plate holder)
+tools/cad/dpette/                   ── cradles, tip ejector, ejection post
+tools/cad/i3/                       ── print-head-mounted parts (carriage_dpette_mount stub)
+tools/slicer/validate.py            ── headless slice, PASS/WARN/FAIL report
+tools/slicer/profiles/i3mega_*.ini  ── shared between OrcaSlicer + PrusaSlicer
+```
+
+Workflow:
+
+```bash
+make setup_cad        # uv sync --extra cad (installs build123d)
+make setup_slicer     # detect orca-slicer / OrcaSlicer / prusa-slicer
+make render_parts     # build123d → hardware/stl/ + hardware/svg/
+make check_prints     # slice each STL, scan for overhang/unsupported/bridge
+make render_all       # render_parts + check_prints
+```
+
+Path-scoped rules apply only when working under `tools/cad/` or
+`tools/slicer/`:
+
+- `.claude/rules/cad-script-conventions.md`
+- `.claude/rules/slicer-profile-source-of-truth.md`
+- `.claude/rules/i3-carriage-payload-budget.md`
+- `.claude/rules/cad-printability-gate.md`
