@@ -83,6 +83,7 @@ For headless-gantry bring-up, debugging, and post-removal sanity checks:
 | `tools/preflight.py`        | Port discovery + Marlin/dPette firmware probe.           |
 | `tools/diagnose_axis.py`    | Per-axis (`AXIS=X\|Y\|Z`) stepped motion under operator confirmation. Reports `M119` first, never homes. |
 | `tools/marlin_repl.py`      | Interactive G-code REPL with built-in command cheat-sheet (`?`). For ad-hoc `M119`, `M999`, `M114`, `M503`, etc. |
+| `tools/cad/`                | build123d CAD scripts for printable parts (tip rack, plate holder, dPette cradles, tip ejector). `make render_parts` generates STL+SVG; `make check_prints` slices via OrcaSlicer (or PrusaSlicer fallback). |
 
 See [`docs/marlin-commands.md`](docs/marlin-commands.md) for the full
 G/M-code reference and i3 Mega coordinate orientation.
@@ -120,6 +121,9 @@ calibration in v0 — the caller passes raw `(x, y, z)`.
 | `make quick_validate` | lint + mypy only |
 | `make lint_fix` | auto-fix formatting and lint |
 | `make test` | pytest (hardware tests excluded) |
+| `make setup_cad` | install build123d (`uv sync --extra cad`) |
+| `make setup_slicer` | probe for OrcaSlicer (preferred) or PrusaSlicer (fallback) |
+| `make render_all` | render all parts to `hardware/{stl,svg}/` and slice for printability check |
 
 Hardware tests are gated by `@pytest.mark.hardware`:
 

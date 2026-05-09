@@ -41,7 +41,6 @@ MEMORY.md
 .bashrc
 .env
 .gitconfig
-.gitmodules
 .profile
 .ripgreprc
 .zprofile
@@ -55,6 +54,15 @@ captures/*.log
 captures/*.bin
 captures/*.txt
 !captures/.gitkeep
+
+# 3D-parts pipeline (generated artifacts, soft-cloned tooling)
+hardware/stl/
+hardware/svg/
+hardware/gcode/
+diagramforge/
+
+# Untracked example output
+showcase_v0_pipette_sim.gcode
 
 # OS
 .DS_Store

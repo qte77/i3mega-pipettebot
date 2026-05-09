@@ -8,7 +8,8 @@ version = "0.0.1"
 description = "Anycubic i3 Mega + DLAB dPette: a sub-$300 disposable-tip pipetting robot"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.11"
+# Pin upper bound: build123d → cadquery-ocp → VTK has no cp313 wheels (verified 2026-04)
+requires-python = ">=3.11,<3.13"
 keywords = [
     "pipette",
     "lab-automation",
@@ -44,6 +45,10 @@ dev = [
     "mypy>=1.10,<2",
     "types-pyserial>=3.5",
     "complexipy>=0.8",
+    "hypothesis>=6.100,<7",
+]
+cad = [
+    "build123d>=0.10",
 ]
 
 [tool.hatch.metadata]
@@ -60,11 +65,13 @@ src = ["src"]
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH", "C90"]
 
 [tool.ruff.lint.mccabe]
-max-complexity = 10
+max-complexity = 8
 
 [tool.ruff.lint.per-file-ignores]
 "examples/*" = ["E501"]
 "tests/*" = ["E501", "TC001", "TC002", "TC003"]
+"tools/cad/**" = ["E501", "ANN", "S603"]   # CAD scripts: dynamic build123d imports, subprocess calls
+"tools/slicer/**" = ["S603"]               # subprocess calls run trusted slicer binaries
 
 [tool.ruff.lint.isort]
 known-first-party = ["pipettebot", "tests"]
@@ -75,9 +82,17 @@ strict = true
 warn_return_any = true
 warn_unused_configs = true
 mypy_path = "src"
+exclude = [
+    "tools/cad/",     # build123d uses dynamic imports without type stubs
+    "tools/slicer/",  # subprocess wrapping; not strict-typed
+]
 
 [[tool.mypy.overrides]]
 module = "dpette.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "build123d.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
@@ -85,4 +100,5 @@ testpaths = ["tests"]
 addopts = "-m \"not hardware\""
 markers = [
     "hardware: requires physical i3 Mega + dPette hookup",
+    "cad: requires build123d installed (uv sync --extra cad)",
 ]

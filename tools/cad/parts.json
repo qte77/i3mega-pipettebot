@@ -1,0 +1,65 @@
+[
+  {
+    "name": "tip_rack_holder",
+    "cad": "labware/tip_rack_holder.py",
+    "build_func": "build_tip_rack_holder",
+    "stl": "labware/tip_rack_holder.stl",
+    "svg": "labware/tip_rack_holder.svg",
+    "status": "active",
+    "notes": "Universal SBS-footprint 96-tip rack holder."
+  },
+  {
+    "name": "plate_holder",
+    "cad": "labware/plate_holder.py",
+    "build_func": "build_plate_holder",
+    "stl": "labware/plate_holder.stl",
+    "svg": "labware/plate_holder.svg",
+    "status": "active",
+    "notes": "SBS 96-well plate holder with alignment pins."
+  },
+  {
+    "name": "tip_ejection_bar",
+    "cad": "dpette/tip_ejection_bar.py",
+    "build_func": "build_tip_ejection_bar",
+    "stl": "dpette/tip_ejection_bar.stl",
+    "svg": "dpette/tip_ejection_bar.svg",
+    "status": "active",
+    "notes": "Fixed post for top-button ejector activation."
+  },
+  {
+    "name": "dpette_single_cradle",
+    "cad": "dpette/dpette_cradle.py",
+    "build_func": "build_dpette_single_cradle",
+    "stl": "dpette/dpette_single_cradle.stl",
+    "svg": "dpette/dpette_single_cradle.svg",
+    "status": "active",
+    "notes": "Rest cradle for AELAB dPette 7016 single-channel."
+  },
+  {
+    "name": "dpette_multi_cradle",
+    "cad": "dpette/dpette_cradle.py",
+    "build_func": "build_dpette_multi_cradle",
+    "stl": "dpette/dpette_multi_cradle.stl",
+    "svg": "dpette/dpette_multi_cradle.svg",
+    "status": "active",
+    "notes": "Rest cradle for DLAB dPette+ 8-channel."
+  },
+  {
+    "name": "dpette_tip_release",
+    "cad": "dpette/dpette_tip_release.py",
+    "build_func": "build_tip_release",
+    "stl": "dpette/dpette_tip_release.stl",
+    "svg": "dpette/dpette_tip_release.svg",
+    "status": "active",
+    "notes": "L-bracket tip ejector station with waste slot."
+  },
+  {
+    "name": "i3_carriage_dpette_mount",
+    "cad": "i3/carriage_dpette_mount.py",
+    "build_func": "build_carriage_dpette_mount",
+    "stl": "i3/carriage_dpette_mount.stl",
+    "svg": "i3/carriage_dpette_mount.svg",
+    "status": "planned",
+    "notes": "STUB until AI3M carriage screw-pattern dimensions land — see AGENT_REQUESTS.md."
+  }
+]

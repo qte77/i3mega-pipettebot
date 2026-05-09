@@ -102,6 +102,35 @@ def gsend(link: serial.Serial, cmd: str, max_secs: float = ACK_TIMEOUT_S) -> Non
     raise TimeoutError(f"no `ok` after {max_secs}s for `{cmd}`")
 
 
+def _read_command() -> str | None:
+    """Read one REPL line; return None on EOF/Ctrl-C."""
+    try:
+        return input("> ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return None
+
+
+def _repl_loop(link: serial.Serial) -> None:
+    """Interactive command loop. Returns when the user exits."""
+    while True:
+        cmd = _read_command()
+        if cmd is None:
+            return
+        if not cmd:
+            continue
+        low = cmd.lower()
+        if low in EXIT_WORDS:
+            return
+        if low in HELP_WORDS:
+            print(CHEAT_SHEET)
+            continue
+        try:
+            gsend(link, cmd)
+        except TimeoutError as e:
+            print(f"  [timeout] {e}", file=sys.stderr)
+
+
 def main() -> int:
     port = os.environ.get("I3MEGA_PORT")
     if not port:
@@ -123,24 +152,7 @@ def main() -> int:
         time.sleep(BOOT_WAIT_S)
         link.reset_input_buffer()
         print("[marlin_repl] ready. Type `?` for cheat-sheet, `exit` to quit.")
-        while True:
-            try:
-                cmd = input("> ").strip()
-            except (EOFError, KeyboardInterrupt):
-                print()
-                break
-            if not cmd:
-                continue
-            low = cmd.lower()
-            if low in EXIT_WORDS:
-                break
-            if low in HELP_WORDS:
-                print(CHEAT_SHEET)
-                continue
-            try:
-                gsend(link, cmd)
-            except TimeoutError as e:
-                print(f"  [timeout] {e}", file=sys.stderr)
+        _repl_loop(link)
 
     print("[marlin_repl] disconnected")
     return 0

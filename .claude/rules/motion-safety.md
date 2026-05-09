@@ -1,3 +1,10 @@
+---
+paths:
+  - "src/pipettebot/**"
+  - "examples/**"
+  - "tests/test_*.py"
+---
+
 # Motion safety
 
 ## Always wait for moves before pipetting
