@@ -1,0 +1,5 @@
+; URL-only entry — diagramforge is soft-cloned by `make setup_diagramforge`,
+; not tracked as a real submodule. Same pattern as so101-biolab-automation.
+[submodule "diagramforge"]
+	path = diagramforge
+	url = https://github.com/qte77/diagramforge
