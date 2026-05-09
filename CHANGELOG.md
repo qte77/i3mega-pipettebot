@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - `pipettebot.gantry.open_marlin_port()` — opens a Marlin serial port at 250000 baud with a Linux `TCSETS2 + BOTHER` fallback for Python builds missing `termios.B250000`. Used by `examples/preflight.py` and `examples/showcase_v0_pipette_sim.py`.
 - `tools/diagnose_axis.py` — safe per-axis motion diagnostic for headless-gantry use. `AXIS=X|Y|Z`. Reports endstop state via `M119`, then steps the chosen axis by 1 mm under operator confirmation. Never homes, restores `G90` on exit. First entry under `tools/` per the AGENTS.md "hardware experiments" convention.
 - `tools/marlin_repl.py` — interactive G-code REPL with a built-in cheat-sheet (`?`). For one-shots like `M119` (endstops), `M999` (clear halt), `M114` (position), `M115` (firmware), `M503` (EEPROM dump).
+- `docs/marlin-commands.md` — reference table of common Marlin G/M-codes for i3 Mega bring-up and debugging, plus i3 Mega coordinate orientation and project-specific gotchas (M412 not on 1.1.9, G28 Z risk after head removal, T0 abnormal recovery, 250000-baud Linux fallback).
 - `docs/sbc-deployment.md` — Path 2 (SBC-on-printer) deployment guide (#21)
 - `.claude/rules/{compound-learning,context-management,core-principles}.md` — repo-local agent governance rules (#20)
 - `AGENT_LEARNINGS.md` first entry: sandbox bind-mount untracked-files pattern (#25)
