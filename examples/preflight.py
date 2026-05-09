@@ -35,6 +35,8 @@ import time
 import serial  # type: ignore[import-untyped]
 from dpette import DPetteDriver, SerialConfig
 
+from pipettebot.gantry import open_marlin_port
+
 MARLIN_BAUD = 250000  # Anycubic stock & MARLIN-AI3M; see issue #17
 MARLIN_BOOT_WAIT_S = 3.0
 MARLIN_PROBE_READ_S = 4.0
@@ -61,9 +63,8 @@ def discover_ports() -> list[str]:
 
 def probe_marlin(port: str) -> str | None:
     """Try to identify `port` as Marlin. Returns firmware string or None."""
-    try:
-        link = serial.Serial(port, MARLIN_BAUD, timeout=1.0)
-    except (OSError, serial.SerialException):
+    link = open_marlin_port(port, baudrate=MARLIN_BAUD, timeout=1.0)
+    if link is None:
         return None
     with link:
         time.sleep(MARLIN_BOOT_WAIT_S)  # DTR-reset boot

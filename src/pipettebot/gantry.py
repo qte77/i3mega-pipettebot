@@ -2,8 +2,57 @@
 
 from __future__ import annotations
 
+import array
+import fcntl
+import sys
+import termios
 from dataclasses import dataclass
 from typing import Protocol
+
+import serial
+
+# Linux termios2 fallback: some Python builds don't expose `termios.B250000`
+# (depends on the headers CPython was compiled against, not the distro), so
+# pyserial's `tcsetattr` path bails with EINVAL. The kernel still accepts
+# arbitrary rates via TCSETS2+BOTHER on every Linux since 2.6.20.
+_TCGETS2 = 0x802C542A
+_TCSETS2 = 0x402C542B
+_BOTHER = 0o010000
+_CBAUD = 0o010017
+
+
+def set_custom_baud_linux(fd: int, baudrate: int) -> None:
+    """Set arbitrary baud on Linux via TCSETS2 ioctl + BOTHER."""
+    buf = array.array("i", [0] * 64)
+    fcntl.ioctl(fd, _TCGETS2, buf, True)
+    buf[2] = (buf[2] & ~_CBAUD) | _BOTHER
+    buf[9] = buf[10] = baudrate  # c_ispeed, c_ospeed
+    fcntl.ioctl(fd, _TCSETS2, buf, True)
+
+
+def open_marlin_port(
+    port: str, baudrate: int = 250000, timeout: float = 2.0
+) -> serial.Serial | None:
+    """Open `port` at `baudrate`, falling back to Linux termios2 when pyserial
+    can't set the rate (e.g. missing `termios.B250000`).
+
+    Returns None if the port can't be opened at all (permission, ENOENT, etc.).
+    """
+    try:
+        return serial.Serial(port, baudrate, timeout=timeout)
+    except (OSError, serial.SerialException, termios.error):
+        if not sys.platform.startswith("linux"):
+            return None
+    try:
+        link = serial.Serial(port, 9600, timeout=timeout)
+    except (OSError, serial.SerialException):
+        return None
+    try:
+        set_custom_baud_linux(link.fileno(), baudrate)
+    except OSError:
+        link.close()
+        return None
+    return link
 
 
 class _SerialPort(Protocol):

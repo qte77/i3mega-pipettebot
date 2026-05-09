@@ -56,10 +56,12 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
-import serial  # type: ignore[import-untyped]
+from pipettebot.gantry import open_marlin_port
 
 if TYPE_CHECKING:
     from typing import TextIO
+
+    import serial  # type: ignore[import-untyped]
 
 DEFAULT_BAUD = 250000
 DEFAULT_GCODE_OUT = "showcase_v0_pipette_sim.gcode"
@@ -195,7 +197,14 @@ def main() -> int:
     baud = int(os.environ.get("I3MEGA_BAUD", str(DEFAULT_BAUD)))
     gcode_path = os.environ.get("OUTPUT_GCODE", DEFAULT_GCODE_OUT)
 
-    with serial.Serial(port, baud, timeout=2.0) as link:
+    link = open_marlin_port(port, baudrate=baud, timeout=2.0)
+    if link is None:
+        sys.stderr.write(
+            f"ERROR: could not open {port} @ {baud} baud.\n"
+            "       Run `uv run examples/preflight.py` to verify the port.\n"
+        )
+        return 1
+    with link:
         print(f"[host] open {port} @ {baud}; waiting 3s for Marlin boot")
         time.sleep(3)
         link.reset_input_buffer()
