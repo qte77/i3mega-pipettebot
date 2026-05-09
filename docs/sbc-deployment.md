@@ -157,7 +157,7 @@ CH340 the older docs assume — see
 
 ```bash
 cd ~/i3mega-pipettebot
-uv run examples/preflight.py
+uv run tools/preflight.py
 uv run examples/showcase_v0_pipette_sim.py
 ```
 

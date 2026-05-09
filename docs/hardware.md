@@ -71,7 +71,7 @@ VID:PID in the table below.
 ### Marlin firmware sanity check
 
 Once you have the port, send `M115` and read the firmware string. The
-[`examples/preflight.py`](../examples/preflight.py) script does this for
+[`tools/preflight.py`](../tools/preflight.py) script does this for
 you; manually it looks like:
 
 ```bash
@@ -128,7 +128,7 @@ done
 
 ### Tiebreaker when both ports are CP210x
 
-`examples/preflight.py` already handles this: it probes each candidate
+`tools/preflight.py` already handles this: it probes each candidate
 port for Marlin (`M115` @ 250000) first, then dPette (`A0` HELLO @ 9600).
 Manually:
 
@@ -165,7 +165,7 @@ done
 
 Once the topology is wired up:
 
-1. Run [`python examples/preflight.py`](../examples/preflight.py) to confirm
+1. Run [`python tools/preflight.py`](../tools/preflight.py) to confirm
    firmware versions and port mapping.
 2. Calibrate well-A1 origin: see [`calibration.md`](calibration.md).
 3. Run [`python examples/showcase_v0_pipette_sim.py`](../examples/showcase_v0_pipette_sim.py) — the

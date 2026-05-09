@@ -31,6 +31,7 @@ Any of:
 
 - Interactive REPL: `I3MEGA_PORT=/dev/ttyUSB0 uv run python tools/marlin_repl.py`
 - Stepped axis motion: `AXIS=X I3MEGA_PORT=/dev/ttyUSB0 uv run python tools/diagnose_axis.py`
+- Port discovery + chaining: `eval "$(uv run python tools/preflight.py --export)" && ...`
 - A serial terminal that handles 250000 baud (e.g. `tio -b 250000 /dev/ttyUSB0`).
 
 `pyserial` direct opens at 250000 fail on Linux Python builds without

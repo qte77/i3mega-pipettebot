@@ -18,24 +18,24 @@ init:
 	uv sync --extra dev
 
 lint:
-	uv run ruff check src/ tests/ examples/
+	uv run ruff check src/ tests/ examples/ tools/
 	uv run mypy src/
 
 lint_fix:
-	uv run ruff format src/ tests/ examples/
-	uv run ruff check --fix src/ tests/ examples/
+	uv run ruff format src/ tests/ examples/ tools/
+	uv run ruff check --fix src/ tests/ examples/ tools/
 
 test:
 	uv run pytest -v
 
 validate:
-	uv run ruff format --check src/ tests/ examples/
-	uv run ruff check src/ tests/ examples/
+	uv run ruff format --check src/ tests/ examples/ tools/
+	uv run ruff check src/ tests/ examples/ tools/
 	uv run mypy src/
 	uv run pytest -v -m "not hardware"
 
 quick_validate:
-	uv run ruff check src/ tests/ examples/
+	uv run ruff check src/ tests/ examples/ tools/
 	uv run mypy src/
 
 check_complexity:

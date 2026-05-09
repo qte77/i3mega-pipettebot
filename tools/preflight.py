@@ -116,7 +116,7 @@ def probe_dpette(port: str) -> int | None:
 def _resolve_marlin(
     ports: list[str], override: str | None
 ) -> tuple[str | None, str | None]:
-    """Find the Marlin port (or use override). Returns (port, firmware) or (None, None)."""
+    """Find the Marlin port (or use override). Returns (port, firmware)."""
     if override:
         print(f"[probe] {override} for Marlin (env override) ... ", end="", flush=True)
         fw = probe_marlin(override)
