@@ -1,3 +1,9 @@
+---
+paths:
+  - "src/**"
+  - "tests/**"
+---
+
 # Pipette delegation
 
 ## Never re-encode the dPette protocol
