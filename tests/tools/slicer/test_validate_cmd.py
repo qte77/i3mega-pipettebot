@@ -64,15 +64,27 @@ def test_get_profile_petg_override():
 
 
 def test_scan_warnings_picks_up_known_keywords():
-    output = "Warning: large overhang detected on layer 12\nbridge segment unsupported"
+    """Real prusa-slicer / orca-slicer warning lines should be detected."""
+    output = (
+        "print warning: detected print stability issues:\n"
+        "carriage_dpette_mount_main.stl\n"
+        "floating object part, floating bridge anchors, loose extrusions"
+    )
     warns = validate._scan_warnings(output.lower())
-    assert "overhang" in warns
-    assert "bridge" in warns
-    assert "unsupported" in warns
+    assert "floating object part" in warns
+    assert "floating bridge anchors" in warns
+    assert "loose extrusions" in warns
 
 
-def test_scan_warnings_clean_output():
-    assert validate._scan_warnings("sliced ok in 4.2s, no issues") == []
+def test_scan_warnings_ignores_routine_chatter():
+    """Routine slicer chatter (config strings) must NOT trigger warnings."""
+    output = (
+        "support overhang threshold = 45 degrees\n"
+        "bridge speed = 25 mm/s\n"
+        "overhang perimeters = 1\n"
+        "sliced ok in 4.2s, no issues"
+    )
+    assert validate._scan_warnings(output.lower()) == []
 
 
 def test_slicer_candidates_order_orca_before_prusa():
