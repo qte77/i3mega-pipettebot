@@ -5,11 +5,12 @@ updated: "2026-05-07"
 owner: "lambda biolab"
 ---
 
-This guide covers the **physical and electrical setup** of an Anycubic i3
-Mega 3D printer and a DLAB dPette electronic pipette so the v0 demo
-(`examples/showcase_v0_pipette_sim.py`) can run end-to-end. Software install is
-covered in the [README](../README.md) and contributor setup in
-[CONTRIBUTING](../CONTRIBUTING.md).
+This guide covers the **physical and electrical setup** of an Anycubic
+i3 Mega chassis (stripped to a 3-axis motion platform — see "Workspace
+constraints" below) and a DLAB dPette electronic pipette so the v0 demo
+(`examples/showcase_v0_pipette_sim.py`) can run end-to-end. Software
+install is covered in the [README](../README.md) and contributor setup
+in [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## Topology
 
@@ -81,12 +82,14 @@ printf 'M115\n' > /dev/ttyUSB0 && timeout 2 cat /dev/ttyUSB0
 # Expected first line: FIRMWARE_NAME:Marlin 1.1.X (Anycubic Mega ...) ...
 ```
 
-## DLAB dPette
+## DLAB dPette / dPette+
 
 The pipette's USB cable terminates in a Silicon Labs CP2102 USB-UART
-bridge. Full details — including the standby/connectable button-press
-quirk and the protocol — are in
+bridge. Full protocol details — including the standby/connectable
+button-press quirk and the 6-byte packet format — are in
 [`dpette-usb-driver/docs/HARDWARE.md`](https://github.com/Lambda-Biolab/dpette-usb-driver/blob/main/docs/HARDWARE.md).
+
+### USB connection
 
 | Item | Value |
 |---|---|
@@ -94,6 +97,37 @@ quirk and the protocol — are in
 | VID:PID | `10c4:ea60` |
 | Baud | 9600 8N1 |
 | Driver | `cp210x` (built into Linux kernel; native on macOS) |
+
+### Product variants
+
+DLAB ships two pipette families that share the same 6-byte protocol:
+
+| Variant | Channels | Use |
+|---|---|---|
+| dPette / dPette 7016 | 1 | Single-channel — well-by-well dispensing |
+| **dPette+ multi-channel** | 8 or 12 | Parallel dispensing across a row at SBS 9 mm pitch |
+
+The Lambda Biolab v0 setup targets the **8-channel dPette+**.
+
+### dPette+ 8-channel specs
+
+| Item | Value | Source |
+|---|---|---|
+| Volume ranges (programmable) | 0.5–10 µL, 5–50 µL, 15–300 µL, 30–300 µL | [DLAB product page](https://www.dlabsci.com/product/en/dpette-multi-functional-8-channel-electronic-pipette) |
+| Channel pitch | 9.0 mm (SBS 96-well) | SBS / ANSI-SLAS 2004-1 |
+| Operating modes | aspirate/dispense, continuous mixing, continuous distribution, dilution | DLAB product page |
+| Display | LCD with dual rotary knobs | DLAB product page |
+| Charging | USB or charging stand | DLAB product page |
+| Top-section rotation | 360° (relieves cabling stress when mounted) | DLAB product page |
+| Body height (tip → top of ejector) | **~230 mm** | measured on the unit |
+| Mass (no tips) | **~250 g** | measured on the unit |
+| Body geometry — clamp candidates | upper barrel: Ø ~27 mm round; lower body: 75 × 16 mm rectangular | measured on the unit |
+| Tip extension when mounted | ~50 mm (300 µL standard tip) | conventional pipette tip length |
+| Total length with tips mounted | **~280 mm** | derived |
+
+The 250 g pipette is the dominant fraction of the carriage payload
+budget. Canonical rule (`mount + pipette + tips < 300 g`) and the
+mount-design rationale live in [`3d-parts.md`](3d-parts.md).
 
 ### Wake the pipette before connecting
 
@@ -147,17 +181,24 @@ done
 
 ## Workspace constraints
 
-- The dPette **must be hard-mounted** to the X-carriage so its tip moves
-  with the gantry. v0 assumes a mount exists; the design is on the
-  backlog (see [AGENT_REQUESTS.md](../AGENT_REQUESTS.md)).
-- The extruder (hot-end and bed thermistors) is unused. Leave the heater
-  cable disconnected and **do not preheat**. Stage 1 firmware patches to
-  disable thermal-runaway on E0 are deferred — for now stock Marlin's
-  thermal-runaway routine will trigger if the bed/hot-end thermistors
-  are unplugged. Either keep them dummy-plugged or send `M302 P1`
-  (cold-extrusion override) before motion.
-- Tip racks and well plates live on the bed. Tape them down with
-  removable tape; the bed surface is the deck origin.
+- The print head, hotend, fan, sensor PCB, and heater wiring have been
+  **physically removed** from the carriage. The bare carriage face is
+  the mounting surface for the dPette mount (see [`3d-parts.md`](3d-parts.md)).
+  The i3 Mega is no longer a 3D printer — it is a 3-axis motion
+  platform.
+- The dPette mount design is tracked in
+  [#40](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/40)
+  (carriage measurement) and
+  [#41](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/41)
+  (barrel-bore module).
+- Tip racks and well plates live on the moving bed (i3 Mega is a
+  bed-slinger: bed = Y axis). Tape them down with removable tape; the
+  bed surface is the deck origin.
+- Stock Marlin will still try to monitor the absent hotend/bed
+  thermistors. Either keep dummy thermistors plugged in **or** send
+  `M302 P1` (cold-extrusion override) before motion to suppress
+  thermal-runaway aborts. A Stage 1 firmware patch to disable thermal
+  monitoring is deferred (see AGENT_REQUESTS.md).
 - Soft limits are not enforced in software (deferred). Treat any
   hardcoded coordinate as untrusted.
 

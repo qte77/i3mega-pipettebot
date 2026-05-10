@@ -24,7 +24,54 @@ issue.
   (8 rows) parallel to **Y**. Row A nearest the printer's front.
 - A G-code REPL: [pronterface](https://www.pronterface.com/) or any
   terminal that speaks Marlin (e.g. `screen /dev/ttyUSB0 115200`).
-- A pipette tip in the dPette (visual reference only — no aspirate yet).
+- A tip on **channel 1** of the dPette+ 8-channel head (leftmost
+  channel — visual reference only, no aspirate yet).
+- **Z origin re-calibrated** — see "Post-strip Z re-cal" below.
+
+## Post-strip Z re-cal (dPette mount installed)
+
+"Post-strip" = after the print head + PCB are removed and the dPette
+mount is bolted onto the bare carriage (see [`hardware.md`](hardware.md)
+"Workspace constraints").
+
+Stock Marlin's Z=0 was calibrated to nozzle-touching-bed. With the
+hotend gone, that reference no longer corresponds to anything useful:
+the carriage face sits ~19 mm above the bed at Z_axis=0, and the
+dPette tip with a 300 µL tip mounted hangs ~150 mm below the carriage
+face. See [`3d-parts.md`](3d-parts.md) for the Z-envelope math.
+
+One-shot tip-touch-off procedure:
+
+1. Mount the dPette in the carriage and load a tip on **channel 1**
+   (leftmost channel of the 8-channel head).
+2. Place a sheet of paper flat on the bed under the tip.
+3. Home: `G28`. Read baseline: `M114`.
+4. Jog Z down slowly until the tip just kisses the paper — the paper
+   should drag with light resistance under the tip:
+
+    ```text
+    G91
+    G1 Z-5 F600
+    G1 Z-1 F300
+    G1 Z-0.1 F60
+    ...
+    G90
+    M114
+    ```
+
+5. Set this Z as the new origin: `G92 Z0` (live override) and/or
+   `M428` (tell Marlin "current position = home for current axes").
+   `G92 Z0` is sufficient for v0 since the value isn't persisted across
+   power cycles.
+6. Lift to a safe travel altitude before any XY motion: `G1 Z40 F1200`.
+
+The tip-touch Z value is the new reference for `WELL_Z` in
+`examples/showcase_v0_pipette_sim.py`. Add ~5 mm so the tip doesn't
+crash into the well bottom on every cycle.
+
+Re-run this procedure whenever you swap pipettes (single-channel ↔
+8-channel) or change the tip volume class — different tips have
+different lengths.
 
 ## Step-by-step
 
@@ -64,6 +111,10 @@ Note the X and Y values reported by `M114`. **These are your
 
 ### 3. Find the dispense Z
 
+This **replaces** the post-strip tip-touch-off Z (which was on the bare
+bed). Now you find the Z at which channel 1's tip enters well A1 to a
+useful depth.
+
 With X/Y locked over A1, jog Z down slowly until the tip just kisses the
 bottom of well A1:
 
@@ -80,11 +131,11 @@ M114
 Record this Z. Add a small clearance (~0.5–1 mm) so you do not crash
 into the plate on every cycle. **This is your `WELL_A1[2]`.**
 
-Then raise to the travel altitude:
-
-```text
-G1 Z40 F1200
-```
+Raise to a travel altitude that clears the plate's top edge (typically
+plate top + 20 mm; a 14 mm SBS plate → travel Z ≈ plate-bottom Z + 35
+mm). The 40 mm default in the showcase script assumes a stock hotend
+and **must be re-derived** for the dPette geometry — see
+[`3d-parts.md`](3d-parts.md) Z-envelope section.
 
 ### 4. Verify the 9 mm pitch on B1
 
@@ -112,8 +163,8 @@ and replace the constants near the top:
 CENTER_X = X_FROM_M114        # was 105.0 (mid-bed default)
 BACK_WELL_Y = Y_FROM_M114     # was 180.0
 FRONT_WELL_Y = ...            # was 20.0 (or any Y with clear travel)
-WELL_Z = Z_FROM_M114           # was 5.0
-TRAVEL_Z = 40.0               # raise if your dPette + tip is taller than 35 mm
+WELL_Z = Z_FROM_M114          # post-strip Z is in the ~131 mm range, NOT 5
+TRAVEL_Z = WELL_Z + 35.0      # plate top + ~20 mm of margin
 ```
 
 Run [`make validate`](../Makefile) to make sure your edits still type-check

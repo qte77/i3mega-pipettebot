@@ -11,10 +11,14 @@ owner: "lambda biolab"
 Turn an **Anycubic i3 Mega** (Marlin / Trigorilla) into a 3-axis pipetting
 robot driven by **DLAB dPette** electronic pipettes via the
 [`dpette-usb-driver`](https://github.com/Lambda-Biolab/dpette-usb-driver).
+The print head and PCB are physically removed from the carriage; the
+chassis is repurposed as a 3-axis motion platform with the dPette
+mounted on the bare carriage (see [`docs/3d-parts.md`](docs/3d-parts.md)).
 
 > **Status: v0 prototype.** A working aspirate-then-dispense demo over
-> hardcoded coordinates. Deck calibration, 8-channel, tip handling, and
-> firmware modifications are all on the [backlog](AGENT_REQUESTS.md).
+> hardcoded coordinates. Deck calibration, dPette mount real geometry,
+> and firmware modifications are on the [backlog](AGENT_REQUESTS.md)
+> and [open issues](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues).
 
 ## Why this matters
 
@@ -141,9 +145,10 @@ but deliberately **not** part of v0.
 
 ## Documentation
 
-- [docs/hardware.md](docs/hardware.md) — i3 Mega + dPette wiring, port discovery, firmware sanity check
+- [docs/hardware.md](docs/hardware.md) — i3 Mega + dPette wiring, port discovery, firmware sanity check, dPette+ specs
 - [docs/calibration.md](docs/calibration.md) — well-A1 origin procedure, 9 mm pitch check
 - [docs/marlin-commands.md](docs/marlin-commands.md) — Marlin G/M-code reference + i3 Mega coordinate orientation
+- [docs/3d-parts.md](docs/3d-parts.md) — CAD pipeline design rationale, payload + Z envelope math, SBS labware reference
 - [docs/sbc-deployment.md](docs/sbc-deployment.md) — Path 2 (SBC-on-printer) deployment
 - [AGENTS.md](AGENTS.md) — agent rules, decision framework, architecture
 - [AGENT_LEARNINGS.md](AGENT_LEARNINGS.md) — gotchas as we discover them
