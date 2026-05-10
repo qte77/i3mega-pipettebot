@@ -14,7 +14,9 @@ SLICER_DIR = Path(__file__).resolve().parents[3] / "tools" / "slicer"
 
 
 def _import_validate():
-    spec = importlib.util.spec_from_file_location("validate", SLICER_DIR / "validate.py")
+    spec = importlib.util.spec_from_file_location(
+        "validate", SLICER_DIR / "validate.py"
+    )
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

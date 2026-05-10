@@ -64,7 +64,9 @@ def detect_slicer() -> tuple[str, str] | None:
     return None
 
 
-def _build_slicer_cmd(binary: str, stl_path: Path, profile: Path, gcode_out: Path) -> list[str]:
+def _build_slicer_cmd(
+    binary: str, stl_path: Path, profile: Path, gcode_out: Path
+) -> list[str]:
     """Build CLI invocation for OrcaSlicer or PrusaSlicer.
 
     Both accept `--export-gcode --load <ini> --output <gcode> <stl>` for
@@ -101,7 +103,9 @@ def validate_stl(stl_path: Path, backend: str, binary: str, profile: Path) -> di
         gcode_out = Path(tmp) / (stl_path.stem + ".gcode")
         cmd = _build_slicer_cmd(binary, stl_path, profile, gcode_out)
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUT_SEC)
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=TIMEOUT_SEC
+            )
             output = (proc.stdout + "\n" + proc.stderr).lower()
             result["warnings"] = _scan_warnings(output)
             if proc.returncode != 0:
@@ -120,7 +124,12 @@ def validate_stl(stl_path: Path, backend: str, binary: str, profile: Path) -> di
 
 def check_mesh_integrity(stl_path: Path) -> dict:
     """Verify STL binary mesh integrity (no external deps)."""
-    result: dict = {"file": stl_path.name, "status": "PASS", "triangle_count": 0, "error": None}
+    result: dict = {
+        "file": stl_path.name,
+        "status": "PASS",
+        "triangle_count": 0,
+        "error": None,
+    }
     try:
         data = stl_path.read_bytes()
     except OSError as exc:
@@ -140,7 +149,9 @@ def check_mesh_integrity(stl_path: Path) -> dict:
     expected_size = 84 + 50 * num_triangles
     if len(data) < expected_size:
         result["status"] = "FAIL"
-        result["error"] = f"File truncated ({len(data)} bytes, expected {expected_size})"
+        result["error"] = (
+            f"File truncated ({len(data)} bytes, expected {expected_size})"
+        )
     return result
 
 
@@ -167,7 +178,8 @@ def print_report(results: list[dict]) -> int:
     for r in results:
         warns = ", ".join(r["warnings"]) if r["warnings"] else "none"
         err = f" ({r['error']})" if r["error"] else ""
-        print(f"{r['file']:<35} {r['profile']:<22} {r['slicer']:<8} {warns:<25} {r['status']}{err}")
+        row = f"{r['file']:<35} {r['profile']:<22} {r['slicer']:<8} {warns:<25}"
+        print(f"{row} {r['status']}{err}")
         if r["status"] == "FAIL":
             exit_code = 1
     passed = sum(1 for r in results if r["status"] == "PASS")
@@ -180,7 +192,9 @@ def _print_mesh_report(results: list[dict]) -> int:
     print("\n=== Mesh Integrity Check ===")
     for r in results:
         err = f" ({r['error']})" if r["error"] else ""
-        print(f"  {r['file']:<35} {r['triangle_count']:>6} triangles  {r['status']}{err}")
+        print(
+            f"  {r['file']:<35} {r['triangle_count']:>6} triangles  {r['status']}{err}"
+        )
     if failed:
         print(f"\n{len(failed)} STL(s) failed mesh integrity check.\n")
         return 1
@@ -192,9 +206,15 @@ def main() -> int:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="Validate STL printability via slicer")
     parser.add_argument("files", nargs="*", help="STL files to validate")
-    parser.add_argument("--all", action="store_true", help="Validate all STLs in hardware/stl/")
-    parser.add_argument("--profile", choices=["pla", "petg"], help="Force profile override")
-    parser.add_argument("--structural", action="store_true", help="Run mesh integrity check")
+    parser.add_argument(
+        "--all", action="store_true", help="Validate all STLs in hardware/stl/"
+    )
+    parser.add_argument(
+        "--profile", choices=["pla", "petg"], help="Force profile override"
+    )
+    parser.add_argument(
+        "--structural", action="store_true", help="Run mesh integrity check"
+    )
     args = parser.parse_args()
 
     slicer = detect_slicer()
@@ -221,7 +241,10 @@ def main() -> int:
         return 0
     backend, binary = slicer
     print(f"--- Validating with {backend} ({binary})")
-    results = [validate_stl(s, backend, binary, get_profile(s.name, args.profile)) for s in stls]
+    results = [
+        validate_stl(s, backend, binary, get_profile(s.name, args.profile))
+        for s in stls
+    ]
     return print_report(results)
 
 

@@ -37,7 +37,7 @@ sys.path.pop()
 # --- Placeholder dimensions (NOT measured — replace in follow-up PR) ---
 PLATE_X = 60.0  # TODO: measure carriage face width
 PLATE_Y = 40.0  # TODO: measure carriage face height
-PLATE_Z = 4.0   # TODO: confirm plate thickness for stiffness
+PLATE_Z = 4.0  # TODO: confirm plate thickness for stiffness
 BARREL_BORE_D = 20.0  # placeholder: dPette 7016 single-channel barrel
 
 

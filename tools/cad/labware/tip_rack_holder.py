@@ -34,8 +34,12 @@ OUTER_W = INNER_W + WALL_THICKNESS * 2
 def build_tip_rack_holder():
     """Build tip rack holder tray."""
     base = Box(OUTER_L, OUTER_W, BASE_THICKNESS)
-    walls = Pos(0, 0, BASE_THICKNESS / 2 + WALL_HEIGHT / 2) * Box(OUTER_L, OUTER_W, WALL_HEIGHT)
-    inner = Pos(0, 0, BASE_THICKNESS / 2 + WALL_HEIGHT / 2) * Box(INNER_L, INNER_W, WALL_HEIGHT + 1)
+    walls = Pos(0, 0, BASE_THICKNESS / 2 + WALL_HEIGHT / 2) * Box(
+        OUTER_L, OUTER_W, WALL_HEIGHT
+    )
+    inner = Pos(0, 0, BASE_THICKNESS / 2 + WALL_HEIGHT / 2) * Box(
+        INNER_L, INNER_W, WALL_HEIGHT + 1
+    )
     return base + (walls - inner)
 
 

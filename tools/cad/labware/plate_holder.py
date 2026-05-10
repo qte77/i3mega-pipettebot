@@ -38,7 +38,9 @@ WALL_HEIGHT = PLATE_HEIGHT * 0.6
 
 def _base_with_pocket():
     """Base plate with inner pocket cut (1mm floor preserved)."""
-    holder = Pos(0, 0, BASE_THICKNESS / 2) * Box(OUTER_LENGTH, OUTER_WIDTH, BASE_THICKNESS)
+    holder = Pos(0, 0, BASE_THICKNESS / 2) * Box(
+        OUTER_LENGTH, OUTER_WIDTH, BASE_THICKNESS
+    )
     pocket_depth = BASE_THICKNESS - 1.0
     pocket = Pos(0, 0, BASE_THICKNESS - pocket_depth / 2) * Box(
         INNER_LENGTH, INNER_WIDTH, pocket_depth
@@ -67,7 +69,9 @@ def _alignment_pins():
     ]
     pins = None
     for x, y in positions:
-        pin = Pos(x, y, BASE_THICKNESS + PIN_HEIGHT / 2) * Cylinder(PIN_DIAMETER / 2, PIN_HEIGHT)
+        pin = Pos(x, y, BASE_THICKNESS + PIN_HEIGHT / 2) * Cylinder(
+            PIN_DIAMETER / 2, PIN_HEIGHT
+        )
         pins = pin if pins is None else pins + pin
     return pins
 
