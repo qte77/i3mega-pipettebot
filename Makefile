@@ -21,6 +21,25 @@
 .SILENT:
 .ONESHELL:
 
+# Prefer the pre-built venv to avoid `uv run` writing to ~/.cache/uv,
+# which fails on read-only hosts (sandbox builds, sealed Pi images, some
+# CI runners). `make init` / `make setup_cad` populate .venv first; the
+# `uv run` fallback covers fresh clones where neither has run yet.
+USE_VENV := $(shell test -x .venv/bin/python && echo yes || echo no)
+ifeq ($(USE_VENV),yes)
+  PY := .venv/bin/python
+  RUFF := .venv/bin/ruff
+  MYPY := .venv/bin/mypy
+  PYTEST := .venv/bin/pytest
+  PY_CAD := .venv/bin/python
+else
+  PY := uv run python
+  RUFF := uv run ruff
+  MYPY := uv run mypy
+  PYTEST := uv run pytest
+  PY_CAD := uv run --extra cad python
+endif
+
 init:
 	uv sync --extra dev
 
@@ -62,25 +81,25 @@ setup_all: init setup_cad
 	-$(MAKE) setup_diagramforge
 
 lint:
-	uv run ruff check src/ tests/ examples/ tools/
-	uv run mypy src/
+	$(RUFF) check src/ tests/ examples/ tools/
+	$(MYPY) src/
 
 lint_fix:
-	uv run ruff format src/ tests/ examples/ tools/
-	uv run ruff check --fix src/ tests/ examples/ tools/
+	$(RUFF) format src/ tests/ examples/ tools/
+	$(RUFF) check --fix src/ tests/ examples/ tools/
 
 test:
-	uv run pytest -v
+	$(PYTEST) -v
 
 validate:
-	uv run ruff format --check src/ tests/ examples/ tools/
-	uv run ruff check src/ tests/ examples/ tools/
-	uv run mypy src/
-	uv run pytest -v -m "not hardware"
+	$(RUFF) format --check src/ tests/ examples/ tools/
+	$(RUFF) check src/ tests/ examples/ tools/
+	$(MYPY) src/
+	$(PYTEST) -v -m "not hardware"
 
 quick_validate:
-	uv run ruff check src/ tests/ examples/ tools/
-	uv run mypy src/
+	$(RUFF) check src/ tests/ examples/ tools/
+	$(MYPY) src/
 
 check_complexity:
 	uv run complexipy src/pipettebot/ --max-complexity-allowed 15
@@ -92,10 +111,10 @@ check_docs:
 	markdownlint-cli2 "**/*.md" "#node_modules" "#.venv" "#.git"
 
 render_parts:
-	uv run --extra cad python tools/cad/render.py
+	$(PY_CAD) tools/cad/render.py
 
 check_prints:
-	uv run python tools/slicer/validate.py --all
+	$(PY) tools/slicer/validate.py --all
 
 render_all: render_parts check_prints
 
