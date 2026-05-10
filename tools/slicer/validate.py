@@ -29,12 +29,17 @@ PROFILE_DIR = Path(__file__).resolve().parent / "profiles"
 # Per-part profile overrides (default profile is PLA)
 PETG_PARTS: set[str] = set()  # populate with STL filenames as needed
 
+# Phrases that prusa-slicer / orca-slicer emit as actual print-stability
+# warnings (not config-string mentions). Generic terms like "overhang" or
+# "bridge" appear in routine slicer chatter (parameter descriptions, log
+# messages) and are too noisy to gate on.
 OVERHANG_KEYWORDS = (
-    "overhang",
-    "unsupported",
-    "bridge",
-    "support enforcer",
+    "floating object part",
+    "floating bridge anchors",
+    "loose extrusions",
+    "long bridging extrusions",
     "empty layer",
+    "could not slice",
 )
 
 # Probe order: OrcaSlicer first, PrusaSlicer fallback. Names cover the
