@@ -25,9 +25,10 @@ machine to a benchtop while a $300 robot runs. The dPette and the
 i3 Mega are both USB **devices** — they cannot be wired directly to
 each other (see [`hardware.md`](hardware.md) and
 [issue #18](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/18)).
-The cheapest USB host that runs `pipettebot` is a Raspberry Pi Zero
-2 W; mounting one to the printer removes the laptop without changing
-any cabling on either device.
+The cheapest USB host that runs `pipettebot` is a Raspberry Pi 1
+Model B+ (2014, often free if on hand — see "Pi 1 B+ specifics" below)
+or a Pi Zero 2 W (~$15 new). Mounting one to the printer removes the
+laptop without changing any cabling on either device.
 
 ## Architecture
 
@@ -57,15 +58,38 @@ pipette — exactly like the laptop sees `/dev/cu.*` today.
 
 | Item | Approx. cost | Notes |
 |---|---|---|
-| Raspberry Pi Zero 2 W | $15 | Has one micro-USB OTG data port. Pi 4 / Pi 5 work too if you want more headroom (~$45). |
+| Raspberry Pi (Pi 1 B+ 2014, Pi Zero 2 W, or Pi 4/5) | $15-45 | Pi 1 B+ already on hand is the cheapest option — see "Pi 1 B+ specifics" below for caveats. |
 | microSD card, 16-32 GB, A1 class | $6 | Boot drive. SanDisk / Samsung; avoid no-brand. |
-| USB-A OTG adapter, micro-USB → USB-A female | $3 | Pi Zero only has microUSB; both peripheral cables are USB-A. Need one OTG adapter and one passive USB hub *or* a Pi 4 with native USB-A. |
-| Powered USB hub (2-port minimum) | $8 | Only if using Pi Zero 2 W and you want both peripherals plus a margin. The Pi Zero supplies limited 5 V — a powered hub avoids brownouts when both serial bridges enumerate. |
+| USB-A OTG adapter, micro-USB → USB-A female | $3 | Pi Zero only — Pi 1 B+ and Pi 4/5 have native USB-A. |
+| Powered USB hub (2-port minimum) | $8 | See "Pi 1 B+ specifics" below. Optional on Pi 4/5. |
 | Pi 5 V power supply, 2.5 A | $7 | Or piggyback off the printer's PSU 5 V rail through a buck regulator (riskier; document if you go that route). |
 | 3D-printed mount | free (PETG/PLA) | Bolts to a frame extrusion or zip-ties to the chassis. STL placeholder, see backlog. |
 | Zip ties / Velcro | $1 | v0 mount. |
 
 Total: **~$25-40** depending on Pi model and whether you reuse cables/PSU you already have.
+
+## Pi 1 B+ specifics (2014 hardware)
+
+The Pi 1 Model B+ is the cheapest viable host (often free if you already
+have one). Works for v0 because pipetting is slow (seconds per move),
+so the Pi's modest CPU and high-ish USB-serial latency don't bottleneck.
+
+Hardware essentials: 4× USB 2.0 native (no OTG adapter needed), no
+built-in Wi-Fi (add a USB Wi-Fi dongle).
+
+| Behaviour | Typical | Source |
+|---|---|---|
+| Round-trip latency for a short G-code command | 15–17 ms | [Pi-to-Arduino latency measurement thread](https://forums.raspberrypi.com/viewtopic.php?t=276481) |
+| Required wait after opening a serial port before first send | ~2.7 s | [Serial port-open latency observations](https://forums.raspberrypi.com/viewtopic.php?t=161922) |
+
+The 2.7 s post-open wait matches the existing `time.sleep(3)` in
+[`examples/showcase_v0_pipette_sim.py`](../examples/showcase_v0_pipette_sim.py)
+right after `open_marlin_port` — the showcase already accommodates this.
+
+**Mandatory: powered USB hub.** The Pi 1 B+ supplies limited 5 V on its
+USB ports. Plugging both the i3 Mega (CH340/CP2102N) and the dPette
+(CP2102) directly into the Pi causes intermittent brownouts and
+enumeration drops. Use a powered hub for both peripherals.
 
 ## Pi software setup (headless, no monitor)
 
@@ -113,9 +137,10 @@ This is a one-time bring-up. After this the Pi runs unattended.
    bracket. Avoid moving parts (X-carriage, bed, leadscrew). Keep it
    away from the heatbed cabling.
 2. Plug the **i3 Mega's stock USB cable** (USB-B → USB-A) into the
-   Pi's USB-A port (or via OTG adapter on a Pi Zero).
+   powered USB hub (mandatory on Pi 1 B+ and Pi Zero 2 W; optional on
+   Pi 4/5).
 3. Plug the **dPette's stock USB cable** (microUSB → USB-A) into the
-   Pi's other USB-A port (or via the powered hub).
+   same powered hub.
 4. Power the Pi from a dedicated 5 V brick *or*, if you're confident
    in your PSU, a buck regulator off the printer's 24 V → 5 V rail.
 

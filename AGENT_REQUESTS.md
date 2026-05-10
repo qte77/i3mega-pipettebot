@@ -31,41 +31,20 @@ points at the issue numbers. Edit-and-commit lifecycle.
 
 ## Hardware
 
-- [ ] Pipette mount STL + BOM — depends on physical i3-Mega X-carriage measurement
+- [ ] Pipette mount STL + BOM — tracked as #40 (carriage measurement), #41 (barrel-bore module), #42 (payload tests), #43 (vendor scan)
 - [ ] Level-shifter PCB (5 V ↔ 3.3 V) — for Stage 2 UART tap
 
 ## 3D parts pipeline (`tools/cad/`)
 
-The build123d render → OrcaSlicer-validate pipeline ports cleanly from
-`so101-biolab-automation`. What's still missing:
+Open work moved to GitHub issues for visibility — see also
+[`docs/3d-parts.md`](docs/3d-parts.md):
 
-- [ ] **AI3M print-head carriage screw-pattern dimensions** — measure (or
-      pull from a known reference) the M3 hole spacing, hole diameter,
-      and plate thickness on the stock Anycubic i3 Mega print head.
-      Required to flip `tools/cad/i3/carriage_dpette_mount.py` from stub
-      to real geometry, and to set `parts.json` status `planned → active`.
-      Follow-up branch off `feat/cad-slicer-pipeline`.
-- [ ] **Extract dPette+ barrel-bore geometry into a reusable module** —
-      so101's `cad/dpette/dpette_handle.py` and `dpette_multi_handle.py`
-      have proven Ø32mm split-bore (8-channel) and Ø20mm round (single-channel)
-      barrel cutouts. Pull just the bore primitives into
-      `tools/cad/dpette/barrel_bore.py` so the i3 mount and any future
-      cradles share one source of truth.
-- [ ] **Bowden / direct-drive variant detection** — stock AI3M ships with
-      a Titan-style direct-drive on the carriage. If the user has a
-      Bowden conversion, the mount design changes. Decide whether to
-      ship one variant or add a `--variant=` CLI flag.
-- [ ] **Carriage-payload Hypothesis tests** — once the real geometry
-      lands, add property tests asserting `mass < 300 g` per the
-      `i3-carriage-payload-budget.md` rule (PLA density 1.24 g/cc).
-- [ ] **Vendor a real dPette barrel scan** — so101 references
-      `hardware/scans/dpette/0410_02_mesh.stl`. If/when that scan is
-      vendored here, `parts.json` entries that reference it can mirror
-      so101's `scan_source` field.
-- [ ] **OrcaSlicer install method** — confirm the canonical install path
-      for the dev/CI environment (native package vs AppImage). Affects
-      whether `SLICER_CANDIDATES` in `tools/slicer/validate.py` needs
-      additional binary names.
+- [#40](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/40) — Measure AI3M carriage screw pattern (blocks real mount geometry)
+- [#41](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/41) — Extract barrel-bore primitives into reusable module
+- [#42](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/42) — Hypothesis tests for mount payload budget
+- [#43](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/43) — Vendor real dPette barrel scan from so101
+- [#44](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/44) — Confirm OrcaSlicer install method
+- [#45](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/45) — ADR: Arduino host architecture (PC-host → MCU-host)
 
 ## SBC deployment (Path 2)
 
