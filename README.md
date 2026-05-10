@@ -87,7 +87,7 @@ For headless-gantry bring-up, debugging, and post-removal sanity checks:
 | `tools/preflight.py`        | Port discovery + Marlin/dPette firmware probe.           |
 | `tools/diagnose_axis.py`    | Per-axis (`AXIS=X\|Y\|Z`) stepped motion under operator confirmation. Reports `M119` first, never homes. |
 | `tools/marlin_repl.py`      | Interactive G-code REPL with built-in command cheat-sheet (`?`). For ad-hoc `M119`, `M999`, `M114`, `M503`, etc. |
-| `tools/cad/`                | build123d CAD scripts for printable parts (tip rack, plate holder, dPette cradles, tip ejector). `make render_parts` generates STL+SVG; `make check_prints` slices via OrcaSlicer (or PrusaSlicer fallback). |
+| `tools/cad/`                | build123d CAD scripts for printable parts (tip rack, plate holder, dPette cradles, tip ejector, **i3 carriage dPette+ mount**). `make render_parts` generates STL+SVG; `make check_prints` slices via OrcaSlicer (or PrusaSlicer fallback). All hardware measurements consolidated in `tools/cad/measurements.py`. |
 
 See [`docs/marlin-commands.md`](docs/marlin-commands.md) for the full
 G/M-code reference and i3 Mega coordinate orientation.
