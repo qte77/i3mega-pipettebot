@@ -26,15 +26,20 @@ TIMEOUT_SEC = 120
 STL_DIR = Path(__file__).resolve().parents[2] / "hardware" / "stl"
 PROFILE_DIR = Path(__file__).resolve().parent / "profiles"
 
-# Per-part profile overrides (default profile is PLA)
-PETG_PARTS: set[str] = set()  # populate with STL filenames as needed
+# Per-part profile overrides (default profile is PLA+)
+TPU_PARTS: set[str] = set()  # populate with STL filenames as needed
 
+# Phrases that prusa-slicer / orca-slicer emit as actual print-stability
+# warnings (not config-string mentions). Generic terms like "overhang" or
+# "bridge" appear in routine slicer chatter (parameter descriptions, log
+# messages) and are too noisy to gate on.
 OVERHANG_KEYWORDS = (
-    "overhang",
-    "unsupported",
-    "bridge",
-    "support enforcer",
+    "floating object part",
+    "floating bridge anchors",
+    "loose extrusions",
+    "long bridging extrusions",
     "empty layer",
+    "could not slice",
 )
 
 # Probe order: OrcaSlicer first, PrusaSlicer fallback. Names cover the
@@ -49,10 +54,15 @@ SLICER_CANDIDATES: tuple[tuple[str, str], ...] = (
 
 
 def get_profile(stl_name: str, override: str | None = None) -> Path:
-    """Return the slicer profile path for a given STL name."""
-    if override == "petg" or stl_name in PETG_PARTS:
-        return PROFILE_DIR / "i3mega_petg_02mm.ini"
-    return PROFILE_DIR / "i3mega_pla_02mm.ini"
+    """Return the slicer profile path for a given STL name.
+
+    Profiles target a Prusa MK3S+-class printer (220 × 220 mm bed) — the
+    machine that fabricates the parts. The stripped i3 Mega chassis itself
+    no longer prints anything.
+    """
+    if override == "tpu" or stl_name in TPU_PARTS:
+        return PROFILE_DIR / "tpu_95a_02mm.ini"
+    return PROFILE_DIR / "pla_plus_02mm.ini"
 
 
 def detect_slicer() -> tuple[str, str] | None:
@@ -210,7 +220,7 @@ def main() -> int:
         "--all", action="store_true", help="Validate all STLs in hardware/stl/"
     )
     parser.add_argument(
-        "--profile", choices=["pla", "petg"], help="Force profile override"
+        "--profile", choices=["pla", "tpu"], help="Force profile override"
     )
     parser.add_argument(
         "--structural", action="store_true", help="Run mesh integrity check"

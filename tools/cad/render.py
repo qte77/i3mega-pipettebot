@@ -61,26 +61,37 @@ def _to_compound(shape: Any) -> Any:
 
 
 def _export_svg(shape: Any, svg_out: Path, *, solid: bool) -> None:
-    from build123d import Color, ExportSVG, LineType, Rot
+    """Export a 3D shape as an isometric SVG with proper hidden-line removal.
 
-    iso = Rot(35.264, 0, -45) * shape
-    exporter = ExportSVG()
+    Uses build123d's `project_to_viewport` (the documented API for 3D-to-2D
+    projection). The earlier `Rot(...) * shape` + `ExportSVG.add_shape` pattern
+    triggers a "non-planar shape" warning and produces a flat XY squash that
+    misrepresents 3D geometry.
+    """
+    from build123d import Color, Compound, ExportSVG, LineType
+
+    # Camera at +X +Y +Z gives a front-right-above iso view; +Z is up.
+    visible, hidden = shape.project_to_viewport(
+        viewport_origin=(200.0, -200.0, 200.0),
+        viewport_up=(0.0, 0.0, 1.0),
+        look_at=(0.0, 0.0, 0.0),
+    )
+    bbox_all = Compound(children=list(visible) + list(hidden)).bounding_box()
+    scale = 200.0 / max(bbox_all.size.X, bbox_all.size.Y, 1.0)
+
+    exporter = ExportSVG(scale=scale)
+    exporter.add_layer("Visible", line_color=Color(0, 0, 0), line_weight=0.5)
+    exporter.add_layer(
+        "Hidden",
+        line_color=Color(0.6, 0.6, 0.6),
+        line_weight=0.25,
+        line_type=LineType.ISO_DOT,
+    )
     if solid:
-        exporter.add_layer(
-            "solid",
-            fill_color=Color(0.85, 0.85, 0.85),
-            line_color=Color(0, 0, 0),
-            line_weight=0.5,
-        )
-        exporter.add_layer(
-            "hidden",
-            line_color=Color(0.6, 0.6, 0.6),
-            line_weight=0.25,
-            line_type=LineType.ISO_DOT,
-        )
-        exporter.add_shape(iso, layer="solid")
-    else:
-        exporter.add_shape(iso)
+        exporter.add_layer("Fill", fill_color=Color(0.85, 0.85, 0.85), line_weight=0.0)
+        exporter.add_shape(visible, layer="Fill")
+    exporter.add_shape(visible, layer="Visible")
+    exporter.add_shape(hidden, layer="Hidden")
     exporter.write(str(svg_out))
 
 

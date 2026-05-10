@@ -20,8 +20,10 @@ single source of truth.
 
 ## Profile naming
 
-`<printer>_<material>_<layer>.ini` — e.g. `i3mega_pla_02mm.ini`. New
-printers or materials get their own file rather than overrides.
+`<material>_<grade>_<layer>.ini` — e.g. `pla_plus_02mm.ini`,
+`tpu_95a_02mm.ini`. The fabrication printer is a Prusa MK3S+-class
+machine (220 × 220 mm bed); the stripped i3 Mega itself doesn't print.
+New materials get their own file rather than overrides.
 
 ## Per-part profile selection
 
