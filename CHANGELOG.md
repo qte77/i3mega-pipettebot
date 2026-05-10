@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- `AGENT_REQUESTS.md` repurposed from per-area backlog to agent-to-human / agent-to-agent communication channel. Plain task lists and closed-item history removed; preamble explains the file's intent (messages, not work items). Open agent-to-human items from this session migrated to dedicated issues #59 (V-plate Y fit-test) and #60 (tip_ejection_bar XY decision) (#56, #57, #58, #61).
 - `Makefile` — every uv-using target (`lint`, `lint_fix`, `test`, `validate`, `quick_validate`, `render_parts`, `check_prints`) now prefers `.venv/bin/<tool>` over `uv run`, falling back to `uv run` only when `.venv` is absent. Sidesteps `uv run` writing `~/.cache/uv/` on read-only hosts (sandbox builds, sealed Pi images). `check_complexity` keeps `uv run complexipy` — niche, not in `make validate` (#50).
 - `tools/cad/i3/carriage_dpette_mount.py` measured constants — 10 local copies (carriage screw pattern, dPette+ clamp sizes, PLA density) replaced with explicit imports from `tools/cad/measurements.py`. Mount-specific design knobs (top-plate geometry, post placement, etc.) stay local. Drift between source-of-truth and local copies is now structurally impossible. Two tautological "constants match" tests dropped (#51).
 - `tools/cad/dpette/dpette_cradle.py` and `tools/cad/i3/carriage_dpette_mount.py` — bore subtraction switched from inline `Cylinder((d + clearance) / 2, h)` to `make_clamp_bore(...)` (#49).
