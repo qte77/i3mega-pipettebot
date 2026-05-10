@@ -64,8 +64,12 @@ TOP_PLATE_T_MM = 8.0  # thickness; doubles as upper-clamp ring height
 CLAMP_BORE_CLEARANCE_MM = 0.5
 CLAMP_WALL_MM = 2.5  # wall thickness around bores
 LOWER_CLAMP_H_PLUS_MM = 1.0  # extra grip beyond manifold height
-POST_W_MM = 15.0  # vertical post X
+POST_W_MM = 6.0  # vertical post X (per post; two posts at ±X_OFFSET)
 POST_D_MM = 12.0  # vertical post Y
+POST_X_OFFSET_MM = (
+    18.0  # ±18 mm — outside upper-bore radius (13.75 mm), inside top plate (±17.5 mm)
+)
+POST_Y_CENTER_MM = 14.0  # behind upper bore (Y > 13.75) and on top of lower clamp's back wall (Y > 5.75)
 
 # === Upper-clamp split (2-piece, M3 bolts in Y direction) ===
 UPPER_CAP_D_MM = 8.0  # front cap thickness in Y
@@ -134,11 +138,24 @@ def _build_lower_clamp(z_center: float):
     return ring - slot
 
 
-def _build_post(z_top: float, z_bottom: float):
-    """Vertical post from top-plate-bottom down to lower-clamp-top."""
+def _build_posts(z_top: float, z_bottom: float):
+    """Two vertical posts BEHIND the upper bore, one on each side of the pipette.
+
+    Centred at Y = POST_Y_CENTER_MM (≈ 14 mm) so each post lands on real
+    plate material above (top plate's back-of-D zone, Y > 13.75) and on
+    real lower-clamp material below (back wall, Y ∈ [5.75, 11]). A
+    single central post at Y=0 would intersect both bores and "float"
+    in the slicer (no material connection).
+    """
     h = z_top - z_bottom
     z_center = (z_top + z_bottom) / 2
-    return Pos(0, 0, z_center) * Box(POST_W_MM, POST_D_MM, h)
+    posts = None
+    for sx in (-1, 1):
+        post = Pos(sx * POST_X_OFFSET_MM, POST_Y_CENTER_MM, z_center) * Box(
+            POST_W_MM, POST_D_MM, h
+        )
+        posts = post if posts is None else posts + post
+    return posts
 
 
 def build_carriage_dpette_mount_main():
@@ -156,10 +173,10 @@ def build_carriage_dpette_mount_main():
     lower_clamp_h = LOWER_CLAMP_H_MM + LOWER_CLAMP_H_PLUS_MM
     lower_top = lower_axis_z + lower_clamp_h / 2
 
-    post = _build_post(z_top=-TOP_PLATE_T_MM, z_bottom=lower_top)
+    posts = _build_posts(z_top=-TOP_PLATE_T_MM, z_bottom=lower_top)
     lower_clamp = _build_lower_clamp(lower_axis_z)
 
-    return top_plate + post + lower_clamp
+    return top_plate + posts + lower_clamp
 
 
 def build_carriage_dpette_mount_cap():
