@@ -54,12 +54,21 @@
     "notes": "L-bracket tip ejector station with waste slot."
   },
   {
-    "name": "i3_carriage_dpette_mount",
+    "name": "i3_carriage_dpette_mount_main",
     "cad": "i3/carriage_dpette_mount.py",
-    "build_func": "build_carriage_dpette_mount",
-    "stl": "i3/carriage_dpette_mount.stl",
-    "svg": "i3/carriage_dpette_mount.svg",
-    "status": "planned",
-    "notes": "STUB until AI3M carriage screw-pattern dimensions land — see AGENT_REQUESTS.md."
+    "build_func": "build_carriage_dpette_mount_main",
+    "stl": "i3/carriage_dpette_mount_main.stl",
+    "svg": "i3/carriage_dpette_mount_main.svg",
+    "status": "active",
+    "notes": "Horizontal-bolt mount (scheme a) — main piece. 4× M4 in 21×13 mm pattern on the i3 Mega horizontal head-mount plate. Back half of the split upper clamp (D-cavity, opens to −Y) + vertical post + lower horseshoe clamp around the 78×11 fixed-tip manifold."
+  },
+  {
+    "name": "i3_carriage_dpette_mount_cap",
+    "cad": "i3/carriage_dpette_mount.py",
+    "build_func": "build_carriage_dpette_mount_cap",
+    "stl": "i3/carriage_dpette_mount_cap.stl",
+    "svg": "i3/carriage_dpette_mount_cap.svg",
+    "status": "active",
+    "notes": "Front cap for the split upper clamp. Bolts to the main piece via 2× M3 to capture the dPette+ Ø27 round upper barrel. Required because the dPette+ body is one rigid unit (lower body / upper barrel / top section permanently joined) — lateral insertion is impossible."
   }
 ]
