@@ -50,11 +50,22 @@ def _base_with_features():
 
 
 def build_tip_ejection_bar():
-    """Build tip ejection post with base plate."""
+    """Build tip ejection post with base plate.
+
+    All three primitives are centred at the origin by default, so each
+    `Pos(...)` places the *centre* (not the base) at the given Z. The
+    stack from bottom to top — base ∈ [-T/2, T/2], post sitting on top
+    of base, cone capping the post — needs each piece's centre placed
+    at its mid-height above the level below.
+    """
     base = _base_with_features()
-    post = Pos(0, 0, BASE_THICKNESS / 2) * Cylinder(POST_DIAMETER / 2, POST_HEIGHT)
-    tip_cone = Pos(0, 0, BASE_THICKNESS / 2 + POST_HEIGHT) * Cone(
-        POST_DIAMETER / 2, POST_TIP_RADIUS, POST_TIP_RADIUS * 2
+    base_top_z = BASE_THICKNESS / 2
+    post_center_z = base_top_z + POST_HEIGHT / 2
+    cone_height = POST_TIP_RADIUS * 2
+    cone_center_z = base_top_z + POST_HEIGHT + cone_height / 2
+    post = Pos(0, 0, post_center_z) * Cylinder(POST_DIAMETER / 2, POST_HEIGHT)
+    tip_cone = Pos(0, 0, cone_center_z) * Cone(
+        POST_DIAMETER / 2, POST_TIP_RADIUS, cone_height
     )
     return base + post + tip_cone
 
