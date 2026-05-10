@@ -34,7 +34,20 @@ def _import(rel: str):
 
 
 def _is_non_empty_shape(shape) -> bool:
-    return isinstance(shape, (build123d.Solid, build123d.Compound)) and shape.volume > 0
+    """Accept Solid, Compound, or any iterable wrappable into a Compound.
+
+    Mirrors `tools/cad/render.py::_to_compound` semantics — newer
+    build123d versions return a ShapeList from chained `+` operations,
+    which the renderer wraps before export.
+    """
+    if isinstance(shape, (build123d.Solid, build123d.Compound)):
+        return shape.volume > 0
+    if hasattr(shape, "__iter__"):
+        children = list(shape)
+        if not children:
+            return False
+        return build123d.Compound(children=children).volume > 0
+    return False
 
 
 @pytest.mark.parametrize(
