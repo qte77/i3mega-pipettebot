@@ -12,6 +12,7 @@ from pathlib import Path
 from build123d import Box, Cylinder, Pos
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
+from barrel_bore import make_clamp_bore
 from util.export import export_part
 
 sys.path.pop()
@@ -34,8 +35,8 @@ MULTI_BODY_D = 25.0
 def build_dpette_single_cradle():
     """Build rest cradle for dPette 7016 single-channel."""
     outer = Cylinder(SINGLE_OUTER_D / 2, CRADLE_HEIGHT)
-    inner = Pos(0, 0, BASE_THICKNESS) * Cylinder(
-        (SINGLE_BARREL_D + CLEARANCE * 2) / 2, CRADLE_HEIGHT
+    inner = Pos(0, 0, BASE_THICKNESS) * make_clamp_bore(
+        SINGLE_BARREL_D, CRADLE_HEIGHT, diametral_clearance_mm=CLEARANCE * 2
     )
     cradle = outer - inner
     base = Box(SINGLE_OUTER_D + 10, SINGLE_OUTER_D + 10, BASE_THICKNESS)

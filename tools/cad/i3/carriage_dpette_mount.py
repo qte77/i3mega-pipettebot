@@ -39,6 +39,7 @@ from pathlib import Path
 from build123d import Box, Cylinder, Pos, Rot
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
+from barrel_bore import make_clamp_bore
 from util.export import export_part
 
 sys.path.pop()
@@ -101,10 +102,12 @@ def _build_top_plate_with_upper_clamp_back():
             ) * Cylinder(SCREW_HOLE_D_MM / 2, TOP_PLATE_T_MM + 2)
             plate = plate - hole
 
-    # D-cavity: subtract the half-cylinder bore at Y < TOP_PLATE_D_MM/2
-    # The pipette axis is at Y = 0 (front face of back half).
-    bore_r = (UPPER_CLAMP_BORE_D_MM + CLAMP_BORE_CLEARANCE_MM) / 2
-    bore_full = Pos(0, 0, -TOP_PLATE_T_MM / 2) * Cylinder(bore_r, TOP_PLATE_T_MM + 2)
+    # D-cavity: subtract the half-cylinder bore at Y < TOP_PLATE_D_MM/2.
+    # The pipette axis is at Y = 0 (front face of back half); the host
+    # plate's Y extent clips the cylinder into a D shape.
+    bore_full = Pos(0, 0, -TOP_PLATE_T_MM / 2) * make_clamp_bore(
+        UPPER_CLAMP_BORE_D_MM, TOP_PLATE_T_MM + 2, CLAMP_BORE_CLEARANCE_MM
+    )
     plate = plate - bore_full
 
     # 2× M3 clearance holes through back half (Y axis cylinders),
@@ -192,9 +195,11 @@ def build_carriage_dpette_mount_cap():
         TOP_PLATE_W_MM, UPPER_CAP_D_MM, TOP_PLATE_T_MM
     )
 
-    # D-cavity: half-bore facing +Y (toward back half). Centre at Y=0.
-    bore_r = (UPPER_CLAMP_BORE_D_MM + CLAMP_BORE_CLEARANCE_MM) / 2
-    bore_full = Pos(0, 0, -TOP_PLATE_T_MM / 2) * Cylinder(bore_r, TOP_PLATE_T_MM + 2)
+    # D-cavity: half-bore facing +Y (toward back half). Centre at Y=0;
+    # the host cap's Y extent clips the cylinder into a D shape.
+    bore_full = Pos(0, 0, -TOP_PLATE_T_MM / 2) * make_clamp_bore(
+        UPPER_CLAMP_BORE_D_MM, TOP_PLATE_T_MM + 2, CLAMP_BORE_CLEARANCE_MM
+    )
     cap = cap - bore_full
 
     # 2× M3 clearance holes through cap (Y axis cylinders)
