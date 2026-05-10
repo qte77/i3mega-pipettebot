@@ -30,7 +30,7 @@ def test_build_slicer_cmd_includes_export_gcode_flag():
     cmd = validate._build_slicer_cmd(
         "/usr/bin/orca-slicer",
         Path("hardware/stl/labware/plate_holder.stl"),
-        Path("tools/slicer/profiles/i3mega_pla_02mm.ini"),
+        Path("tools/slicer/profiles/pla_plus_02mm.ini"),
         Path("/tmp/out.gcode"),
     )
     assert cmd[0] == "/usr/bin/orca-slicer"
@@ -55,12 +55,12 @@ def test_build_slicer_cmd_works_for_prusa_too():
 
 def test_get_profile_defaults_to_pla():
     profile = validate.get_profile("plate_holder.stl")
-    assert profile.name == "i3mega_pla_02mm.ini"
+    assert profile.name == "pla_plus_02mm.ini"
 
 
-def test_get_profile_petg_override():
-    profile = validate.get_profile("plate_holder.stl", override="petg")
-    assert profile.name == "i3mega_petg_02mm.ini"
+def test_get_profile_tpu_override():
+    profile = validate.get_profile("plate_holder.stl", override="tpu")
+    assert profile.name == "tpu_95a_02mm.ini"
 
 
 def test_scan_warnings_picks_up_known_keywords():
