@@ -1,6 +1,15 @@
-"""i3 Mega print-head carriage → dPette+ 8-channel mount (horizontal-bolt).
+"""i3 Mega print-head carriage → dPette+ 8-channel mount.
 
-Two-piece design:
+Two schemes share the same main + cap geometry:
+  - **scheme a** (`build_carriage_dpette_mount_main`): horizontal-bolt
+    only. 4× M4 in 21 × 13 mm pattern on the carriage's horizontal
+    head-mount plate. Lighter, simpler.
+  - **scheme b** (`build_carriage_dpette_mount_main_lbracket`): scheme a
+    + an L-bracket reinforcement that adds 2× M4 bolts engaging the top
+    of the carriage's vertical plate (28 mm pitch, 27.5 mm above the
+    horizontal plate). Resists pitch torque under XY acceleration.
+
+Two-piece main + cap (shared by both schemes):
   - **main**: bolts to the underside of the i3 Mega's horizontal head-
     mount plate via 4× M4 screws in a 21 × 13 mm pattern. Has the back
     half of the upper clamp (D-cavity, flat face toward −Y), a vertical
@@ -24,10 +33,12 @@ Pipette anatomy (per measurements):
     body) prevent axial insertion through any Ø27 horseshoe
 
 Mass budget: total carriage payload (main + cap + 250 g pipette + 3 g
-tips) < 300 g per `.claude/rules/i3-carriage-payload-budget.md`.
+tips) < 300 g per `.claude/rules/i3-carriage-payload-budget.md`. Scheme
+b is heavier than scheme a but stays within budget.
 
 Frame: origin at the centroid of the 4-hole pattern. Z = 0 at the
 mount's top face (touches the underside of the horizontal plate).
++Y is toward the back of the carriage (away from the pipette).
 
 Usage:
     uv run --extra cad python tools/cad/i3/carriage_dpette_mount.py
@@ -49,6 +60,10 @@ from measurements import (
     SCREW_PITCH_Y_MM,
     UPPER_CLAMP_BORE_D_MM,
     UPPER_TO_LOWER_SEPARATION_MM,
+    VPLATE_TOP_HOLE_D_MM,
+    VPLATE_TOP_HOLE_PITCH_MM,
+    VPLATE_TOP_OFFSET_MM,
+    VPLATE_TOP_X_OFFSET_MM,
 )
 
 # Re-exports — accessed reflectively as `mount.X` by mass-budget / geometry tests.
@@ -79,6 +94,15 @@ UPPER_CAP_D_MM = 8.0  # front cap thickness in Y
 UPPER_BOLT_PITCH_X_MM = 28.0  # ±14 mm from bore centre, clear of Ø27 bore
 UPPER_BOLT_HOLE_D_MM = 3.4  # M3 clearance
 UPPER_BOLT_BACK_LEN_MM = 14.0  # bolt thread engagement into back half
+
+# === L-bracket reinforcement (scheme b) — mount-side design knobs ===
+# V-plate hole pattern is imported from measurements.py (VPLATE_TOP_*).
+LBRACKET_WEB_T_MM = 4.0  # vertical web Y-thickness
+LBRACKET_FLANGE_W_MM = (
+    38.0  # flange X-width (28 mm pitch + ~5 mm bolt-head clearance per side)
+)
+LBRACKET_FLANGE_D_MM = 12.0  # flange Y-depth: spans web + V-plate top overhang
+LBRACKET_FLANGE_T_MM = 4.0  # flange Z-thickness
 
 
 def _build_top_plate_with_upper_clamp_back():
@@ -215,6 +239,52 @@ def build_carriage_dpette_mount_cap():
     return cap
 
 
+def _build_lbracket_reinforcement():
+    """L-bracket reinforcement: vertical web + horizontal flange + 2× M4 holes.
+
+    Web rises from the back edge of the top plate (Y = TOP_PLATE_D_MM)
+    up to the V-plate top hole height. Flange caps the web at z =
+    VPLATE_TOP_OFFSET_MM and overhangs +Y over the V-plate top so the
+    two M4 bolts thread DOWN (-Z) into the V-plate's top threaded holes.
+    """
+    web_y_center = TOP_PLATE_D_MM - LBRACKET_WEB_T_MM / 2
+    web = Pos(0, web_y_center, VPLATE_TOP_OFFSET_MM / 2) * Box(
+        TOP_PLATE_W_MM, LBRACKET_WEB_T_MM, VPLATE_TOP_OFFSET_MM
+    )
+
+    flange_y_min = TOP_PLATE_D_MM - LBRACKET_WEB_T_MM
+    flange_y_center = flange_y_min + LBRACKET_FLANGE_D_MM / 2
+    flange_z_center = VPLATE_TOP_OFFSET_MM + LBRACKET_FLANGE_T_MM / 2
+    flange = Pos(VPLATE_TOP_X_OFFSET_MM, flange_y_center, flange_z_center) * Box(
+        LBRACKET_FLANGE_W_MM, LBRACKET_FLANGE_D_MM, LBRACKET_FLANGE_T_MM
+    )
+
+    bolt_y = TOP_PLATE_D_MM  # at the V-plate front face
+    bracket = web + flange
+    for sx in (-1, 1):
+        hole = Pos(
+            VPLATE_TOP_X_OFFSET_MM + sx * VPLATE_TOP_HOLE_PITCH_MM / 2,
+            bolt_y,
+            flange_z_center,
+        ) * Cylinder(VPLATE_TOP_HOLE_D_MM / 2, LBRACKET_FLANGE_T_MM + 2)
+        bracket = bracket - hole
+
+    return bracket
+
+
+def build_carriage_dpette_mount_main_lbracket():
+    """Build scheme b: main piece + L-bracket reinforcement to V-plate top.
+
+    Adds a vertical web at the back edge of the top plate climbing to z =
+    VPLATE_TOP_OFFSET_MM, capped by a flange with 2× M4 clearance holes
+    that engage the V-plate's top threaded holes. Cap piece is shared
+    with scheme a (`build_carriage_dpette_mount_cap`).
+    """
+    # Mass: ~23 g PLA (~16 g main + ~7 g L-bracket; total volume ~18 cc * 1.24 g/cc).
+    # With cap (~3 g) + 250 g dPette+ + 3 g tips = ~279 g, under 300 g cap.
+    return build_carriage_dpette_mount_main() + _build_lbracket_reinforcement()
+
+
 def build_carriage_dpette_mount():
     """Backwards-compat alias — returns the main piece only.
 
@@ -228,3 +298,8 @@ def build_carriage_dpette_mount():
 if __name__ == "__main__":
     export_part(build_carriage_dpette_mount_main(), "i3", "carriage_dpette_mount_main")
     export_part(build_carriage_dpette_mount_cap(), "i3", "carriage_dpette_mount_cap")
+    export_part(
+        build_carriage_dpette_mount_main_lbracket(),
+        "i3",
+        "carriage_dpette_mount_main_lbracket",
+    )
