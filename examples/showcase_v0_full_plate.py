@@ -4,21 +4,21 @@
 PRECONDITION — READ BEFORE RUNNING:
 ================================================================================
 
-  THIS SCRIPT DOES NOT RUN G28. The printer MUST be homed BEFORE you
-  start it. Marlin refuses G1 motion on unreferenced axes, so an
-  un-homed printer will error on the very first move (phase 1 Z raise).
+  Z MUST ALREADY BE REFERENCED. This tour re-references X and Y at the
+  start (via `G28 X Y`) but DELIBERATELY DOES NOT HOME Z. Marlin will
+  refuse the subsequent `G1 Z` raise if Z has never been homed in this
+  session — fail-safe.
 
-  Why no auto-G28: Z homing brings the calibrated tip-end onto the deck
-  (per docs/calibration.md — Z=0 is tip-on-deck WITH tips loaded). If
-  tips are mounted when G28 fires, the tip is dragged into the deck.
-  That's destructive, so this script puts the homing decision on the
-  operator instead of automating it.
+  Why no Z homing here: Z=0 is calibrated to tip-end-on-deck WITH tips
+  loaded (per docs/calibration.md). A `G28 Z` (or full `G28`) on a
+  dPette with tips would drag the tip-end into the deck — destructive.
+  XY homing is safe because it doesn't move Z.
 
-  HOW TO HOME FIRST:
-    - Run `examples/home_G28_fast.py` from a fresh shell, OR
-    - Type `G28` in a Marlin REPL while no tips are mounted, OR
-    - Confirm the printer is already homed in this Marlin session and
-      that the tracked position is trustworthy.
+  HOW TO REFERENCE Z FIRST (do this once per power cycle):
+    - Run `examples/home_G28_fast.py` with NO TIPS LOADED on the dPette
+      (it issues `G28` and lands at Z=0 = tip-on-deck). Re-mount tips
+      after, OR just leave it for the tour's tip-pickup phase.
+    - OR type `G28` in a Marlin REPL with no tips loaded.
 
 ================================================================================
 
@@ -33,8 +33,9 @@ above any prior liquid line during dispense.
 
 Phases::
 
-    1. bootstrap     — M203/M201 bump, then G1 Z TRAVEL_Z (requires
-                       a prior G28; this script does NOT issue one).
+    1. bootstrap     — M203/M201 bump, G28 X Y (XY re-reference, safe
+                       with tips loaded), G1 Z TRAVEL_Z. The G1 Z
+                       requires a prior Z reference — see PRECONDITION.
     2. tip pickup    — travel to (TIP_PICKUP_X, TIP_PICKUP_Y, TRAVEL_Z),
                        descend to TIP_PICKUP_Z, lift.
     3. column tour   — for col in 1..12 (back→front):
@@ -66,9 +67,11 @@ Optional:
 **Safety**: the deck holds an SBS plate (back-left, H = 13 mm), tip box
 (back-right, H ≥ 59 mm including loaded tips — design minimum), and
 reservoir (front, rim H = 24 mm, cavity floor at Z = 19 mm). `TRAVEL_Z
-= 125` mm clears the tip box by 66 mm. **The Z raise in phase 1 is the
-ONLY safeguard against tip-drag, and it requires a prior G28.** v0 has
-no software soft-limit enforcement (see `.claude/rules/motion-safety.md`).
+= 125` mm clears the tip box by 66 mm. **`G28 X Y` re-references XY
+without touching Z (safe with tips loaded). The subsequent Z raise to
+TRAVEL_Z is the safeguard against tip-drag during the rest of the tour,
+and it requires a prior Z home from `examples/home_G28_fast.py`.** v0
+has no software soft-limit enforcement (see `.claude/rules/motion-safety.md`).
 
 **Side effect**: raises Marlin's Z max feedrate (`M203 Z20`) and Z
 acceleration (`M201 Z200`) for snappier vertical motion. Lasts until
@@ -320,13 +323,13 @@ def _run(
     back→front) → park at home corner.
 
     !!! PRECONDITION !!!
-    The printer MUST be homed BEFORE this function runs. The tour
-    deliberately omits `G28`: Z homing drives the calibrated tip-end
-    into the deck (per docs/calibration.md), which is destructive when
-    tips are mounted. Marlin refuses G1 on un-homed axes, so the first
-    motion (Z raise) will error out if you forgot to home — that's the
-    fail-safe. Home via `examples/home_G28_fast.py` or by typing `G28`
-    in a Marlin REPL (with tips removed) before calling this.
+    Z must already be referenced. This function re-homes XY (`G28 X Y`)
+    but DOES NOT home Z — Z homing drives the calibrated tip-end into
+    the deck (per docs/calibration.md), destructive when tips are
+    mounted. The post-G28-XY `G1 Z` raise needs a prior Z reference;
+    Marlin's refusal of G1 on un-homed axes is the fail-safe. Reference
+    Z once per power cycle via `examples/home_G28_fast.py` (with no
+    tips loaded) before calling this.
     """
     _phase_comment(
         gcode_out,
@@ -337,11 +340,16 @@ def _run(
 
     _phase_comment(
         gcode_out,
-        "\n; ===== phase 1: bootstrap (Z raise) =====\n"
-        "; PRECONDITION: printer must be homed BEFORE this G1 — Marlin\n"
-        "; refuses G1 on un-homed axes. This script intentionally does\n"
-        "; NOT issue G28 (would drive tips into deck per Z=0 calibration).\n",
+        "\n; ===== phase 1: bootstrap (G28 X Y + Z raise) =====\n"
+        "; PRECONDITION: Z must already be referenced (run home_G28_fast.py\n"
+        "; with no tips loaded BEFORE this tour). G28 X Y re-references XY\n"
+        "; only — it deliberately does NOT touch Z, so any tip mounted on\n"
+        "; the dPette stays clear of the deck. Full G28 would drive the\n"
+        "; calibrated tip-end into the deck (Z=0 = tip-on-deck per\n"
+        "; docs/calibration.md) — destructive when tips are loaded.\n",
     )
+    gsend(link, "G28 X Y", gcode_out=gcode_out, max_secs=60)
+    gsend(link, "M400", gcode_out=gcode_out)
     gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 

@@ -147,14 +147,15 @@ The full-plate tour ([`examples/showcase_v0_full_plate.py`](../examples/showcase
 runs in four phases (each phase is delimited by a `; ===== phase N =====`
 comment in the tee'd G-code):
 
-1. **Bootstrap** — raise Z to `TRAVEL_Z` via `G1`. The script does
-   **NOT** run `G28` here: Z homing drives the calibrated tip-end into
-   the deck (per [`calibration.md`](calibration.md)), which is
-   destructive if tips are mounted. **The printer MUST be homed before
-   this phase** — Marlin refuses `G1` on un-homed axes, so the Z raise
-   fails fast as a safety check. Home via
-   [`examples/home_G28_fast.py`](../examples/home_G28_fast.py) (with
-   tips removed) before running the tour.
+1. **Bootstrap** — `G28 X Y` (XY re-reference, safe with tips loaded
+   because it doesn't touch Z), then `G1` to `TRAVEL_Z`. **No Z home
+   here**: `G28 Z` (or full `G28`) drives the calibrated tip-end into
+   the deck (per [`calibration.md`](calibration.md)), destructive when
+   tips are mounted. **Z must already be referenced** before this
+   phase — the `G1 Z` raise relies on tracked Z, and Marlin refuses
+   `G1` on un-homed axes. Reference Z once per power cycle via
+   [`examples/home_G28_fast.py`](../examples/home_G28_fast.py) with no
+   tips loaded.
 2. **Tip pickup** (once) — travel to `(TIP_PICKUP_X, TIP_PICKUP_Y, TRAVEL_Z)`,
    descend to `TIP_PICKUP_Z`, lift. No plunger stroke (pickup is a
    friction-fit, not a piston action).

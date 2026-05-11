@@ -79,8 +79,9 @@ uv run examples/showcase_v0_pipette_sim.py
 
 # full 96-well plate fill — tip pickup once, then 12 SBS columns
 # back-to-front with a reservoir round-trip per column.
-# PRECONDITION: run home_G28_fast.py first (with no tips loaded).
-# The tour does NOT auto-G28 — avoids dragging tips into the deck.
+# PRECONDITION: Z must be referenced first — run home_G28_fast.py
+# (with no tips loaded) once per power cycle. The tour itself only
+# does `G28 X Y` at start (no Z home) to avoid dragging tips.
 uv run examples/showcase_v0_full_plate.py
 
 # Home — ends at Marlin default home (X=0, Y=0, Z=0), ~2× faster than
