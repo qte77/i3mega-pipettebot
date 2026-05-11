@@ -7,9 +7,11 @@ leadscrew move. This script gets the same end state (X=0, Y=0, Z=0)
 in roughly half the time by replacing the slow `G28 Z` with a fast
 `G1 Z0` after `G28 X Y`:
 
-    1. M203 / M201 bump      → allows fast G1 Z motion (40 mm/s vs 4 mm/s)
-    2. G1 Z 80 (defensive)   → lift Z if it's currently low, so XY home
-                               doesn't drag a loaded tip across the deck
+    1. M203 / M201 bump      → bump caps to 20 mm/s / 200 mm/s² for Z
+                               (matches the showcase; conservative
+                               values to avoid skipped steps)
+    2. G1 Z 30 (defensive)   → small lift if Z is currently low, so XY
+                               home doesn't drag a loaded tip
     3. G28 X Y               → home X and Y via endstops (the fast part)
     4. G1 Z 0                → move Z to default home altitude (no endstop)
 
@@ -51,8 +53,8 @@ if TYPE_CHECKING:
 
 DEFAULT_BAUD = 250000
 
-Z_LIFT_BEFORE_XY = 80.0  # mm; safe altitude for XY home (clears 59 mm tip box)
-Z_FEED = 2400  # 40 mm/s — needs M203 Z40 sent first
+Z_LIFT_BEFORE_XY = 30.0  # mm; safe altitude for XY home (small lift to avoid drag)
+Z_FEED = 1200  # 20 mm/s — at the M203 Z20 cap (leadscrew mechanical limit)
 
 
 def gsend(link: serial.Serial, cmd: str, *, max_secs: float = 60.0) -> None:
@@ -104,8 +106,8 @@ def main() -> int:
         t0 = time.monotonic()
 
         print("[host] phase 1: raise feedrate + accel caps")
-        gsend(link, "M203 X1000 Y1000 Z40")
-        gsend(link, "M201 X2000 Y2000 Z400")
+        gsend(link, "M203 X1000 Y1000 Z20")
+        gsend(link, "M201 X2000 Y2000 Z200")
 
         print(f"[host] phase 2: lift Z to {Z_LIFT_BEFORE_XY:.0f} mm (defensive)")
         gsend(link, f"G1 Z{Z_LIFT_BEFORE_XY:.3f} F{Z_FEED}")

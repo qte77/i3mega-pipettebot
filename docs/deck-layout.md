@@ -174,6 +174,57 @@ Column iteration is **back-to-front**: column 1 sits at `Y = 206`
 column 12 sits at `Y = 107` (front-most). Iteration step is `-9 mm` per
 column.
 
+### Y motion timeline
+
+Bed Y positions through the tour (back ↑ , front ↓), in Marlin frame:
+
+```text
+              Marlin Y (mm)
+                 ↑
+   +220 ─────────│  bed back, mechanical limit-ish
+                 │
+                 │  tip box back  (TIP_PICKUP_Y = 139.5)  ← phase 2
+   +100 ─────────│  ●
+                 │
+                 │
+                 │  SBS col 1     (43)  ←  phase 3 first dispense
+    +50 ─────────│  ●
+                 │  SBS col 2..6  (34, 25, 16, 7, -2)
+                 │
+      0 ─────────●  G28 home / phase 4 park (Marlin Y=0)
+                 │
+                 │  SBS col 7..11 (-11, -20, -29, -38, -47)
+                 │
+    -50 ─────────●  reservoir aspirate (-50)        ← right above reservoir
+                 │
+                 │  SBS col 12    (-56)              ← phase 3 last dispense
+                 │
+   -100 ─────────│
+                 │
+                 │
+   -175 ─────────│  PHYSICAL BED FRONT
+                 ↓
+```
+
+Per-tour-cycle sequence:
+
+```text
+home(Y=0) → tip pickup(Y=139.5) →
+  cycle 1:  reservoir(Y=-50) → SBS col 1  (Y=43)
+  cycle 2:  reservoir(Y=-50) → SBS col 2  (Y=34)
+  cycle 3:  reservoir(Y=-50) → SBS col 3  (Y=25)
+  cycle 4:  reservoir(Y=-50) → SBS col 4  (Y=16)
+  cycle 5:  reservoir(Y=-50) → SBS col 5  (Y=7)
+  cycle 6:  reservoir(Y=-50) → SBS col 6  (Y=-2)
+  cycle 7:  reservoir(Y=-50) → SBS col 7  (Y=-11)
+  cycle 8:  reservoir(Y=-50) → SBS col 8  (Y=-20)
+  cycle 9:  reservoir(Y=-50) → SBS col 9  (Y=-29)
+  cycle 10: reservoir(Y=-50) → SBS col 10 (Y=-38)
+  cycle 11: reservoir(Y=-50) → SBS col 11 (Y=-47)
+  cycle 12: reservoir(Y=-50) → SBS col 12 (Y=-56)
+park(Y=0)
+```
+
 Bootstrap snippet:
 
 ```text
