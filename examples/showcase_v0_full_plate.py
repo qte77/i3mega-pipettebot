@@ -108,23 +108,22 @@ DEFAULT_GCODE_OUT = "showcase_v0_full_plate.gcode"
 DECK_OFFSET_X = 25.0  # +X = right (commanded X = deck X + 25)
 DECK_OFFSET_Y = -50.0  # -Y = forward (commanded Y = deck Y - 50)
 
-# SBS plate (back-left slot; physical position at deck X=5-90, Y=80-207, H=13).
-# 8 rows along X at 9 mm pitch, 12 cols along Y at 9 mm pitch.
-# Channel-1 (leftmost dPette tip) reference sits over row A: deck X = 16.
-# Tour iterates back→front: deck col 1 at Y=193, deck col 12 at Y=94.
+# SBS plate (back-left slot; 8 rows along X at 9 mm pitch, 12 cols along
+# Y at 9 mm pitch). Channel-1 (leftmost dPette tip) over row A at deck X=16.
 #
-# BED MOVEMENT ADJUSTMENT (per-slot, not a deck-frame shift): when
-# visiting the SBS plate, the bed is commanded 100 mm forward of the
-# deck-frame col position to land the dPette on the correct row. So
-# Marlin Y for col 1 = 193 - 100 = 93, col 12 = 94 - 100 = -6.
-# Negative-Y reachability: Marlin Y=0 sits 175 mm behind the physical
-# bed front (per the printer's calibration), so Y=-6 is comfortably
-# within reachable travel (169 mm before the physical front limit).
+# Y anchor (per user spec): the first SBS column visit lands at the SAME
+# Marlin Y as the reservoir aspirate (-50). The reservoir-then-first-col
+# transition is therefore Z-only — no Y motion — which keeps the bed at
+# the reservoir position for the first dispense.
+#
+# Iteration direction: front-to-back. Col 1 at Y=-50 (front, = reservoir Y),
+# col 12 at Y=49 (back). Step +9 mm per visit. 12-column ladder:
+#   -50, -41, -32, -23, -14, -5, 4, 13, 22, 31, 40, 49
+# All reachable: Marlin Y=0 sits 175 mm behind the physical front, so the
+# front-most col (Y=-50) is 125 mm before the front limit.
 SBS_REF_X = 16.0 + DECK_OFFSET_X  # 41.0
-SBS_COL1_Y = (
-    93.0 + DECK_OFFSET_Y
-)  # 43.0 Marlin = deck col1 (193) - 100 SBS shift - 50 global
-SBS_COL_PITCH = 9.0  # absolute pitch (delta, no offset); subtracted per visit
+SBS_COL1_Y = 0.0 + DECK_OFFSET_Y  # -50.0 Marlin = reservoir Y; col 1 = front-most
+SBS_COL_PITCH = 9.0  # +9 mm per visit (front-to-back)
 
 # Reservoir (front slot). 8 channels span 63 mm in X; X-center the
 # dPette over the reservoir (deck-frame X = 43–177 still considered
@@ -257,14 +256,16 @@ def visit_column(
     *,
     gcode_out: TextIO | None = None,
 ) -> None:
-    """Travel to SBS column `col` (1..12, back→front), single descent (dispense), lift.
+    """Travel to SBS column `col` (1..12, front→back), single descent (dispense), lift.
 
-    Column 1 = back-most ("top-left" of plate, Y=SBS_COL1_Y); column 12 =
-    front-most. Dispense is a SINGLE descent — no plunger up-and-back stroke.
-    Invariant: WELL_Z >= RESERVOIR_Z (tip never lower at dispense than aspirate).
+    Col 1 = front-most (Y = SBS_COL1_Y = -50 Marlin, same as reservoir Y so
+    the reservoir→first-col transition is Z-only). Col 12 = back-most
+    (Y = -50 + 11*9 = 49 Marlin). Step +9 mm per visit. Dispense is a
+    SINGLE descent — no plunger up-and-back stroke. Invariant:
+    WELL_Z >= RESERVOIR_Z (tip never lower at dispense than aspirate).
     See docs/deck-layout.md "Tour sequence" phase 3.
     """
-    y = SBS_COL1_Y - (col - 1) * SBS_COL_PITCH
+    y = SBS_COL1_Y + (col - 1) * SBS_COL_PITCH
     print(f"[host] --- SBS column {col} dispense (simulated) at Y={y:.2f} ---")
     if gcode_out is not None:
         gcode_out.write(f"\n; --- SBS column {col} dispense at Y={y:.2f} ---\n")
