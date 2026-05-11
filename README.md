@@ -1,7 +1,7 @@
 ---
 title: "i3mega-pipettebot"
 status: "PROTOTYPE"
-updated: "2026-05-06"
+updated: "2026-05-12"
 owner: "lambda biolab"
 ---
 
@@ -67,16 +67,32 @@ eval "$(uv run python tools/preflight.py --export)" \
   && uv run python examples/showcase_v0_pipette_sim.py
 ```
 
-Then the demo. v0 ships a single example that drives the gantry
-through a back-well-to-front-well pipetting cycle and tees the G-code
-stream to disk for replay/SD use; the pipette plunger action is
-simulated with a 5 cm Z stroke at each well (no real dPette command
-is sent — see `AGENT_REQUESTS.md` Stage 2a for the firmware path that
+Then the demo. v0 ships two hardware examples that drive the gantry
+and tee the G-code stream to disk for replay/SD use. Pipette plunger
+action is simulated with gantry Z motion (no real dPette command is
+sent — see `AGENT_REQUESTS.md` Stage 2a for the firmware path that
 unlocks real M820 pipette pass-through):
 
 ```bash
+# back-well ↔ front-well pipetting cycle (older two-well demo)
 uv run examples/showcase_v0_pipette_sim.py
+
+# full 96-well plate fill — tip pickup once, then 12 SBS columns
+# back-to-front with a reservoir round-trip per column.
+# PRECONDITION: run home_G28_fast.py first (with no tips loaded).
+# The tour does NOT auto-G28 — avoids dragging tips into the deck.
+uv run examples/showcase_v0_full_plate.py
+
+# Home — ends at Marlin default home (X=0, Y=0, Z=0), ~2× faster than
+# full G28. Replaces slow G28 Z (4 mm/s leadscrew) with G1 Z0 at the
+# bumped M203 feedrate (40 mm/s). Trusts the tracked Z; run full G28
+# manually if you suspect Z drift.
+uv run examples/home_G28_fast.py
 ```
+
+The full-plate tour's deck layout (slot positions, motion constants,
+tour sequence) is the canonical spec — see
+[`docs/deck-layout.md`](docs/deck-layout.md).
 
 ### Hardware diagnostics (`tools/`)
 
@@ -147,6 +163,7 @@ but deliberately **not** part of v0.
 
 - [docs/hardware.md](docs/hardware.md) — i3 Mega + dPette wiring, port discovery, firmware sanity check, dPette+ specs
 - [docs/calibration.md](docs/calibration.md) — well-A1 origin procedure, 9 mm pitch check
+- [docs/deck-layout.md](docs/deck-layout.md) — deck slot extents, motion constants, four-phase tour sequence (canonical spec for `showcase_v0_full_plate.py`)
 - [docs/marlin-commands.md](docs/marlin-commands.md) — Marlin G/M-code reference + i3 Mega coordinate orientation
 - [docs/3d-parts.md](docs/3d-parts.md) — CAD pipeline design rationale, payload + Z envelope math, SBS labware reference
 - [docs/sbc-deployment.md](docs/sbc-deployment.md) — Path 2 (Single-Board Computer on-printer) deployment
