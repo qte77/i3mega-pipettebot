@@ -117,3 +117,63 @@ def test_cap_x_symmetric():
     assert abs(bbox.min.X + bbox.max.X) < 0.5, (
         f"Cap is not X-symmetric: bbox X = [{bbox.min.X:.2f}, {bbox.max.X:.2f}]"
     )
+
+
+# === Scheme b — L-bracket reinforcement variant ===
+
+
+def test_lbracket_returns_non_empty_shape():
+    shape = mount.build_carriage_dpette_mount_main_lbracket()
+    assert isinstance(shape, (build123d.Solid, build123d.Compound))
+    assert shape.volume > 0
+
+
+def test_lbracket_volume_exceeds_main():
+    """Scheme b adds material above scheme a — must be heavier."""
+    main_vol = mount.build_carriage_dpette_mount_main().volume
+    lbracket_vol = mount.build_carriage_dpette_mount_main_lbracket().volume
+    assert lbracket_vol > main_vol, (
+        f"Scheme b ({lbracket_vol:.0f} mm³) must exceed scheme a ({main_vol:.0f} mm³)"
+    )
+
+
+def test_lbracket_payload_budget_under_300g():
+    """Scheme b + cap + pipette + tips must fit under the AI3M payload cap."""
+    main_mass = _estimated_mass_g(mount.build_carriage_dpette_mount_main_lbracket())
+    cap_mass = _estimated_mass_g(mount.build_carriage_dpette_mount_cap())
+    total = main_mass + cap_mass + PIPETTE_MASS_G + TIPS_MASS_G
+    assert total < AI3M_PAYLOAD_CAP_G, (
+        f"Scheme b total payload {total:.1f} g exceeds {AI3M_PAYLOAD_CAP_G} g cap "
+        f"(main_lbracket={main_mass:.1f} g + cap={cap_mass:.1f} g + "
+        f"pipette={PIPETTE_MASS_G} g + tips={TIPS_MASS_G} g)"
+    )
+
+
+def test_lbracket_reaches_vplate_top_height():
+    """L-bracket flange must reach the V-plate top-hole Z height."""
+    shape = mount.build_carriage_dpette_mount_main_lbracket()
+    bbox = shape.bounding_box()
+    expected_top = mount.VPLATE_TOP_OFFSET_MM + mount.LBRACKET_FLANGE_T_MM
+    assert abs(bbox.max.Z - expected_top) < 0.5, (
+        f"Scheme b top Z = {bbox.max.Z:.2f}; expected ≈ {expected_top:.2f} "
+        "(VPLATE_TOP_OFFSET_MM + LBRACKET_FLANGE_T_MM)"
+    )
+
+
+def test_lbracket_x_symmetric():
+    """Scheme b is X-symmetric — flange and bolt holes both centred."""
+    shape = mount.build_carriage_dpette_mount_main_lbracket()
+    bbox = shape.bounding_box()
+    assert abs(bbox.min.X + bbox.max.X) < 0.5, (
+        f"Scheme b is not X-symmetric: bbox X = [{bbox.min.X:.2f}, {bbox.max.X:.2f}]"
+    )
+
+
+def test_lbracket_flange_clears_bolt_pitch():
+    """Flange width must accommodate the bolt pitch with edge clearance."""
+    edge_clear = (mount.LBRACKET_FLANGE_W_MM - mount.VPLATE_TOP_HOLE_PITCH_MM) / 2 - (
+        mount.VPLATE_TOP_HOLE_D_MM / 2
+    )
+    assert edge_clear >= 1.5, (
+        f"Bolt edge clearance {edge_clear:.2f} mm < 1.5 mm — widen flange"
+    )

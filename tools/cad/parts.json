@@ -70,5 +70,14 @@
     "svg": "i3/carriage_dpette_mount_cap.svg",
     "status": "active",
     "notes": "Front cap for the split upper clamp. Bolts to the main piece via 2× M3 to capture the dPette+ Ø27 round upper barrel. Required because the dPette+ body is one rigid unit (lower body / upper barrel / top section permanently joined) — lateral insertion is impossible."
+  },
+  {
+    "name": "i3_carriage_dpette_mount_main_lbracket",
+    "cad": "i3/carriage_dpette_mount.py",
+    "build_func": "build_carriage_dpette_mount_main_lbracket",
+    "stl": "i3/carriage_dpette_mount_main_lbracket.stl",
+    "svg": "i3/carriage_dpette_mount_main_lbracket.svg",
+    "status": "active",
+    "notes": "Scheme b — main piece + L-bracket reinforcement. Adds a web rising from the back of the top plate to a flange at z = 27.5 mm with 2× M4 clearance holes (28 mm pitch) that thread down into the carriage vertical-plate top. Resists pitch torque under XY acceleration. Pairs with the same cap as scheme a."
   }
 ]
