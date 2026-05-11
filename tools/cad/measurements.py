@@ -5,9 +5,8 @@ calipers / scale / ruler measurements. Design-time geometry constants
 (wall thicknesses, clearance offsets, post placement, etc.) live in
 their respective build scripts (e.g. `i3/carriage_dpette_mount.py`).
 
-CAD scripts may either import these directly or keep local copies
-(today's pattern); a follow-up refactor will collapse to import-only
-once the L-bracket scheme b lands and shares more of these.
+CAD scripts import these directly — `from measurements import …` — so
+a change here propagates to every consumer without duplication.
 
 All units mm unless suffixed otherwise.
 """

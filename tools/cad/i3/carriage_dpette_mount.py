@@ -40,29 +40,31 @@ from build123d import Box, Cylinder, Pos, Rot
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from barrel_bore import make_clamp_bore
+from measurements import (
+    LOWER_CLAMP_D_MM,
+    LOWER_CLAMP_H_MM,
+    LOWER_CLAMP_W_MM,
+    SCREW_HOLE_D_MM,
+    SCREW_PITCH_X_MM,
+    SCREW_PITCH_Y_MM,
+    UPPER_CLAMP_BORE_D_MM,
+    UPPER_TO_LOWER_SEPARATION_MM,
+)
+
+# Re-exports — accessed reflectively as `mount.X` by mass-budget / geometry tests.
+# The `as X` self-rename is the PEP 484 idiom for an explicit re-export.
+from measurements import PLA_DENSITY_G_PER_CC as PLA_DENSITY_G_PER_CC
+from measurements import UPPER_BARREL_HEIGHT_MM as UPPER_BARREL_HEIGHT_MM
 from util.export import export_part
 
 sys.path.pop()
 
 
-# === Carriage-side measurements (i3 Mega horizontal head-mount plate) ===
-SCREW_PITCH_X_MM = 21.0  # 4-hole pattern, X (left ↔ right)
-SCREW_PITCH_Y_MM = 13.0  # 4-hole pattern, Y (front ↔ back)
-SCREW_HOLE_D_MM = 4.5  # M4 clearance (carriage hole = 4.0)
-
-# === Pipette-side measurements (DLAB dPette+ 8-channel) ===
-LOWER_CLAMP_W_MM = 78.0  # fixed-tip manifold cross-section width  (X)
-LOWER_CLAMP_D_MM = 11.0  # fixed-tip manifold cross-section depth  (Y)
-LOWER_CLAMP_H_MM = 5.0  # manifold vertical extent
-UPPER_CLAMP_BORE_D_MM = 27.0  # Ø27 round upper barrel
-UPPER_BARREL_HEIGHT_MM = 15.0  # vertical extent of the round section
-UPPER_TO_LOWER_SEPARATION_MM = 50.0  # vertical between clamp axes
-
-# === Mount geometry (parametric) ===
+# === Mount geometry (parametric — design knobs for this specific mount) ===
 TOP_PLATE_W_MM = 35.0  # X width — covers hole pattern + Ø32 upper ring + cap bolts
 TOP_PLATE_D_MM = 30.0  # Y depth (back half side; cap adds more in −Y)
 TOP_PLATE_T_MM = 8.0  # thickness; doubles as upper-clamp ring height
-CLAMP_BORE_CLEARANCE_MM = 0.5
+CLAMP_BORE_CLEARANCE_MM = 0.5  # diametral; tight clamp on Ø27 barrel
 CLAMP_WALL_MM = 2.5  # wall thickness around bores
 LOWER_CLAMP_H_PLUS_MM = 1.0  # extra grip beyond manifold height
 POST_W_MM = 6.0  # vertical post X (per post; two posts at ±X_OFFSET)
@@ -77,9 +79,6 @@ UPPER_CAP_D_MM = 8.0  # front cap thickness in Y
 UPPER_BOLT_PITCH_X_MM = 28.0  # ±14 mm from bore centre, clear of Ø27 bore
 UPPER_BOLT_HOLE_D_MM = 3.4  # M3 clearance
 UPPER_BOLT_BACK_LEN_MM = 14.0  # bolt thread engagement into back half
-
-# === Material === (used by mass-budget tests)
-PLA_DENSITY_G_PER_CC = 1.24
 
 
 def _build_top_plate_with_upper_clamp_back():

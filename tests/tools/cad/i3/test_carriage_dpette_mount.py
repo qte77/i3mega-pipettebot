@@ -92,23 +92,6 @@ def test_cap_height_matches_top_plate():
     )
 
 
-def test_screw_pattern_constants_match_carriage_measurements():
-    """Sanity: the locked-in measurements haven't drifted."""
-    assert mount.SCREW_PITCH_X_MM == 21.0
-    assert mount.SCREW_PITCH_Y_MM == 13.0
-    assert mount.SCREW_HOLE_D_MM == 4.5  # M4 clearance for the 4.0 mm carriage hole
-
-
-def test_pipette_clamp_constants_match_pipette_measurements():
-    """Sanity: pipette-side measurements haven't drifted."""
-    assert mount.LOWER_CLAMP_W_MM == 78.0
-    assert mount.LOWER_CLAMP_D_MM == 11.0
-    assert mount.LOWER_CLAMP_H_MM == 5.0
-    assert mount.UPPER_CLAMP_BORE_D_MM == 27.0
-    assert mount.UPPER_BARREL_HEIGHT_MM == 15.0
-    assert mount.UPPER_TO_LOWER_SEPARATION_MM == 50.0
-
-
 def test_upper_clamp_height_fits_within_round_barrel():
     """Top plate (= upper clamp ring height) must be ≤ Ø27 round barrel height."""
     assert mount.TOP_PLATE_T_MM <= mount.UPPER_BARREL_HEIGHT_MM, (
