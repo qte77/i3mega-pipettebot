@@ -1,18 +1,19 @@
 ---
-title: "SBC-on-printer deployment (Path 2)"
+title: "Single-Board Computer (SBC) on-printer deployment (Path 2)"
 status: "DRAFT"
 updated: "2026-05-08"
 owner: "lambda biolab"
 ---
 
-Replace the laptop tether with a small Linux board zip-tied to the
-printer chassis. The board acts as USB **host** for both the i3 Mega
+Replace the laptop tether with a **Single-Board Computer** (SBC) —
+a small Linux board (e.g., Raspberry Pi) zip-tied to the printer
+chassis. The board acts as USB **host** for both the i3 Mega
 and the dPette, runs `pipettebot` directly, and turns the
 printer + pipette + board into a single self-contained appliance. No
 firmware patch, no soldering, no warranty voided — the dPette and
 printer keep their stock cables. You give up host-less SD-card
-autonomy (that is **Path 3** — `M820` UART tap, see
-[`AGENT_REQUESTS.md`](../AGENT_REQUESTS.md)).
+autonomy (that is **Path 3** — `M820` UART tap, tracked under the
+`firmware` label and ADR [#6](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/6)).
 
 > **Status: Draft.** No physical Pi has been bolted to the reference
 > i3 Mega yet. BOM, wiring, and mount design are to be confirmed when
@@ -93,42 +94,51 @@ enumeration drops. Use a powered hub for both peripherals.
 
 ## Pi software setup (headless, no monitor)
 
-This is a one-time bring-up. After this the Pi runs unattended.
+One-time bring-up. After this the Pi runs unattended.
 
-1. **Flash Raspberry Pi OS Lite (64-bit)** to the SD card with
-   `rpi-imager`. In the imager's "advanced settings":
-    - set hostname (e.g. `pipettebot-01`)
-    - enable SSH with public-key auth (paste your laptop's
-      `~/.ssh/id_ed25519.pub`)
-    - configure Wi-Fi SSID + password
-    - set locale / keyboard
+1. **Flash Raspberry Pi OS Lite** with `rpi-imager`. Match the Pi
+   architecture: **armhf 32-bit for Pi 1 B+ / Zero** (ARMv6), arm64 for
+   Pi Zero 2 W / 4 / 5. In the imager's "advanced settings":
+    - hostname (e.g. `pipettebot-01`)
+    - SSH with public-key auth (paste `~/.ssh/id_ed25519.pub`)
+    - Wi-Fi credentials, **or** skip Wi-Fi and use Ethernet (Pi 1 B+
+      has built-in RJ45; mDNS works over Ethernet)
+    - locale / keyboard
 
-2. Boot the Pi from SD; wait ~60 s for first-boot expansion. SSH in:
+2. Boot the Pi; wait ~60 s for first-boot expansion. SSH in:
 
     ```bash
-    ssh pipettebot-01.local      # or use the IP if mDNS isn't working
+    ssh pipettebot-01.local      # or use the IP from your router
     ```
 
-3. **Install uv + Git**:
+3. **Run the provisioning helper** — installs system deps, clones the
+   repo, syncs Python deps, runs the mocked test suite, and writes
+   `config.local/pipettebot.env` with stable `/dev/serial/by-id/...` port
+   paths discovered via `tools/preflight.py`:
 
     ```bash
-    sudo apt-get update && sudo apt-get install -y git
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    source ~/.bashrc
+    curl -fsSL https://raw.githubusercontent.com/Lambda-Biolab/i3mega-pipettebot/main/tools/setup_pi.sh | bash
     ```
 
-4. **Clone and sync**:
+    The script is idempotent — safe to re-run. On a Pi 1 B+ (700 MHz
+    single-core) the dep sync takes 5–15 min. On ARMv6 the script falls
+    back to system Python + pip if uv has no `armv6l` build.
+
+4. **Run** the v0 showcase:
 
     ```bash
-    git clone https://github.com/Lambda-Biolab/i3mega-pipettebot.git
-    cd i3mega-pipettebot
-    make init
+    cd ~/i3mega-pipettebot
+    source config.local/pipettebot.env
+    uv run tools/preflight.py                       # sanity check
+    uv run examples/showcase_v0_pipette_sim.py
     ```
 
-5. **Verify** with the test suite (no hardware needed yet):
+    The env file is host-specific and ignored by git (top-level
+    `.gitignore` covers `config.local/`). Format:
 
     ```bash
-    make test       # 9 mocked-serial tests should pass
+    export I3MEGA_PORT=/dev/serial/by-id/usb-1a86_USB2.0-Serial-...
+    export PIPETTE_PORT=/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_<serial>-if00-port0
     ```
 
 ## Wiring
@@ -218,8 +228,8 @@ WantedBy=multi-user.target
 Then `sudo systemctl enable --now pipettebot` runs it on boot. For v0
 you almost certainly don't want auto-start of physical motion — keep
 this disabled and trigger runs manually over SSH until safety
-interlocks land (see `safety.py` in
-[`AGENT_REQUESTS.md`](../AGENT_REQUESTS.md)).
+interlocks land (see [issue #11](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/11)
+— soft-limit and crash-guard module).
 
 ## What this **doesn't** unlock
 
@@ -227,8 +237,8 @@ interlocks land (see `safety.py` in
   dPette. Path 2 just moves the orchestrator from your laptop to the
   Pi. To run a `.gcode` file off the printer's SD card and have it
   pipette, you need **Path 3** (`M820` pass-through, UART tap on the
-  dPette, level-shifter PCB, Marlin firmware patch). Tracked in
-  [`AGENT_REQUESTS.md`](../AGENT_REQUESTS.md) under "Stage 2a".
+  dPette, level-shifter PCB, Marlin firmware patch). Tracked under
+  the `firmware` label and ADR [#6](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/6).
 - **No PC at all** — you still want a laptop or workstation to SSH in
   for editing, debugging, and triggering runs. The Pi is the
   *runtime* host, not a development environment.
@@ -238,5 +248,9 @@ interlocks land (see `safety.py` in
 
 ## Path from DRAFT to confirmed
 
-Tracking items live in [`AGENT_REQUESTS.md`](../AGENT_REQUESTS.md) under
-the **SBC deployment (Path 2)** section.
+No SBC bring-up issue is open yet; the previous
+`AGENT_REQUESTS.md` backlog was retired when that file became an
+agent-to-human communication channel. File new issues under the
+`hardware` label for each unconfirmed item (Pi model choice, BOM,
+mount STL, wiring, systemd unit, headless bring-up validation) before
+acting on them.
