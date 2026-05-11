@@ -1,5 +1,27 @@
 """Hardware-motion simulation of a full 96-well plate fill — gantry-only, no dPette.
 
+================================================================================
+PRECONDITION — READ BEFORE RUNNING:
+================================================================================
+
+  THIS SCRIPT DOES NOT RUN G28. The printer MUST be homed BEFORE you
+  start it. Marlin refuses G1 motion on unreferenced axes, so an
+  un-homed printer will error on the very first move (phase 1 Z raise).
+
+  Why no auto-G28: Z homing brings the calibrated tip-end onto the deck
+  (per docs/calibration.md — Z=0 is tip-on-deck WITH tips loaded). If
+  tips are mounted when G28 fires, the tip is dragged into the deck.
+  That's destructive, so this script puts the homing decision on the
+  operator instead of automating it.
+
+  HOW TO HOME FIRST:
+    - Run `examples/home_G28_fast.py` from a fresh shell, OR
+    - Type `G28` in a Marlin REPL while no tips are mounted, OR
+    - Confirm the printer is already homed in this Marlin session and
+      that the tracked position is trustworthy.
+
+================================================================================
+
 8-channel dPette tour: collect tips once from the back-right tip box,
 then visit each of the 12 SBS columns (back-to-front) with a round-trip
 to the front reservoir before each dispense.
@@ -11,13 +33,16 @@ above any prior liquid line during dispense.
 
 Phases::
 
-    1. bootstrap     — G28, raise Z to TRAVEL_Z
+    1. bootstrap     — M203/M201 bump, then G1 Z TRAVEL_Z (requires
+                       a prior G28; this script does NOT issue one).
     2. tip pickup    — travel to (TIP_PICKUP_X, TIP_PICKUP_Y, TRAVEL_Z),
-                       descend to TIP_PICKUP_Z, lift
+                       descend to TIP_PICKUP_Z, lift.
     3. column tour   — for col in 1..12 (back→front):
                          travel to reservoir, descend to RESERVOIR_Z, lift
                          travel to SBS col N, descend to WELL_Z, lift
-    4. home          — G28, raise Z to TRAVEL_Z
+    4. park          — G1 X0 Y0 Z PARK_Z (= 1.5 x tip length).
+                       Plain G1, NOT G28: keeps Z above the deck so any
+                       forgotten tip on the dPette doesn't drag.
 
 Deck geometry, slot extents, and motion altitudes are defined in
 `docs/deck-layout.md` and reproduced here as constants — re-running the
@@ -33,22 +58,17 @@ Required environment variable:
 
 Optional:
 
-    I3MEGA_BAUD       Default 250000 (Anycubic stock + MARLIN-AI3M).
-    OUTPUT_GCODE      Path to also tee the G-code stream to disk.
-                      Default `showcase_v0_full_plate.gcode` in the cwd.
-                      Set to empty (`OUTPUT_GCODE=`) to disable.
-    I3MEGA_SKIP_HOME  Set to `1` to skip the start `G28`. Use only when
-                      the printer was homed earlier in the same session
-                      — saves ~20 s per run. Defensive Z-raise to
-                      TRAVEL_Z still runs. End-of-tour parking uses a
-                      plain `G1` (not `G28`), so it's always fast.
+    I3MEGA_BAUD   Default 250000 (Anycubic stock + MARLIN-AI3M).
+    OUTPUT_GCODE  Path to also tee the G-code stream to disk.
+                  Default `showcase_v0_full_plate.gcode` in the cwd.
+                  Set to empty (`OUTPUT_GCODE=`) to disable.
 
 **Safety**: the deck holds an SBS plate (back-left, H = 13 mm), tip box
 (back-right, H ≥ 59 mm including loaded tips — design minimum), and
 reservoir (front, rim H = 24 mm, cavity floor at Z = 19 mm). `TRAVEL_Z
-= 125` mm clears the tip box by 66 mm; the bootstrap raises Z to
-`TRAVEL_Z` before any XY motion. v0 has no software soft-limit
-enforcement (see `.claude/rules/motion-safety.md`).
+= 125` mm clears the tip box by 66 mm. **The Z raise in phase 1 is the
+ONLY safeguard against tip-drag, and it requires a prior G28.** v0 has
+no software soft-limit enforcement (see `.claude/rules/motion-safety.md`).
 
 **Side effect**: raises Marlin's Z max feedrate (`M203 Z20`) and Z
 acceleration (`M201 Z200`) for snappier vertical motion. Lasts until
@@ -293,17 +313,20 @@ def _phase_comment(gcode_out: TextIO | None, text: str) -> None:
 def _run(
     link: serial.Serial,
     gcode_out: TextIO | None,
-    *,
-    skip_home: bool,
 ) -> None:
     """Full tour — see docs/deck-layout.md "Tour sequence" for phase breakdown.
 
     Phases: bootstrap → tip pickup (once) → 12× (reservoir + SBS column,
-    back→front) → home.
+    back→front) → park at home corner.
 
-    `skip_home=True` (env `I3MEGA_SKIP_HOME=1`) skips the start `G28`,
-    assuming the printer is already referenced from a previous run. The
-    Z-raise to TRAVEL_Z still runs as a defensive safety move.
+    !!! PRECONDITION !!!
+    The printer MUST be homed BEFORE this function runs. The tour
+    deliberately omits `G28`: Z homing drives the calibrated tip-end
+    into the deck (per docs/calibration.md), which is destructive when
+    tips are mounted. Marlin refuses G1 on un-homed axes, so the first
+    motion (Z raise) will error out if you forgot to home — that's the
+    fail-safe. Home via `examples/home_G28_fast.py` or by typing `G28`
+    in a Marlin REPL (with tips removed) before calling this.
     """
     _phase_comment(
         gcode_out,
@@ -313,14 +336,12 @@ def _run(
     gsend(link, "M201 Z200", gcode_out=gcode_out)
 
     _phase_comment(
-        gcode_out, "\n; ===== phase 1: bootstrap (home, raise to TRAVEL_Z) =====\n"
+        gcode_out,
+        "\n; ===== phase 1: bootstrap (Z raise) =====\n"
+        "; PRECONDITION: printer must be homed BEFORE this G1 — Marlin\n"
+        "; refuses G1 on un-homed axes. This script intentionally does\n"
+        "; NOT issue G28 (would drive tips into deck per Z=0 calibration).\n",
     )
-    if skip_home:
-        print("[host] I3MEGA_SKIP_HOME=1 — skipping start G28")
-        _phase_comment(gcode_out, "; I3MEGA_SKIP_HOME=1 — start G28 skipped\n")
-    else:
-        gsend(link, "G28", gcode_out=gcode_out, max_secs=120)
-        gsend(link, "M400", gcode_out=gcode_out)
     gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
@@ -359,7 +380,6 @@ def main() -> int:
         return 1
     baud = int(os.environ.get("I3MEGA_BAUD", str(DEFAULT_BAUD)))
     gcode_path = os.environ.get("OUTPUT_GCODE", DEFAULT_GCODE_OUT)
-    skip_home = os.environ.get("I3MEGA_SKIP_HOME") == "1"
 
     link = open_marlin_port(port, baudrate=baud, timeout=2.0)
     if link is None:
@@ -375,10 +395,10 @@ def main() -> int:
         if gcode_path:
             print(f"[host] tee G-code stream to {gcode_path}")
             with open(gcode_path, "w") as gf:
-                _run(link, gf, skip_home=skip_home)
+                _run(link, gf)
         else:
-            _run(link, None, skip_home=skip_home)
-        print("[host] done — parked at home corner, Z at TRAVEL_Z")
+            _run(link, None)
+        print("[host] done — parked at home corner, Z at PARK_Z")
     return 0
 
 

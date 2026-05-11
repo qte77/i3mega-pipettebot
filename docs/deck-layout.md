@@ -147,8 +147,14 @@ The full-plate tour ([`examples/showcase_v0_full_plate.py`](../examples/showcase
 runs in four phases (each phase is delimited by a `; ===== phase N =====`
 comment in the tee'd G-code):
 
-1. **Bootstrap** — `G28` (skippable via `I3MEGA_SKIP_HOME=1`), then
-   raise to `TRAVEL_Z` before any XY motion.
+1. **Bootstrap** — raise Z to `TRAVEL_Z` via `G1`. The script does
+   **NOT** run `G28` here: Z homing drives the calibrated tip-end into
+   the deck (per [`calibration.md`](calibration.md)), which is
+   destructive if tips are mounted. **The printer MUST be homed before
+   this phase** — Marlin refuses `G1` on un-homed axes, so the Z raise
+   fails fast as a safety check. Home via
+   [`examples/home_G28_fast.py`](../examples/home_G28_fast.py) (with
+   tips removed) before running the tour.
 2. **Tip pickup** (once) — travel to `(TIP_PICKUP_X, TIP_PICKUP_Y, TRAVEL_Z)`,
    descend to `TIP_PICKUP_Z`, lift. No plunger stroke (pickup is a
    friction-fit, not a piston action).
