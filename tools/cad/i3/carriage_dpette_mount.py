@@ -14,9 +14,10 @@ Two-piece main + cap (shared by both schemes):
     mount plate via 4× M4 screws in a 21 × 13 mm pattern. Has the back
     half of the upper clamp (D-cavity, flat face toward −Y), a vertical
     post, and the lower horseshoe clamp.
-  - **cap**: separate front piece. Mirrors the back-half D-cavity. Bolts
-    to the back half via 2× M3 screws running in +Y to capture the
-    pipette's Ø27 round upper barrel.
+  - **cap**: separate front horseshoe piece. Mirrors the back-half
+    D-cavity. CA-glues / friction-fits to the back half front face to
+    capture the pipette's Ø23.5 upper barrel. Flush with the top plate
+    in Z; narrower in X (~30 mm vs the 35 mm plate); much shorter in Y.
 
 The upper clamp must be two-piece because the dPette+ is one rigid
 unit (lower body, upper barrel, top section all permanently joined),
@@ -104,11 +105,13 @@ POST_X_OFFSET_MM = (
 )
 POST_Y_CENTER_MM = 14.0  # behind upper bore (Y > 13.75) and on top of lower clamp's back wall (Y > 5.75)
 
-# === Upper-clamp split (2-piece, M3 bolts in Y direction) ===
-UPPER_CAP_D_MM = 8.0  # front cap thickness in Y
-UPPER_BOLT_PITCH_X_MM = 28.0  # ±14 mm from bore centre, clear of Ø27 bore
-UPPER_BOLT_HOLE_D_MM = 3.4  # M3 clearance
-UPPER_BOLT_BACK_LEN_MM = 14.0  # bolt thread engagement into back half
+# === Upper-clamp split (2-piece, glue/friction fit, no bolts) ===
+# Cap depth in Y must fully enclose the bore: bore radius ≈ 12 mm
+# (UPPER_CLAMP_BORE_D_MM/2 + clearance/2) + ≥ 2 mm front wall → 14 mm min.
+UPPER_CAP_D_MM = 14.0
+# Cap width in X: narrower than the 35 mm top plate per user spec
+# (~30 mm = bore Ø24 + 3 mm wall each side).
+UPPER_CAP_W_MM = 30.0
 
 # === L-bracket reinforcement (scheme b) — mount-side design knobs ===
 # V-plate hole pattern is imported from measurements.py (VPLATE_TOP_*).
@@ -153,9 +156,7 @@ def _build_top_plate_with_upper_clamp_back():
     )
     plate = plate - bore_full
 
-    # NOTE: M3 cap-bolt clearance holes are intentionally absent. The future
-    # horseshoe clamp design is still TBD — when its geometry is finalized,
-    # add the matching receiving holes here.
+    # Upper clamp cap (horseshoe) glues to the back face — no bolt holes.
 
     return plate
 
@@ -244,16 +245,18 @@ def build_carriage_dpette_mount_main():
 
 
 def build_carriage_dpette_mount_cap():
-    """Build the front cap of the upper clamp.
+    """Build the front cap (horseshoe) of the upper clamp.
 
-    Mirrors the back half's D-cavity. Bolts to the back half from −Y
-    via 2× M3 screws to capture the pipette's Ø27 round upper barrel.
+    Mirrors the back half's D-cavity. Attaches to the back half via CA
+    glue or friction fit (no bolts). Sits flush with the top plate in Z
+    and is narrower in X (~30 mm vs the 35 mm plate). Symmetric about
+    the Y axis; much shorter in Y than the main piece.
     """
-    # Mass: ~3 g PLA (volume ~2.5 cc * 1.24 g/cc).
+    # Mass: ~2 g PLA (volume ~1.6 cc * 1.24 g/cc).
 
-    # Cap occupies Y from −UPPER_CAP_D_MM to 0 (sits in front of back half).
+    # Cap occupies Y from −UPPER_CAP_D_MM to 0, X = ±UPPER_CAP_W_MM/2.
     cap = Pos(0, -UPPER_CAP_D_MM / 2, -TOP_PLATE_T_MM / 2) * Box(
-        TOP_PLATE_W_MM, UPPER_CAP_D_MM, TOP_PLATE_T_MM
+        UPPER_CAP_W_MM, UPPER_CAP_D_MM, TOP_PLATE_T_MM
     )
 
     # D-cavity: half-bore facing +Y (toward back half). Centre at Y=0;
@@ -262,10 +265,6 @@ def build_carriage_dpette_mount_cap():
         UPPER_CLAMP_BORE_D_MM, TOP_PLATE_T_MM + 2, CLAMP_BORE_CLEARANCE_MM
     )
     cap = cap - bore_full
-
-    # NOTE: M3 cap-bolt clearance holes have been removed per user request.
-    # Cap attaches to the back half via CA glue on the D-cavity mating surface
-    # (or by friction fit if the bore clearance is tight enough).
 
     return cap
 
