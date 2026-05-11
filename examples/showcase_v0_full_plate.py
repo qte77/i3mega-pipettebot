@@ -125,16 +125,24 @@ SBS_COL1_Y = (
 )  # 43.0 Marlin = deck col1 (193) - 100 SBS shift - 50 global
 SBS_COL_PITCH = 9.0  # absolute pitch (delta, no offset); subtracted per visit
 
-# Reservoir (front slot; front edge at Y=10, deck X=43-177, Y=10-53;
-# rim H=24, cavity floor=19, cavity depth 5).
-# 8 channels span 63 mm in X; X-center the dPette over the reservoir.
-# Aspirate Y stacked through iterations to -50 mm. Reachable: Marlin Y=0
-# sits 175 mm behind the physical bed front, so Y=-50 is 125 mm before
-# the physical front limit.
+# Reservoir (front slot). 8 channels span 63 mm in X; X-center the
+# dPette over the reservoir (deck-frame X = 43–177 still considered
+# correct). Cavity heights: rim H = 24 mm, floor at Z = 19 mm, depth 5 mm.
+#
+# Y anchor (per user calibration, 2026-05-12): the reservoir sits
+# RIGHT ABOVE Marlin Y = -50. That is:
+#   - 5 cm in front of Marlin Y = 0 (the Marlin home corner, which is
+#     itself 17.5 cm behind the physical bed front).
+#   - 12.5 cm behind the physical bed front (Y = -175 = mechanical limit).
+#   - Comfortably reachable with 125 mm of forward-travel margin.
+#
+# The earlier deck-frame slot extent (deck Y = 10–53) DID NOT match
+# physical reality — kept only as a historical placeholder in
+# docs/deck-layout.md. Trust the Marlin-Y anchor below for runtime.
 RESERVOIR_REF_X = 78.5 + DECK_OFFSET_X  # 103.5; 110 X-center - 31.5 half span
 RESERVOIR_REF_Y = (
-    -50.0 + DECK_OFFSET_Y
-)  # -100.0 Marlin; aspirate at 7.5 cm behind physical bed front
+    0.0 + DECK_OFFSET_Y
+)  # -50.0 Marlin; "right above the reservoir" per user spec
 
 # Tip box (back-right slot; front edge at Y=80, deck X=134-215, Y=80-200,
 # H >= 59 with loaded tips).
