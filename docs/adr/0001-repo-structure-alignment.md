@@ -83,5 +83,5 @@ Each numbered step is one PR. Steps 1–3 in so101 can interleave with i3mega's 
 
 - This ADR — [docs/adr/0001-repo-structure-alignment.md](./0001-repo-structure-alignment.md)
 - Decision context captured in handoff session for [`i3mega-pipettebot`](https://github.com/Lambda-Biolab/i3mega-pipettebot), 2026-05-11
-- Cross-repo tracking issue in so101: see [Lambda-Biolab/so101-biolab-automation/issues](https://github.com/Lambda-Biolab/so101-biolab-automation/issues) for the tracking issue opened alongside this ADR
+- Cross-repo tracking issue in so101: [Lambda-Biolab/so101-biolab-automation#4](https://github.com/Lambda-Biolab/so101-biolab-automation/issues/4)
 - AGENTS.md doc hierarchy convention: this is the first ADR; future architecture decisions go in `docs/adr/NNNN-<slug>.md`
