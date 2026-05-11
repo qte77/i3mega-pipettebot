@@ -6,10 +6,11 @@ PRECONDITION — READ BEFORE RUNNING:
 
   TIPS MUST BE REMOVED from the dPette before this script starts.
 
-  Phase 1 issues a full `G28`, which homes Z to its calibrated zero.
-  Per docs/calibration.md, Z=0 = tip-end-on-deck WITH tips loaded — so
-  if you run this with tips still mounted, the Z homing routine drives
-  the tip into the deck. Destructive.
+  Phase 1 issues `G28 X Y Z` (explicit axes — plain `G28` on the
+  AI3M Marlin variant has been observed to skip Z), which homes Z to
+  its calibrated zero. Per docs/calibration.md, Z=0 = tip-end-on-deck
+  WITH tips loaded — so if you run this with tips still mounted, the
+  Z homing routine drives the tip into the deck. Destructive.
 
   Workflow:
     1. Remove tips from the dPette manually (or let the prior tour run
@@ -31,8 +32,10 @@ above any prior liquid line during dispense.
 
 Phases::
 
-    1. bootstrap     — M203/M201 bump, full G28 (tips MUST be removed
-                       first — see PRECONDITION), G1 Z TRAVEL_Z.
+    1. bootstrap     — M203/M201 bump, `G28 X Y Z` (explicit axes;
+                       plain `G28` has been observed to skip Z on the
+                       AI3M Marlin variant — tips MUST be removed
+                       first, see PRECONDITION), G1 Z TRAVEL_Z.
     2. tip pickup    — travel to (TIP_PICKUP_X, TIP_PICKUP_Y, TRAVEL_Z),
                        descend to TIP_PICKUP_Z, lift.
     3. column tour   — for col in 1..12 (back→front):
@@ -64,11 +67,12 @@ Optional:
 **Safety**: the deck holds an SBS plate (back-left, H = 13 mm), tip box
 (back-right, H ≥ 59 mm including loaded tips — design minimum), and
 reservoir (front, rim H = 24 mm, cavity floor at Z = 19 mm). `TRAVEL_Z
-= 125` mm clears the tip box by 66 mm. **Phase 1 runs full `G28` — TIPS
+= 125` mm clears the tip box by 66 mm. **Phase 1 runs `G28 X Y Z` — TIPS
 MUST BE REMOVED FIRST** (Z=0 = tip-on-deck per the calibrated zero).
-After homing, Z lifts to TRAVEL_Z; from that point on the tip is clear
-of every deck slot for the rest of the tour. v0 has no software
-soft-limit enforcement (see `.claude/rules/motion-safety.md`).
+Plain `G28` skips Z on the AI3M Marlin variant; explicit axes force
+all three to home. After homing, Z lifts to TRAVEL_Z; from that point
+on the tip is clear of every deck slot for the rest of the tour. v0
+has no software soft-limit enforcement (see `.claude/rules/motion-safety.md`).
 
 **Side effect**: raises Marlin's Z max feedrate (`M203 Z20`) and Z
 acceleration (`M201 Z200`) for snappier vertical motion. Lasts until
@@ -329,11 +333,12 @@ def _run(
 
     !!! PRECONDITION !!!
     TIPS MUST BE REMOVED from the dPette before this function runs.
-    Phase 1 issues a full `G28` to home all axes. Z=0 is calibrated to
-    tip-end-on-deck (per docs/calibration.md), so Z homing drives any
-    mounted tip into the deck — destructive. After phase 1 the Z is
-    raised to TRAVEL_Z, then the tour picks up tips from the box in
-    phase 2.
+    Phase 1 issues `G28 X Y Z` (explicit axes — plain `G28` on the
+    AI3M Marlin variant has been observed to skip Z). Z=0 is
+    calibrated to tip-end-on-deck (per docs/calibration.md), so Z
+    homing drives any mounted tip into the deck — destructive. After
+    phase 1 the Z is raised to TRAVEL_Z, then the tour picks up tips
+    from the box in phase 2.
     """
     _phase_comment(
         gcode_out,
@@ -344,15 +349,18 @@ def _run(
 
     _phase_comment(
         gcode_out,
-        "\n; ===== phase 1: bootstrap (G28 + Z raise) =====\n"
+        "\n; ===== phase 1: bootstrap (G28 X Y Z + Z raise) =====\n"
         "; PRECONDITION: tips MUST BE REMOVED from the dPette before this\n"
         "; G28 fires. Z=0 is calibrated to tip-end-on-deck per\n"
         "; docs/calibration.md, so G28 Z drives the tip into the deck if\n"
         "; tips are still mounted — destructive. After G28 lands, phase 1\n"
         "; raises Z to TRAVEL_Z; you can re-mount tips manually then, OR\n"
-        "; let the tour's tip-pickup phase load tips from the box.\n",
+        "; let the tour's tip-pickup phase load tips from the box.\n"
+        ";\n"
+        "; G28 X Y Z (explicit axes) — observed that plain `G28` on this\n"
+        "; AI3M firmware skips Z. Listing axes forces all three to home.\n",
     )
-    gsend(link, "G28", gcode_out=gcode_out, max_secs=120)
+    gsend(link, "G28 X Y Z", gcode_out=gcode_out, max_secs=120)
     gsend(link, "M400", gcode_out=gcode_out)
     gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
