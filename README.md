@@ -149,7 +149,7 @@ but deliberately **not** part of v0.
 - [docs/calibration.md](docs/calibration.md) — well-A1 origin procedure, 9 mm pitch check
 - [docs/marlin-commands.md](docs/marlin-commands.md) — Marlin G/M-code reference + i3 Mega coordinate orientation
 - [docs/3d-parts.md](docs/3d-parts.md) — CAD pipeline design rationale, payload + Z envelope math, SBS labware reference
-- [docs/sbc-deployment.md](docs/sbc-deployment.md) — Path 2 (SBC-on-printer) deployment
+- [docs/sbc-deployment.md](docs/sbc-deployment.md) — Path 2 (Single-Board Computer on-printer) deployment
 - [AGENTS.md](AGENTS.md) — agent rules, decision framework, architecture
 - [AGENT_LEARNINGS.md](AGENT_LEARNINGS.md) — gotchas as we discover them
 - [AGENT_REQUESTS.md](AGENT_REQUESTS.md) — deferred features and questions
