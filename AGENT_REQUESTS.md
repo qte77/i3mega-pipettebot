@@ -31,7 +31,7 @@ points at the issue numbers. Edit-and-commit lifecycle.
 
 ## Hardware
 
-- [ ] Pipette mount STL + BOM — tracked as #40 (carriage measurement), #41 (barrel-bore module), #42 (payload tests), #43 (vendor scan)
+- [ ] Pipette mount STL + BOM (#4) — STL ships in two variants (`build_carriage_dpette_mount_main` scheme a, `build_carriage_dpette_mount_main_lbracket` scheme b) in [`tools/cad/i3/carriage_dpette_mount.py`](tools/cad/i3/carriage_dpette_mount.py); **remaining: BOM** (M3/M4 hardware spec, printed-parts list with material + layer height + slicer profile).
 - [ ] Level-shifter PCB (5 V ↔ 3.3 V) — for Stage 2 UART tap
 
 ## 3D parts pipeline (`tools/cad/`)
@@ -39,12 +39,15 @@ points at the issue numbers. Edit-and-commit lifecycle.
 Open work moved to GitHub issues for visibility — see also
 [`docs/3d-parts.md`](docs/3d-parts.md):
 
-- [#40](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/40) — Measure AI3M carriage screw pattern (blocks real mount geometry)
-- [#41](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/41) — Extract barrel-bore primitives into reusable module
-- [#42](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/42) — Hypothesis tests for mount payload budget
 - [#43](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/43) — Vendor real dPette barrel scan from so101
 - [#44](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/44) — Confirm OrcaSlicer install method
 - [#45](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/45) — ADR: Arduino host architecture (PC-host → MCU-host)
+
+Closed via [#47](https://github.com/Lambda-Biolab/i3mega-pipettebot/pull/47), [#48](https://github.com/Lambda-Biolab/i3mega-pipettebot/pull/48), [#49](https://github.com/Lambda-Biolab/i3mega-pipettebot/pull/49):
+
+- [x] [#40](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/40) — Measure AI3M carriage screw pattern → locked in [`tools/cad/measurements.py`](tools/cad/measurements.py)
+- [x] [#41](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/41) — Extract barrel-bore primitives → [`tools/cad/barrel_bore.py::make_clamp_bore`](tools/cad/barrel_bore.py)
+- [x] [#42](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/42) — Hypothesis-style payload-budget tests → [`tests/tools/cad/i3/test_carriage_dpette_mount.py`](tests/tools/cad/i3/test_carriage_dpette_mount.py)
 
 ## SBC deployment (Path 2)
 
