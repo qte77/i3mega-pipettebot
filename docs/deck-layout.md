@@ -105,7 +105,7 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 | `TRAVEL_Z` | **125** | Bumped +50 from previous 75 ("Z OVERALL +5 cm"); clears tip box top (59 mm) by 66 mm |
 | `RESERVOIR_Z` | **70** | Aspirate descent stop; 46 mm above 24 mm reservoir rim — no actual immersion |
 | `WELL_Z` | **72** | Dispense descent stop; **invariant `WELL_Z ≥ RESERVOIR_Z`** — tip is never lower at dispense than at aspirate |
-| `RESERVOIR_REF_Y` | -50 (slot pre-offset) → **-100 (Marlin)** | Aspirate at 7.5 cm behind physical bed front. 75 mm of margin before the physical Y front limit |
+| `RESERVOIR_REF_Y` | 0 (slot pre-offset) → **-50 (Marlin)** | Aspirate at 5 cm behind Marlin Y=0 = 12.5 cm behind physical bed front. 125 mm of margin before the physical Y front limit (Y=-175) |
 | `SBS_COL1_Y` | 193 (deck) → **43** (Marlin) | Back-most SBS column = first visit. Net shift = −100 (SBS-only bed shift) + −50 (global `DECK_OFFSET_Y`) = −150. Col 12 lands at Marlin Y=−56 — 119 mm before physical bed front limit |
 | `TIP_PICKUP_X` | 142.5 (deck) → 167.5 (Marlin) | Outer-left of tip box (134) + 8.5 mm leftmost-tip-column offset |
 | `TIP_PICKUP_Y` | 189.5 (deck) → **139.5** (Marlin) | Back-most tip column; minimizes Y travel into SBS column 1 |
@@ -147,15 +147,12 @@ The full-plate tour ([`examples/showcase_v0_full_plate.py`](../examples/showcase
 runs in four phases (each phase is delimited by a `; ===== phase N =====`
 comment in the tee'd G-code):
 
-1. **Bootstrap** — `G28 X Y` (XY re-reference, safe with tips loaded
-   because it doesn't touch Z), then `G1` to `TRAVEL_Z`. **No Z home
-   here**: `G28 Z` (or full `G28`) drives the calibrated tip-end into
-   the deck (per [`calibration.md`](calibration.md)), destructive when
-   tips are mounted. **Z must already be referenced** before this
-   phase — the `G1 Z` raise relies on tracked Z, and Marlin refuses
-   `G1` on un-homed axes. Reference Z once per power cycle via
-   [`examples/home_G28_fast.py`](../examples/home_G28_fast.py) with no
-   tips loaded.
+1. **Bootstrap** — full `G28`, then `G1` to `TRAVEL_Z`. **Precondition:
+   tips MUST be removed from the dPette before this phase**, because
+   `Z=0` is calibrated to tip-end-on-deck (per
+   [`calibration.md`](calibration.md)) — `G28 Z` would drive any
+   mounted tip into the deck. After homing, the Z raise lifts the
+   carriage clear; tips are then picked up from the box in phase 2.
 2. **Tip pickup** (once) — travel to `(TIP_PICKUP_X, TIP_PICKUP_Y, TRAVEL_Z)`,
    descend to `TIP_PICKUP_Z`, lift. No plunger stroke (pickup is a
    friction-fit, not a piston action).
