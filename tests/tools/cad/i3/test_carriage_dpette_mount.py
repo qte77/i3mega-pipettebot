@@ -75,11 +75,17 @@ def test_payload_budget_under_300g():
 
 
 def test_main_height_within_z_envelope():
-    """Main piece height must keep the lower clamp within reach of the bed."""
+    """Main piece height must keep the lower clamp within reach of the bed.
+
+    Cap derived from measured UPPER_TO_LOWER_SEPARATION_MM (80.5 mm) plus
+    top plate + lower clamp stack (~5 mm) = ~86 mm, with ~14 mm headroom
+    for future minor adjustments. The real i3 Mega Z envelope is 210 mm,
+    so this is a runaway-growth guard, not a bed-clearance constraint.
+    """
     shape = mount.build_carriage_dpette_mount_main()
     bbox = shape.bounding_box()
     height = bbox.size.Z
-    assert height < 75, f"Mount main is {height:.1f} mm tall — exceeds Z envelope"
+    assert height < 100, f"Mount main is {height:.1f} mm tall — exceeds Z envelope"
 
 
 def test_cap_height_matches_top_plate():

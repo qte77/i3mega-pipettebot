@@ -47,11 +47,12 @@ Usage:
 import sys
 from pathlib import Path
 
-from build123d import Box, Cylinder, Pos, Rot
+from build123d import Box, Cylinder, Pos
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from barrel_bore import make_clamp_bore
 from measurements import (
+    HOLE_FROM_FRONT_MM,
     LOWER_CLAMP_D_MM,
     LOWER_CLAMP_H_MM,
     LOWER_CLAMP_W_MM,
@@ -77,12 +78,26 @@ sys.path.pop()
 
 # === Mount geometry (parametric — design knobs for this specific mount) ===
 TOP_PLATE_W_MM = 35.0  # X width — covers hole pattern + Ø32 upper ring + cap bolts
-TOP_PLATE_D_MM = 30.0  # Y depth (back half side; cap adds more in −Y)
-TOP_PLATE_T_MM = 8.0  # thickness; doubles as upper-clamp ring height
+# Mount extends FRONT_OVERHANG_MM past the carriage's front edge so there's more
+# material between the upper-clamp bore (at Y = 0) and the M4 mounting holes.
+# Back edge of the mount aligns with the carriage's back edge.
+FRONT_OVERHANG_MM = 15.0
+# TOP_PLATE_D_MM = FRONT_OVERHANG + HOLE_FROM_FRONT + SCREW_PITCH_Y + HOLE_FROM_BACK
+#                = 15 + 45 + 13 + 12 = 85
+TOP_PLATE_D_MM = 85.0
+TOP_PLATE_T_MM = 5.0  # thickness; doubles as upper-clamp ring height
 CLAMP_BORE_CLEARANCE_MM = 0.5  # diametral; tight clamp on Ø27 barrel
 CLAMP_WALL_MM = 2.5  # wall thickness around bores
 LOWER_CLAMP_H_PLUS_MM = 1.0  # extra grip beyond manifold height
-POST_W_MM = 6.0  # vertical post X (per post; two posts at ±X_OFFSET)
+# J-hooks at lower-clamp side walls: prevent yaw rotation of the pipette body.
+# Each side wall extends LOWER_CLAMP_HOOK_OUT_MM in -Y, then turns
+# LOWER_CLAMP_HOOK_IN_MM toward the centerline. Manifold must be inserted
+# from above (+Z) because the front gap shrinks below 78 mm.
+LOWER_CLAMP_HOOK_OUT_MM = 20.0  # forward arm length (Y)
+LOWER_CLAMP_HOOK_IN_MM = (
+    17.5  # inward hook span toward centerline (X); tip face = 20 mm total
+)
+POST_W_MM = 5.0  # vertical post X (per post; two posts at ±X_OFFSET)
 POST_D_MM = 12.0  # vertical post Y
 POST_X_OFFSET_MM = (
     18.0  # ±18 mm — outside upper-bore radius (13.75 mm), inside top plate (±17.5 mm)
@@ -115,12 +130,17 @@ def _build_top_plate_with_upper_clamp_back():
         TOP_PLATE_W_MM, TOP_PLATE_D_MM, TOP_PLATE_T_MM
     )
 
-    # 4× M4 clearance holes for carriage-mount screws
+    # 4× M4 clearance holes for carriage-mount screws.
+    # Anchored such that the mount's front edge sits FRONT_OVERHANG_MM in front
+    # of the carriage's front edge; HOLE_FROM_FRONT_MM is the carriage's
+    # front-edge → first-hole distance, so on the mount the first hole sits at
+    # Y = FRONT_OVERHANG_MM + HOLE_FROM_FRONT_MM.
+    hole_y_center = FRONT_OVERHANG_MM + HOLE_FROM_FRONT_MM + SCREW_PITCH_Y_MM / 2
     for sx in (-1, 1):
         for sy in (-1, 1):
             hole = Pos(
                 sx * SCREW_PITCH_X_MM / 2,
-                TOP_PLATE_D_MM / 2 + sy * SCREW_PITCH_Y_MM / 2,
+                hole_y_center + sy * SCREW_PITCH_Y_MM / 2,
                 -TOP_PLATE_T_MM / 2,
             ) * Cylinder(SCREW_HOLE_D_MM / 2, TOP_PLATE_T_MM + 2)
             plate = plate - hole
@@ -133,21 +153,21 @@ def _build_top_plate_with_upper_clamp_back():
     )
     plate = plate - bore_full
 
-    # 2× M3 clearance holes through back half (Y axis cylinders),
-    # at X = ±14 mm, Z = mid-plate, running from Y=0 to Y=TOP_PLATE_D_MM
-    for sx in (-1, 1):
-        bolt_hole = (
-            Pos(sx * UPPER_BOLT_PITCH_X_MM / 2, TOP_PLATE_D_MM / 2, -TOP_PLATE_T_MM / 2)
-            * Rot(90, 0, 0)
-            * Cylinder(UPPER_BOLT_HOLE_D_MM / 2, TOP_PLATE_D_MM + 2)
-        )
-        plate = plate - bolt_hole
+    # NOTE: M3 cap-bolt clearance holes are intentionally absent. The future
+    # horseshoe clamp design is still TBD — when its geometry is finalized,
+    # add the matching receiving holes here.
 
     return plate
 
 
 def _build_lower_clamp(z_center: float):
-    """Open-horseshoe clamp around the fixed-tip manifold (78 × 11 × 5 mm)."""
+    """Horseshoe clamp + J-hooks around the fixed-tip manifold (78 × 11 × 5 mm).
+
+    Back wall + two side walls form the horseshoe (open to -Y). Each side
+    wall then extends LOWER_CLAMP_HOOK_OUT_MM forward and turns
+    LOWER_CLAMP_HOOK_IN_MM inward — the resulting J prevents yaw rotation
+    of the pipette. Manifold inserts from above.
+    """
     bore_w = LOWER_CLAMP_W_MM + CLAMP_BORE_CLEARANCE_MM
     bore_d = LOWER_CLAMP_D_MM + CLAMP_BORE_CLEARANCE_MM
     outer_w = bore_w + 2 * CLAMP_WALL_MM
@@ -161,7 +181,25 @@ def _build_lower_clamp(z_center: float):
     # Slot opening to −Y: removes the front wall, exposing the bore
     slot_d = outer_d / 2 + 1
     slot = Pos(0, -slot_d / 2, z_center) * Box(bore_w, slot_d, h + 2)
-    return ring - slot
+    ring = ring - slot
+
+    # J-hooks: forward arm + inward tip at each side, OR'd onto the horseshoe.
+    arm_x_center = (bore_w + outer_w) / 4  # = mid of side wall in |X|
+    arm_y_center = -outer_d / 2 - LOWER_CLAMP_HOOK_OUT_MM / 2
+    # Tip overlaps with arm at the corner (spans inward from outer wall edge)
+    tip_x_width = LOWER_CLAMP_HOOK_IN_MM + CLAMP_WALL_MM
+    tip_x_center = outer_w / 2 - tip_x_width / 2
+    tip_y_center = -outer_d / 2 - LOWER_CLAMP_HOOK_OUT_MM + CLAMP_WALL_MM / 2
+    for sx in (-1, 1):
+        arm = Pos(sx * arm_x_center, arm_y_center, z_center) * Box(
+            CLAMP_WALL_MM, LOWER_CLAMP_HOOK_OUT_MM, h
+        )
+        tip = Pos(sx * tip_x_center, tip_y_center, z_center) * Box(
+            tip_x_width, CLAMP_WALL_MM, h
+        )
+        ring = ring + arm + tip
+
+    return ring
 
 
 def _build_posts(z_top: float, z_bottom: float):
@@ -225,16 +263,9 @@ def build_carriage_dpette_mount_cap():
     )
     cap = cap - bore_full
 
-    # 2× M3 clearance holes through cap (Y axis cylinders)
-    for sx in (-1, 1):
-        bolt_hole = (
-            Pos(
-                sx * UPPER_BOLT_PITCH_X_MM / 2, -UPPER_CAP_D_MM / 2, -TOP_PLATE_T_MM / 2
-            )
-            * Rot(90, 0, 0)
-            * Cylinder(UPPER_BOLT_HOLE_D_MM / 2, UPPER_CAP_D_MM + 2)
-        )
-        cap = cap - bolt_hole
+    # NOTE: M3 cap-bolt clearance holes have been removed per user request.
+    # Cap attaches to the back half via CA glue on the D-cavity mating surface
+    # (or by friction fit if the bore clearance is tight enough).
 
     return cap
 

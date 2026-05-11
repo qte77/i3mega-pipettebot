@@ -4,6 +4,107 @@ Gotchas and non-obvious lessons we hit. Keep entries short, dated, and
 actionable. Add a new entry every time you'd say "I wish someone had told me
 that earlier."
 
+## 2026-05-11 — ocp-vscode browser viewer is the fastest design-feedback loop we have
+
+`ocp-vscode`'s standalone server (`python -m ocp_vscode` → browser at
+`http://127.0.0.1:3939/viewer`) is the highest-bandwidth way to iterate
+on build123d parts WITH a non-programmer in the loop. The loop is:
+
+1. Push a part to the viewer: `tools/cad/view.py <part_name>` calls
+   `ocp_vscode.show(shape, names=[name])`.
+2. User clicks faces in the browser; the bottom-left *Data* tab shows
+   each face's area, normal, and bounding box.
+3. User describes a change in natural terms ("make the top plate 5 mm
+   thick"); agent edits a `_MM` constant in the source.
+4. Re-push, re-screencap. Loop is < 5 s per iteration.
+
+The agent can `screencapture -x` the browser to see the same view the
+user sees. Use `osascript` to raise Brave (or whatever browser) to the
+front first, then capture — otherwise VS Code or another app may be in
+focus. Note: the viewer drops state on a new tab/reconnect (shows the
+default OCP logo); re-push the part after any reconnect.
+
+**Why this matters**: STEP/STL export gives a "dumb solid" — FreeCAD
+won't reverse-engineer sketches from it. The build123d Python source IS
+the parametric model. Trying to add click-and-drag CAD editing on top
+of STEP files burns hours and doesn't work. The viewer + Python-edit
+loop is what's actually productive.
+
+Follow-up to formalize this workflow: see [#69](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/69).
+
+## 2026-05-11 — PrusaSlicer CLI does NOT auto-arrange multiple STL inputs
+
+Symptom: `prusa-slicer --slice a.stl b.stl c.stl d.stl -o out.gcode`
+appears to slice all four, but the output G-code only contains one
+piece's toolpath (the rest stacked at origin and got merged or
+clipped). Only one part actually prints on the bed; the others are
+silently dropped.
+
+Root cause: the CLI loads each STL as a separate object but doesn't
+run the GUI's auto-arrange pass. Pieces overlap at origin, and the
+slicer's boolean union (or simply the first non-overlapping mesh wins)
+produces a single-piece G-code.
+
+**Solution**: bake the bed layout into a SINGLE merged STL via
+build123d, with **bbox-aware** positions for each piece:
+
+```python
+def position_at_bed(shape, target_x, target_y, target_z_min=0.0):
+    bb = shape.bounding_box()
+    cx, cy = (bb.min.X + bb.max.X) / 2, (bb.min.Y + bb.max.Y) / 2
+    return Pos(target_x - cx, target_y - cy, target_z_min - bb.min.Z) * shape
+```
+
+**Subtle gotcha**: do not use the naïve `Pos(target_x, target_y, 0)
+* shape`. That puts the part's CAD ORIGIN at the target, not its
+center, so parts whose CAD frames don't sit at their bbox center will
+overlap each other. We hit this exactly: top plate spans Y=[0, 85] in
+CAD (origin at front edge, not center), naïve translation placed it
+on top of the lower clamp.
+
+**Second subtle gotcha**: PrusaSlicer auto-centers the *merged* STL on
+the bed regardless of input coords, so absolute positions from
+`position_at_bed` get shifted. Layout validation by G-code coordinate
+ranges must account for this shift (or compute bounds *after* slicing).
+
+The orchestrator lives in `tools/slicer/print_carriage_assembly.py`.
+
+## 2026-05-11 — Minimal PrusaSlicer profile (.ini via `--load`) silently drops bed heating
+
+Symptom: bed never heats during a print sliced with our minimal
+`tools/slicer/profiles/pla_plus_02mm.ini`. The profile has
+`bed_temperature = 60` in its `[filament]` section, but the resulting
+G-code has only `M104` (nozzle) — no `M140`/`M190` (bed).
+
+Root cause: PrusaSlicer's `--load` populates SOME config keys but
+silently ignores others when the profile is minimal. Without an
+explicit `start_gcode` block, the slicer emits a default start sequence
+that does NOT include bed heating. Filament temperatures in the
+`[filament]` section don't propagate either; the slicer uses internal
+defaults (e.g., 200°C nozzle vs the profile's 210°C).
+
+**Solution**: pass print settings as CLI flags, NOT via the .ini
+profile. The flags reliably take effect:
+
+```bash
+prusa-slicer --slice \
+  --temperature 210 --first-layer-temperature 215 \
+  --bed-temperature 60 --first-layer-bed-temperature 65 \
+  --start-gcode "M140 S[first_layer_bed_temperature]
+M104 S[first_layer_temperature]
+G28
+M190 S[first_layer_bed_temperature]
+M109 S[first_layer_temperature]
+G92 E0" \
+  -o out.gcode input.stl
+```
+
+Use **actual newline characters** in `--start-gcode` (Python string
+`"\n"`, NOT `"\\n"` — that latter passes literal backslash-n through to
+the .gcode verbatim, which the printer can't interpret). Placeholders
+like `[first_layer_bed_temperature]` ARE supported in CLI start_gcode
+and get substituted at slice time.
+
 ## 2026-05-09 — pyserial 3.5 cannot open 250000 baud on Linux Python builds without `termios.B250000`
 
 Symptom: `serial.Serial(port, 250000, timeout=...)` raises

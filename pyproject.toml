@@ -49,6 +49,7 @@ dev = [
 ]
 cad = [
     "build123d>=0.10",
+    "ocp-vscode>=2.5",
 ]
 
 [tool.hatch.metadata]
