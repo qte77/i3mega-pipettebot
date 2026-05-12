@@ -1,7 +1,7 @@
 ---
 title: "Deck layout"
 status: "DRAFT"
-updated: "2026-05-12"
+updated: "2026-05-13"
 owner: "lambda biolab"
 ---
 
@@ -60,11 +60,11 @@ override them.
 
 | Anchor | Marlin X | Marlin Y | Transit Z | Dive Z |
 |---|---|---|---|---|
-| Home / park | 0 | 0 | 125 | 74.25 (PARK_Z) |
-| Reservoir aspirate | **155** | **115** | 125 (TRAVEL_Z) | **70** |
-| SBS col 1 (first dispense) | **50** | **190** | 125 (TRAVEL_Z) | **70** |
-| SBS col 11 (last dispense) | 50 | **90** | 125 (TRAVEL_Z) | 70 |
-| Tip pickup | **155** | **217.5** | 90 (pre) / 140 (lift) | **70** |
+| Home / park | 0 | 0 | 95 | 74.25 (PARK_Z) |
+| Reservoir aspirate | **155** | **115** | 95 (TRAVEL_Z) | **70** |
+| SBS col 1 (first dispense) | **50** | **190** | 95 (TRAVEL_Z) | **70** |
+| SBS col 11 (last dispense) | 50 | **90** | 95 (TRAVEL_Z) | 70 |
+| Tip pickup | **155** | **217.5** | combined-axis approach | **70** (engagement) / 140 (lift) |
 
 SBS pitch is **−10 mm/cycle** (Y decreases each visit). **11-cycle**
 ladder: **190, 180, 170, 160, 150, 140, 130, 120, 110, 100, 90**.
@@ -91,11 +91,10 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 |---|---|---|
 | `DECK_OFFSET_X` | **+25** | Marlin commanded X = deck X + 25 (bed sits 2.5 cm right of nominal deck-frame plan) |
 | `DECK_OFFSET_Y` | **0** | Y convention is positive 0–250 (Y=0 back, Y=250 front); no offset needed |
-| `TRAVEL_Z` | **125** | Transit altitude — all inter-slot XY motion happens here (above every slot, no collision) |
+| `TRAVEL_Z` | **95** | Transit altitude — all inter-slot XY motion happens here. Clears SBS plate (top Z=13) by 82 mm, reservoir rim (Z=24) by 71 mm. The column tour never crosses the tip box (tip box Y=217.5 vs SBS Y_max=190), so the 36 mm clearance over the 59 mm loaded-tip-box minimum only applies to phase 2 |
 | `WELL_Z` | **70** | Dive Z into SBS well; **invariant `WELL_Z ≥ RESERVOIR_Z`** (equality here) |
 | `RESERVOIR_Z` | **70** | Dive Z into reservoir |
-| `TIP_PICKUP_PRE_Z` | **90** | Defensive Z before XY travel to tip box (descended from `TRAVEL_Z`=125 to 90, still above tip box) |
-| `TIP_PICKUP_Z` | **70** | Engagement Z; body bottom on tip tops |
+| `TIP_PICKUP_Z` | **70** | Engagement Z; body bottom on tip tops (combined-axis target from `(0, 0, TRAVEL_Z)`) |
 | `TIP_PICKUP_LIFT_Z` | **140** | Post-engagement lift with tips loaded; clears tip box + tips |
 | `TIP_PICKUP_X` | 130 (slot pre-offset) → **155 (Marlin)** | Per user spec (shared with reservoir X) |
 | `TIP_PICKUP_Y` | 217.5 (slot pre-offset) → **217.5 (Marlin)** | Per user spec |
@@ -109,8 +108,9 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 
 > ℹ **Z-first transit pattern** (collision-safe): every slot visit
 > follows `G1 Z=TRAVEL_Z` → `G1 X Y` → `G1 Z=dive` → `G1 Z=TRAVEL_Z`.
-> XY motion ALWAYS happens at `TRAVEL_Z=125`, which is above every
-> slot — the carriage can never clip a fixture while transiting. The
+> XY motion ALWAYS happens at `TRAVEL_Z=95`, which is above every
+> slot the column tour visits (SBS plate Z=13, reservoir Z=24). The
+> tip box (Z=59 loaded) is not crossed by the column tour. The
 > combined `G1 X Y Z` form is avoided. `visit_reservoir` and
 > `visit_column` both delegate to a single `_visit_xy_dive(x, y, dive_z)`
 > helper differing only in target XY and dive Z.
@@ -149,14 +149,16 @@ comment in the tee'd G-code):
    would drive any mounted tip into the deck. After homing, the Z
    raise lifts the carriage clear; tips are then picked up from the
    box in phase 2.
-2. **Tip pickup** (once) — six-step sequence per user spec:
-   1. `G1 Z90` (defensive pre-XY descent from `TRAVEL_Z=125`).
-   2. `G1 X155 Y190` at Z=90 (travel to tip box).
-   3. `G1 Z70` (engage tips — friction-fit, no plunger stroke).
-   4. `G1 Z140` (lift with tips loaded — clears tip box + tips).
-   5. `G1 X155 Y115` at Z=140 (travel to reservoir; X stays at 155,
+2. **Tip pickup** (once) — four-step sequence per user spec. After
+   phase 1, the head sits at `(0, 0, TRAVEL_Z=95)`; this phase opens
+   with a single combined XYZ move straight to tip engagement:
+   1. `G1 X155 Y217.5 Z70 F12000` (combined-axis approach to tip
+      engagement; Z descends 25 mm over ~268 mm of XY travel, body
+      stays ≥ 11 mm above tip tops inside the tip-box footprint).
+   2. `G1 Z140` (lift with tips loaded — clears tip box + tips).
+   3. `G1 X155 Y115` at Z=140 (travel to reservoir; X stays at 155,
       only Y moves — tip box and reservoir share X).
-   6. `G1 Z125` (descend to `TRAVEL_Z`, hand off to cycle 1's Z-first
+   4. `G1 Z95` (descend to `TRAVEL_Z`, hand off to cycle 1's Z-first
       transit pattern).
 3. **Column tour** (11×) — for each SBS column N, in order 1..11, the
    `_visit_xy_dive` helper runs twice per cycle (once for reservoir,
@@ -235,7 +237,7 @@ M201 Z200                    ; bump Z max acceleration
 M211 S0                      ; disable soft endstops (defensive)
 G28 X Y Z                    ; home all axes — TIPS MUST BE REMOVED
 M400
-G1 Z125 F1200                ; raise to TRAVEL_Z before any XY motion
+G1 Z95 F1200                 ; raise to TRAVEL_Z before any XY motion
 M400
 ```
 
@@ -255,10 +257,14 @@ would otherwise drag any tip extension through near-home obstacles.
 2. **Reservoir at Y=115, SBS col 1 at Y=190** — both well within the
    0–250 Y range. Reservoir sits 75 mm back of SBS col 1, so the
    reservoir→col-1 transition is a single forward Y move.
-3. **`TRAVEL_Z = 125`** = previous 75 plus a global `+50 mm` ("Z OVERALL
-   +5 cm" per user spec). Clears the 59 mm tip-box minimum by 66 mm.
-   Every descend point (`RESERVOIR_Z`, `WELL_Z`, `TIP_PICKUP_Z`) also
-   bumped +50; v0 sim no longer immerses into any slot.
+3. **`TRAVEL_Z = 95`** = `WELL_Z + 25 mm` (25 mm transit margin above
+   the reservoir/well dive Z). Reservoir↔SBS transit doesn't cross the
+   tip box (tip box Y=217.5 vs SBS Y_max=190), so the 36 mm clearance
+   over the 59 mm tip-box minimum applies only to the one-time
+   tip-pickup combined-axis approach — comfortably safe. The previous
+   125 mm transit altitude paid an extra 30 mm of Z stroke per dive (4
+   per cycle × 30 mm = 120 mm/cycle), saving ~6 s per cycle at the
+   Z_FEED=20 mm/s leadscrew cap.
 4. **End with `G1` to home corner**, not `G28`. The tour does pure G1
    moves with no expected step loss, so a closing `G1 X0 Y0 Z PARK_Z`
    lands the carriage at the home corner ~20 s faster than re-homing
