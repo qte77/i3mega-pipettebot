@@ -67,22 +67,29 @@ eval "$(uv run python tools/preflight.py --export)" \
   && uv run python examples/showcase_v0_pipette_sim.py
 ```
 
-Then the demo. v0 ships two hardware examples that drive the gantry
-and tee the G-code stream to disk for replay/SD use. Pipette plunger
-action is simulated with gantry Z motion (no real dPette command is
-sent — see `AGENT_REQUESTS.md` Stage 2a for the firmware path that
-unlocks real M820 pipette pass-through):
+Then the demo. v0 ships hardware examples that drive the gantry
+(and, for the canonical end-to-end demo, also the dPette) and tee the
+Marlin stream to disk for replay/SD use. **Precondition for all
+full-plate demos: REMOVE TIPS from the dPette before running.** Phase
+1 issues `G28 X Y Z` — Z homes to its calibrated tip-on-deck zero,
+which would drag any mounted tip into the deck.
 
 ```bash
-# back-well ↔ front-well pipetting cycle (older two-well demo)
+# back-well ↔ front-well pipetting cycle (older two-well demo, simulated)
 uv run examples/showcase_v0_pipette_sim.py
 
-# full 96-well plate fill — tip pickup once, then 12 SBS columns
-# back-to-front with a reservoir round-trip per column.
-# PRECONDITION: REMOVE TIPS from the dPette before running. Phase 1
-# issues full G28 — Z homes to the calibrated tip-on-deck zero, which
-# would drag any mounted tip into the deck.
+# Full 96-well plate fill, gantry-only (aspirate/dispense simulated via
+# Z dives). Useful for gantry/cabling bring-up without the dPette.
 uv run examples/showcase_v0_full_plate.py
+
+# Canonical end-to-end demo — same gantry tour with REAL dPette
+# aspirate/dispense (B3 SUCK at reservoir, B3 BLOW at each SBS column).
+# Needs both I3MEGA_PORT and PIPETTE_PORT set.
+uv run examples/showcase_v0_full_pipettebot.py
+
+# dPette-only bench test — 12 aspirate/dispense cycles, no gantry. Use
+# to measure real B3 motor timing. Run with tip in air or over waste.
+uv run examples/showcase_v0_full_dpette_cycles.py
 
 # Home — ends at Marlin default home (X=0, Y=0, Z=0), ~2× faster than
 # full G28. Replaces slow G28 Z (4 mm/s leadscrew) with G1 Z0 at the
@@ -123,12 +130,13 @@ raw serial @ 250000 baud  ──► /dev/cu.usbserial-*  (Marlin, G-code)
         └─ tee G-code stream ──► OUTPUT_GCODE file (replay / SD)
 ```
 
-In v0 the dPette is wired in via `pipettebot.PipetteBot` + a real
-`dpette.DPetteDriver`, but the canonical example simulates the
-plunger with the gantry Z axis so it runs against the printer alone.
-The dPette is exercised in isolation via the `dpette` driver's own
-test suite; full integration through the same showcase awaits the
-firmware path in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md).
+In v0 the dPette is wired in via `dpette.DPetteDriver`.
+`showcase_v0_full_pipettebot.py` runs the full plate fill end-to-end —
+gantry transit + real B3 SUCK/BLOW at the bottom of each dive.
+`showcase_v0_full_plate.py` keeps the gantry-only path (plunger
+simulated via Z) for bring-up without the pipette. Firmware-side
+M820 pass-through is still in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md)
+but no longer required for end-to-end pipetting.
 
 Three modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
 `__init__.py` (re-exports). No deck library, no safety limits, no
