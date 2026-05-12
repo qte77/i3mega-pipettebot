@@ -32,23 +32,23 @@ tour uses absolute Marlin Y/X targets per the user-calibrated anchors.
 Y=250  |                                                         |
        |                                                         |
        |                                                         |
-Y=200  |                                                         |
+Y=200  |                                       ● TIP PICKUP      |  (X=170, Y=190)
 Y=180  | ● SBS col 1  (X=50, Y=180)  ← cycle 1                   |
        | ●  col 2..3 (Y=170, 160)                                |
-Y=150  | ● col 4 (Y=150)           ● RESERVOIR  (X=160, Y=150)   |
-       | ●  col 5..7 (Y=140, 130, 120)                           |
-Y=139.5│                                       ● TIP PICKUP      |  (X=167.5)
+Y=150  | ● col 4 (Y=150)                                         |
+       | ●  col 5..6 (Y=140, 130)                                |
+Y=115  | ●  col 7 (Y=120)          ● RESERVOIR  (X=160, Y=115)   |
        | ●  col 8..10 (Y=110, 100, 90)                           |
        |                                                         |
-    Y=80| ● col 11 (Y=80)                                        |
-    Y=70| ● col 12 (Y=70)            ← cycle 12 (last dispense)  |
+   Y=80| ● col 11 (Y=80)                                         |
+   Y=70| ● col 12 (Y=70)            ← cycle 12 (last dispense)   |
        |                                                         |
     50 |                                                         |
        |                                                         |
        |                                                         |
 Y=0    +---------------------------------------------------------+
                          BACK (Y=0)   ← G28 home corner
-       X=0         X=50                   X=160  X=167.5     X=220
+       X=0         X=50                   X=160  X=170       X=220
 ```
 
 ## Anchor points
@@ -62,15 +62,15 @@ override them.
 | Anchor | Marlin X | Marlin Y | Hover Z | Dive Z |
 |---|---|---|---|---|
 | Home / park | 0 | 0 | — | — |
-| Reservoir aspirate | **160** | **150** | **105** | **75** |
+| Reservoir aspirate | **160** | **115** | **105** | **75** |
 | SBS col 1 (first dispense) | **50** | **180** | **85** | **75** |
 | SBS col 12 (last dispense) | 50 | **70** | 85 | 75 |
 | Tip pickup | **170** | **190** | 90 (pre) / 140 (lift) | **70** |
 
 SBS pitch is **−10 mm/cycle** (Y decreases each visit). 12-cycle ladder:
-**180, 170, 160, 150, 140, 130, 120, 110, 100, 90, 80, 70**. Cycle 4
-(Y=150) lands at the same Y as the reservoir, so that cycle's
-reservoir→col transition is Z-only (no Y move).
+**180, 170, 160, 150, 140, 130, 120, 110, 100, 90, 80, 70**. No cycle
+exactly coincides with the reservoir Y (115); cycle 8 (Y=110) is the
+closest at a 5 mm Y delta.
 
 Tip-box loaded-tips height: **≥ 59 mm** (minimum — `TRAVEL_Z` is
 derived from this; if a taller tip box is introduced, raise `TRAVEL_Z`
@@ -105,7 +105,7 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 | `TIP_PICKUP_X` | 145 (slot pre-offset) → **170 (Marlin)** | Per user spec |
 | `TIP_PICKUP_Y` | 190 (slot pre-offset) → **190 (Marlin)** | Per user spec |
 | `RESERVOIR_REF_X` | 135 (slot pre-offset) → **160 (Marlin)** | Per user spec |
-| `RESERVOIR_REF_Y` | 150 (slot pre-offset) → **150 (Marlin)** | Per user spec |
+| `RESERVOIR_REF_Y` | 115 (slot pre-offset) → **115 (Marlin)** | Per user spec |
 | `SBS_REF_X` | 25 (slot pre-offset) → **50 (Marlin)** | Per user spec |
 | `SBS_COL1_Y` | 180 (slot pre-offset) → **180 (Marlin)** | Cycle 1 dispense Y per user spec. Step −10 mm per cycle; 12-cycle ladder 180, 170, …, 70 |
 | `SBS_COL_PITCH` | **−10 mm** | Step between consecutive cycle Y positions (Y decreases each visit) |
@@ -156,10 +156,10 @@ comment in the tee'd G-code):
    2. `G1 X170 Y190` at Z=90 (travel to tip box).
    3. `G1 Z70` (engage tips — friction-fit, no plunger stroke).
    4. `G1 Z140` (lift with tips loaded — clears tip box + tips).
-   5. `G1 X160 Y150` at Z=140 (travel to reservoir XY).
+   5. `G1 X160 Y115` at Z=140 (travel to reservoir XY).
    6. `G1 Z105` (descend to `RESERVOIR_HOVER_Z`, hand off to cycle 1).
 3. **Column tour** (12×) — for each SBS column N, in order 1..12:
-   - Travel to reservoir (Marlin X=160, Y=150) at `RESERVOIR_HOVER_Z`
+   - Travel to reservoir (Marlin X=160, Y=115) at `RESERVOIR_HOVER_Z`
      (105), single descent to `RESERVOIR_Z` (75), lift back to
      `RESERVOIR_HOVER_Z`.
    - Travel to plate column N (Marlin X=50, Y=col_Y) at `SBS_HOVER_Z`
@@ -186,14 +186,15 @@ Bed Y positions through the tour (back ↑ , front ↓), in Marlin frame:
    +250 ─────────│
                  │
                  │
-   +200 ─────────│
+   +200 ─────────●  tip pickup (Y=190, phase 2, once)
    +180 ─────────●  SBS col 1   ← phase 3 first dispense
                  │  SBS col 2..3 (170, 160)
-   +150 ─────────●  reservoir aspirate + SBS col 4 (same Y)
-                 │  SBS col 5..10 (140, 130, 120, 110, 100, 90)
-   +139.5 ───────●  tip pickup (phase 2, once)
+   +150 ─────────●  SBS col 4 (150)
+                 │  SBS col 5..6 (140, 130)
+   +115 ─────────●  reservoir aspirate (every cycle)
+   +110 ─────────●  SBS col 8 (closest to reservoir Y; 5 mm delta)
+                 │  SBS col 7, 9..10 (120, 100, 90)
    +100 ─────────│
-                 │
                  │  SBS col 11..12 (80, 70)
     +70 ─────────●  SBS col 12  ← phase 3 last dispense
                  │
@@ -207,19 +208,19 @@ Bed Y positions through the tour (back ↑ , front ↓), in Marlin frame:
 Per-tour-cycle sequence:
 
 ```text
-home(Y=0) → tip pickup(Y=139.5) →
-  cycle 1:  reservoir(Y=150) → SBS col 1  (Y=180)
-  cycle 2:  reservoir(Y=150) → SBS col 2  (Y=170)
-  cycle 3:  reservoir(Y=150) → SBS col 3  (Y=160)
-  cycle 4:  reservoir(Y=150) → SBS col 4  (Y=150)  ← same Y as reservoir
-  cycle 5:  reservoir(Y=150) → SBS col 5  (Y=140)
-  cycle 6:  reservoir(Y=150) → SBS col 6  (Y=130)
-  cycle 7:  reservoir(Y=150) → SBS col 7  (Y=120)
-  cycle 8:  reservoir(Y=150) → SBS col 8  (Y=110)
-  cycle 9:  reservoir(Y=150) → SBS col 9  (Y=100)
-  cycle 10: reservoir(Y=150) → SBS col 10 (Y=90)
-  cycle 11: reservoir(Y=150) → SBS col 11 (Y=80)
-  cycle 12: reservoir(Y=150) → SBS col 12 (Y=70)
+home(Y=0) → tip pickup(Y=190) →
+  cycle 1:  reservoir(Y=115) → SBS col 1  (Y=180)
+  cycle 2:  reservoir(Y=115) → SBS col 2  (Y=170)
+  cycle 3:  reservoir(Y=115) → SBS col 3  (Y=160)
+  cycle 4:  reservoir(Y=115) → SBS col 4  (Y=150)
+  cycle 5:  reservoir(Y=115) → SBS col 5  (Y=140)
+  cycle 6:  reservoir(Y=115) → SBS col 6  (Y=130)
+  cycle 7:  reservoir(Y=115) → SBS col 7  (Y=120)
+  cycle 8:  reservoir(Y=115) → SBS col 8  (Y=110)
+  cycle 9:  reservoir(Y=115) → SBS col 9  (Y=100)
+  cycle 10: reservoir(Y=115) → SBS col 10 (Y=90)
+  cycle 11: reservoir(Y=115) → SBS col 11 (Y=80)
+  cycle 12: reservoir(Y=115) → SBS col 12 (Y=70)
 park(Y=0)
 ```
 
