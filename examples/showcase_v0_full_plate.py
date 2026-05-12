@@ -117,23 +117,20 @@ DECK_OFFSET_Y = 0.0  # Y axis positive (Y=0 back, Y=250 front)
 # SBS plate (back-left slot; 8 rows along X at 9 mm pitch, 12 cols along
 # Y at 9 mm pitch). Channel-1 (leftmost dPette tip) over row A at deck X=16.
 #
-# Y anchor (sign-flipped to positive convention): cycle 1 dispense at
-# Marlin Y = +10, cycle 2 at Y = +11, stepping +1 mm per cycle.
-# 12-cycle ladder: 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21.
+# Y anchor (per user spec): cycle 1 dispense at Marlin Y = 125,
+# stepping +1 mm per cycle. 12-cycle ladder:
+#   125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136
 SBS_REF_X = 16.0 + DECK_OFFSET_X  # 41.0
-SBS_COL1_Y = 10.0 + DECK_OFFSET_Y  # 10.0 Marlin (cycle 1)
+SBS_COL1_Y = 125.0 + DECK_OFFSET_Y  # 125.0 Marlin (cycle 1)
 SBS_COL_PITCH = 1.0  # +1 mm per cycle
 
 # Reservoir (front slot). 8 channels span 63 mm in X; X-center the
 # dPette over the reservoir. Cavity heights: rim H = 24 mm, floor at
 # Z = 19 mm, depth 5 mm.
 #
-# Y anchor (positive convention, Y=0 back / Y=250 front):
-# Marlin Y = +50. Sign-flipped from the prior -50; confirm the
-# physical reservoir actually sits at this Y, or re-anchor against the
-# new convention (front-of-bed reservoir would expect higher Y).
+# Y anchor (per user spec): Marlin Y = 95.
 RESERVOIR_REF_X = 78.5 + DECK_OFFSET_X  # 103.5; 110 X-center - 31.5 half span
-RESERVOIR_REF_Y = 50.0 + DECK_OFFSET_Y  # 50.0 Marlin
+RESERVOIR_REF_Y = 95.0 + DECK_OFFSET_Y  # 95.0 Marlin
 
 # Tip box (back-right slot; front edge at Y=80, deck X=134-215, Y=80-200,
 # H >= 59 with loaded tips).

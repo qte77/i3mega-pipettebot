@@ -100,8 +100,8 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 | `TRAVEL_Z` | **125** | Bumped +50 from previous 75 ("Z OVERALL +5 cm"); clears tip box top (59 mm) by 66 mm |
 | `RESERVOIR_Z` | **70** | Aspirate descent stop; 46 mm above 24 mm reservoir rim — no actual immersion |
 | `WELL_Z` | **72** | Dispense descent stop; **invariant `WELL_Z ≥ RESERVOIR_Z`** — tip is never lower at dispense than at aspirate |
-| `RESERVOIR_REF_Y` | 50 (slot pre-offset) → **+50 (Marlin)** | Aspirate Y (sign-flipped from prior −50 to match positive-Y convention). Confirm physical reservoir actually sits at Y=50 — if it's at the *front* of the bed, expect Y closer to 250 |
-| `SBS_COL1_Y` | 10 (slot pre-offset) → **+10** (Marlin) | Cycle 1 dispense Y. Step +1 mm per cycle; 12-cycle ladder is 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 — all within Y travel |
+| `RESERVOIR_REF_Y` | 95 (slot pre-offset) → **+95 (Marlin)** | Aspirate Y per user spec |
+| `SBS_COL1_Y` | 125 (slot pre-offset) → **+125** (Marlin) | Cycle 1 dispense Y per user spec. Step +1 mm per cycle; 12-cycle ladder is 125, 126, 127, …, 136 |
 | `SBS_COL_PITCH` | **+1 mm** | Step between consecutive cycle Y positions |
 | `M211 S0` (sent at bootstrap) | — | Disables Marlin software endstops defensively in case any commanded Y falls outside the firmware-configured Y_MIN/Y_MAX. Lasts until power-cycle |
 | `TIP_PICKUP_X` | 142.5 (deck) → 167.5 (Marlin) | Outer-left of tip box (134) + 8.5 mm leftmost-tip-column offset |
@@ -116,10 +116,9 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 > `RESERVOIR_Z`, `WELL_Z`, and `TIP_PICKUP_Z` must be re-derived against
 > the actual slot geometry.
 >
-> ℹ **Aspirate Y is at Marlin Y=50** (sign-flipped from −50 to match
-> the positive-Y convention). Verify physical reservoir position
-> against this Y; in the new convention (Y=0 back, Y=250 front), a
-> front-of-bed reservoir would have Y closer to 250, not 50.
+> ℹ **Aspirate Y is at Marlin Y=95**, SBS cycle 1 at Marlin Y=125
+> (per user spec). Reservoir sits 30 mm forward of SBS col 1 in the
+> positive-Y convention.
 
 Aspirate and dispense are each a **single descent** to the respective Z
 (no up-and-back plunger stroke). The `WELL_Z ≥ RESERVOIR_Z` invariant
@@ -173,9 +172,9 @@ comment in the tee'd G-code):
    safety margin). Manually run `G28` afterwards if endstop re-reference
    is needed.
 
-Column iteration steps `+1 mm` per cycle (sign-flipped to positive
-convention). Cycle 1 lands at `Marlin Y = +10`, cycle 12 at `Y = +21`.
-All 12 landings sit comfortably within Y travel (0–250).
+Column iteration steps `+1 mm` per cycle. Cycle 1 lands at
+`Marlin Y = 125`, cycle 12 at `Y = 136`. All 12 landings sit
+comfortably within Y travel (0–250).
 
 ### Y motion timeline
 
@@ -192,17 +191,17 @@ Bed Y positions through the tour (back ↑ , front ↓), in Marlin frame:
                  │
                  │
                  │
-                 │
    +139.5 ───────●  tip box  (TIP_PICKUP_Y, phase 2)
+   +136 ─────────●  SBS col 12  ← phase 3 last dispense
+                 │  SBS col 11..2 stack at 135..126
+   +125 ─────────●  SBS col 1   ← phase 3 first dispense
                  │
-   +100 ─────────│
+                 │
+    +95 ─────────●  reservoir aspirate
                  │
                  │
-    +50 ─────────●  reservoir aspirate (+50)
+    +50 ─────────│
                  │
-    +21 ─────────●  SBS col 12  (+21)  ← phase 3 last dispense
-                 │  SBS col 11..2 stack at 20..11
-    +10 ─────────●  SBS col 1   (+10)  ← phase 3 first dispense
                  │
       0 ─────────●  G28 home / phase 4 park / BACK of bed
                  ↓ BACK
@@ -212,18 +211,18 @@ Per-tour-cycle sequence:
 
 ```text
 home(Y=0) → tip pickup(Y=139.5) →
-  cycle 1:  reservoir(Y=50) → SBS col 1  (Y=10)
-  cycle 2:  reservoir(Y=50) → SBS col 2  (Y=11)
-  cycle 3:  reservoir(Y=50) → SBS col 3  (Y=12)
-  cycle 4:  reservoir(Y=50) → SBS col 4  (Y=13)
-  cycle 5:  reservoir(Y=50) → SBS col 5  (Y=14)
-  cycle 6:  reservoir(Y=50) → SBS col 6  (Y=15)
-  cycle 7:  reservoir(Y=50) → SBS col 7  (Y=16)
-  cycle 8:  reservoir(Y=50) → SBS col 8  (Y=17)
-  cycle 9:  reservoir(Y=50) → SBS col 9  (Y=18)
-  cycle 10: reservoir(Y=50) → SBS col 10 (Y=19)
-  cycle 11: reservoir(Y=50) → SBS col 11 (Y=20)
-  cycle 12: reservoir(Y=50) → SBS col 12 (Y=21)
+  cycle 1:  reservoir(Y=95) → SBS col 1  (Y=125)
+  cycle 2:  reservoir(Y=95) → SBS col 2  (Y=126)
+  cycle 3:  reservoir(Y=95) → SBS col 3  (Y=127)
+  cycle 4:  reservoir(Y=95) → SBS col 4  (Y=128)
+  cycle 5:  reservoir(Y=95) → SBS col 5  (Y=129)
+  cycle 6:  reservoir(Y=95) → SBS col 6  (Y=130)
+  cycle 7:  reservoir(Y=95) → SBS col 7  (Y=131)
+  cycle 8:  reservoir(Y=95) → SBS col 8  (Y=132)
+  cycle 9:  reservoir(Y=95) → SBS col 9  (Y=133)
+  cycle 10: reservoir(Y=95) → SBS col 10 (Y=134)
+  cycle 11: reservoir(Y=95) → SBS col 11 (Y=135)
+  cycle 12: reservoir(Y=95) → SBS col 12 (Y=136)
 park(Y=0)
 ```
 
