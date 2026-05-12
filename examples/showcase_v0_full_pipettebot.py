@@ -116,9 +116,11 @@ DEFAULT_VOLUME_UL = 100.0
 DECK_OFFSET_X = 25.0  # +X = right (commanded X = deck X + 25)
 DECK_OFFSET_Y = 0.0  # Y axis positive (Y=0 back, Y=250 front)
 
-# SBS plate (per user spec): X=50, cycle 1 Y=180, step -10 mm per cycle.
+# SBS plate (per user spec): X=50, cycle 1 Y=190, step -10 mm per cycle.
+# 11-cycle ladder: 190, 180, …, 90 (one pitch further from Y=0/back
+# than the prior Y=180 anchor; pushes the ladder 10 mm toward front).
 SBS_REF_X = 25.0 + DECK_OFFSET_X  # 50.0 Marlin
-SBS_COL1_Y = 180.0 + DECK_OFFSET_Y  # 180.0 Marlin (cycle 1)
+SBS_COL1_Y = 190.0 + DECK_OFFSET_Y  # 190.0 Marlin (cycle 1)
 SBS_COL_PITCH = -10.0  # -10 mm per cycle
 
 # Reservoir (per user spec): X=155, Y=115.
