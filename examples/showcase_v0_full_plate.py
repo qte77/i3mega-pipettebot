@@ -123,12 +123,12 @@ SBS_REF_X = 25.0 + DECK_OFFSET_X  # 50.0 Marlin
 SBS_COL1_Y = 180.0 + DECK_OFFSET_Y  # 180.0 Marlin (cycle 1)
 SBS_COL_PITCH = -10.0  # -10 mm per cycle (Y decreases each visit)
 
-# Reservoir (per user spec): X=160, Y=115.
-RESERVOIR_REF_X = 135.0 + DECK_OFFSET_X  # 160.0 Marlin
+# Reservoir (per user spec): X=155, Y=115.
+RESERVOIR_REF_X = 130.0 + DECK_OFFSET_X  # 155.0 Marlin
 RESERVOIR_REF_Y = 115.0 + DECK_OFFSET_Y  # 115.0 Marlin
 
-# Tip box (per user spec): X=170, Y=190.
-TIP_PICKUP_X = 145.0 + DECK_OFFSET_X  # 170.0 Marlin
+# Tip box (per user spec): X=155, Y=190.
+TIP_PICKUP_X = 130.0 + DECK_OFFSET_X  # 155.0 Marlin
 TIP_PICKUP_Y = 190.0 + DECK_OFFSET_Y  # 190.0 Marlin
 
 # --- Motion altitudes (deck-plate frame) --------------------------------

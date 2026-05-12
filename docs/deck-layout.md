@@ -32,12 +32,12 @@ tour uses absolute Marlin Y/X targets per the user-calibrated anchors.
 Y=250  |                                                         |
        |                                                         |
        |                                                         |
-Y=200  |                                       ● TIP PICKUP      |  (X=170, Y=190)
+Y=200  |                                  ● TIP PICKUP           |  (X=155, Y=190)
 Y=180  | ● SBS col 1  (X=50, Y=180)  ← cycle 1                   |
        | ●  col 2..3 (Y=170, 160)                                |
 Y=150  | ● col 4 (Y=150)                                         |
        | ●  col 5..6 (Y=140, 130)                                |
-Y=115  | ●  col 7 (Y=120)          ● RESERVOIR  (X=160, Y=115)   |
+Y=115  | ●  col 7 (Y=120)             ● RESERVOIR (X=155, Y=115) |
        | ●  col 8..10 (Y=110, 100, 90)                           |
        |                                                         |
    Y=80| ● col 11 (Y=80)                                         |
@@ -48,7 +48,7 @@ Y=115  | ●  col 7 (Y=120)          ● RESERVOIR  (X=160, Y=115)   |
        |                                                         |
 Y=0    +---------------------------------------------------------+
                          BACK (Y=0)   ← G28 home corner
-       X=0         X=50                   X=160  X=170       X=220
+       X=0         X=50                        X=155          X=220
 ```
 
 ## Anchor points
@@ -62,10 +62,10 @@ override them.
 | Anchor | Marlin X | Marlin Y | Hover Z | Dive Z |
 |---|---|---|---|---|
 | Home / park | 0 | 0 | — | — |
-| Reservoir aspirate | **160** | **115** | **105** | **75** |
+| Reservoir aspirate | **155** | **115** | **105** | **75** |
 | SBS col 1 (first dispense) | **50** | **180** | **85** | **75** |
 | SBS col 12 (last dispense) | 50 | **70** | 85 | 75 |
-| Tip pickup | **170** | **190** | 90 (pre) / 140 (lift) | **70** |
+| Tip pickup | **155** | **190** | 90 (pre) / 140 (lift) | **70** |
 
 SBS pitch is **−10 mm/cycle** (Y decreases each visit). 12-cycle ladder:
 **180, 170, 160, 150, 140, 130, 120, 110, 100, 90, 80, 70**. No cycle
@@ -102,9 +102,9 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 | `TIP_PICKUP_PRE_Z` | **90** | Defensive Z before XY travel to tip box (descended from `TRAVEL_Z`=125 to 90, still above tip box) |
 | `TIP_PICKUP_Z` | **70** | Engagement Z; body bottom on tip tops |
 | `TIP_PICKUP_LIFT_Z` | **140** | Post-engagement lift with tips loaded; clears tip box + tips |
-| `TIP_PICKUP_X` | 145 (slot pre-offset) → **170 (Marlin)** | Per user spec |
+| `TIP_PICKUP_X` | 130 (slot pre-offset) → **155 (Marlin)** | Per user spec (shared with reservoir X) |
 | `TIP_PICKUP_Y` | 190 (slot pre-offset) → **190 (Marlin)** | Per user spec |
-| `RESERVOIR_REF_X` | 135 (slot pre-offset) → **160 (Marlin)** | Per user spec |
+| `RESERVOIR_REF_X` | 130 (slot pre-offset) → **155 (Marlin)** | Per user spec (shared with tip pickup X) |
 | `RESERVOIR_REF_Y` | 115 (slot pre-offset) → **115 (Marlin)** | Per user spec |
 | `SBS_REF_X` | 25 (slot pre-offset) → **50 (Marlin)** | Per user spec |
 | `SBS_COL1_Y` | 180 (slot pre-offset) → **180 (Marlin)** | Cycle 1 dispense Y per user spec. Step −10 mm per cycle; 12-cycle ladder 180, 170, …, 70 |
@@ -153,13 +153,14 @@ comment in the tee'd G-code):
    box in phase 2.
 2. **Tip pickup** (once) — six-step sequence per user spec:
    1. `G1 Z90` (defensive pre-XY descent from `TRAVEL_Z=125`).
-   2. `G1 X170 Y190` at Z=90 (travel to tip box).
+   2. `G1 X155 Y190` at Z=90 (travel to tip box).
    3. `G1 Z70` (engage tips — friction-fit, no plunger stroke).
    4. `G1 Z140` (lift with tips loaded — clears tip box + tips).
-   5. `G1 X160 Y115` at Z=140 (travel to reservoir XY).
+   5. `G1 X155 Y115` at Z=140 (travel to reservoir; X stays at 155,
+      only Y moves — tip box and reservoir share X).
    6. `G1 Z105` (descend to `RESERVOIR_HOVER_Z`, hand off to cycle 1).
 3. **Column tour** (12×) — for each SBS column N, in order 1..12:
-   - Travel to reservoir (Marlin X=160, Y=115) at `RESERVOIR_HOVER_Z`
+   - Travel to reservoir (Marlin X=155, Y=115) at `RESERVOIR_HOVER_Z`
      (105), single descent to `RESERVOIR_Z` (75), lift back to
      `RESERVOIR_HOVER_Z`.
    - Travel to plate column N (Marlin X=50, Y=col_Y) at `SBS_HOVER_Z`
