@@ -1,0 +1,33 @@
+name = "gradient_reservoir_demo"
+description = """
+Constant 100 µL transfer across 11 columns. Reagent concentration varies
+between the 8 channels via a PRE-MIXED reservoir gradient — the dPette
+cannot vary volume per channel (single shared piston bar), so the
+gradient is encoded in the reservoir chemistry, not in the script.
+
+Plate columns are replicates of the same 8-channel gradient.
+"""
+
+[volumes]
+# Single B2 PI_VOLUM packet for the whole tour. Expanded to a list of
+# `num_cycles` entries at load time.
+constant_ul = 100.0
+num_cycles = 11
+
+[gradient]
+description = """
+Pre-mix the 8-channel reservoir along its Y axis (back → front), 1:2
+serial dilution per channel:
+
+    channel 1 (Y back):   100.00 % reagent
+    channel 2:             50.00 %
+    channel 3:             25.00 %
+    channel 4:             12.50 %
+    channel 5:              6.25 %
+    channel 6:              3.12 %
+    channel 7:              1.56 %
+    channel 8 (Y front):    0.78 %
+
+Reservoir orientation: see docs/deck-layout.md. The operator is
+responsible for pre-mixing; the script does not verify the gradient.
+"""
