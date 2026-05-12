@@ -59,18 +59,16 @@ deck-frame slot extents that earlier iterations tried to track are
 no longer authoritative — the user gave direct Marlin-Y anchors to
 override them.
 
-| Anchor | Marlin X | Marlin Y | Hover Z | Dive Z |
+| Anchor | Marlin X | Marlin Y | Transit Z | Dive Z |
 |---|---|---|---|---|
-| Home / park | 0 | 0 | — | — |
-| Reservoir aspirate | **155** | **115** | **105** | **75** |
-| SBS col 1 (first dispense) | **50** | **180** | **85** | **75** |
-| SBS col 12 (last dispense) | 50 | **70** | 85 | 75 |
+| Home / park | 0 | 0 | 125 | 74.25 (PARK_Z) |
+| Reservoir aspirate | **155** | **115** | 125 (TRAVEL_Z) | **75** |
+| SBS col 1 (first dispense) | **50** | **180** | 125 (TRAVEL_Z) | **75** |
+| SBS col 11 (last dispense) | 50 | **80** | 125 (TRAVEL_Z) | 75 |
 | Tip pickup | **155** | **190** | 90 (pre) / 140 (lift) | **70** |
 
-SBS pitch is **−10 mm/cycle** (Y decreases each visit). 12-cycle ladder:
-**180, 170, 160, 150, 140, 130, 120, 110, 100, 90, 80, 70**. No cycle
-exactly coincides with the reservoir Y (115); cycle 8 (Y=110) is the
-closest at a 5 mm Y delta.
+SBS pitch is **−10 mm/cycle** (Y decreases each visit). **11-cycle**
+ladder: **180, 170, 160, 150, 140, 130, 120, 110, 100, 90, 80**.
 
 Tip-box loaded-tips height: **≥ 59 mm** (minimum — `TRAVEL_Z` is
 derived from this; if a taller tip box is introduced, raise `TRAVEL_Z`
@@ -94,10 +92,8 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 |---|---|---|
 | `DECK_OFFSET_X` | **+25** | Marlin commanded X = deck X + 25 (bed sits 2.5 cm right of nominal deck-frame plan) |
 | `DECK_OFFSET_Y` | **0** | Y convention is positive 0–250 (Y=0 back, Y=250 front); no offset needed |
-| `TRAVEL_Z` | **125** | Post-`G28` raise altitude (above every slot) |
-| `SBS_HOVER_Z` | **85** | Travel/lift Z when visiting SBS columns |
+| `TRAVEL_Z` | **125** | Transit altitude — all inter-slot XY motion happens here (above every slot, no collision) |
 | `WELL_Z` | **75** | Dive Z into SBS well; **invariant `WELL_Z ≥ RESERVOIR_Z`** (equality here) |
-| `RESERVOIR_HOVER_Z` | **105** | Travel/lift Z when visiting reservoir |
 | `RESERVOIR_Z` | **75** | Dive Z into reservoir |
 | `TIP_PICKUP_PRE_Z` | **90** | Defensive Z before XY travel to tip box (descended from `TRAVEL_Z`=125 to 90, still above tip box) |
 | `TIP_PICKUP_Z` | **70** | Engagement Z; body bottom on tip tops |
@@ -112,10 +108,13 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 | `M211 S0` (sent at bootstrap) | — | Disables Marlin software endstops defensively in case any commanded Y falls outside the firmware-configured Y_MIN/Y_MAX. Lasts until power-cycle |
 | `PARK_Z` | **74.25** | End-of-tour park altitude. `1.5 × 49.5 mm` (disposable tip length) — clears any forgotten tip with half its length to spare |
 
-> ℹ Per-slot hover/dive scheme: each slot has its own hover Z used for
-> travel and lift, and a dive Z for the descent. Z transitions between
-> slots happen naturally during the next `G1 X Y Z` (no separate raise
-> needed). SBS: hover 85 / dive 75. Reservoir: hover 105 / dive 75.
+> ℹ **Z-first transit pattern** (collision-safe): every slot visit
+> follows `G1 Z=TRAVEL_Z` → `G1 X Y` → `G1 Z=dive` → `G1 Z=TRAVEL_Z`.
+> XY motion ALWAYS happens at `TRAVEL_Z=125`, which is above every
+> slot — the carriage can never clip a fixture while transiting. The
+> combined `G1 X Y Z` form is avoided. `visit_reservoir` and
+> `visit_column` both delegate to a single `_visit_xy_dive(x, y, dive_z)`
+> helper differing only in target XY and dive Z.
 
 Aspirate and dispense are each a **single descent** to the respective Z
 (no up-and-back plunger stroke). The `WELL_Z ≥ RESERVOIR_Z` invariant
@@ -158,16 +157,21 @@ comment in the tee'd G-code):
    4. `G1 Z140` (lift with tips loaded — clears tip box + tips).
    5. `G1 X155 Y115` at Z=140 (travel to reservoir; X stays at 155,
       only Y moves — tip box and reservoir share X).
-   6. `G1 Z105` (descend to `RESERVOIR_HOVER_Z`, hand off to cycle 1).
-3. **Column tour** (12×) — for each SBS column N, in order 1..12:
-   - Travel to reservoir (Marlin X=155, Y=115) at `RESERVOIR_HOVER_Z`
-     (105), single descent to `RESERVOIR_Z` (75), lift back to
-     `RESERVOIR_HOVER_Z`.
-   - Travel to plate column N (Marlin X=50, Y=col_Y) at `SBS_HOVER_Z`
-     (85), single descent to `WELL_Z` (75), lift back to `SBS_HOVER_Z`.
-     Col 1 sits at Marlin Y=180; each subsequent column steps −10 mm
-     in Y, so col 12 lands at Y=70.
-4. **Park at home corner** — `G1` to `(0, 0, PARK_Z)` where
+   6. `G1 Z125` (descend to `TRAVEL_Z`, hand off to cycle 1's Z-first
+      transit pattern).
+3. **Column tour** (11×) — for each SBS column N, in order 1..11, the
+   `_visit_xy_dive` helper runs twice per cycle (once for reservoir,
+   once for SBS column). Each call is the same 4-step Z-first sequence:
+   1. `G1 Z=TRAVEL_Z` (lift to transit altitude).
+   2. `G1 X Y` only, at TRAVEL_Z (no Z motion during XY).
+   3. `G1 Z=dive_z` (descend — RESERVOIR_Z=75 for reservoir, WELL_Z=75
+      for SBS column).
+   4. `G1 Z=TRAVEL_Z` (lift back to transit altitude, ready for next).
+
+   Cycle layout: reservoir at (155, 115); SBS columns at X=50,
+   Y=180,170,…,80 (col 1 → col 11, −10 mm pitch).
+4. **Park at home corner** — Z-first sequence: `G1 Z=TRAVEL_Z` (no-op,
+   already there) → `G1 X0 Y0` (XY at TRAVEL_Z) → `G1 Z=PARK_Z` where
    `PARK_Z = 1.5 × tip length = 74.25 mm`. Plain G1, not `G28` — trusts
    the tour's tracked position to save ~20 s of Z homing, and parks Z
    high enough to clear any tip still loaded on the dPette (forgotten-tip

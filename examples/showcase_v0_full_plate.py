@@ -137,17 +137,16 @@ TIP_PICKUP_Y = 190.0 + DECK_OFFSET_Y  # 190.0 Marlin
 # derived from that. If a taller tip box is introduced, raise `TRAVEL_Z`
 # in lockstep here AND in docs/deck-layout.md.
 
-# Per-slot hover and dive altitudes (per user spec). Each visit lands at
-# its slot's hover Z, then descends to the dive Z and lifts back to hover.
-# Z transitions between slots happen naturally during the next G1 X Y Z.
+# Visit dive altitudes. Z-first transit pattern uses TRAVEL_Z (125) for
+# all inter-slot XY motion — every slot is below 125 mm so the bed is
+# always above obstacles during XY transit. No hover-Z step (each visit
+# descends directly from TRAVEL_Z to dive Z).
 #
 # WELL_Z == RESERVOIR_Z == 75 — dispense and aspirate dive to the same Z,
 # preserving the WELL_Z >= RESERVOIR_Z invariant from motion-safety.md
 # (tip never lower at dispense than at aspirate).
-TRAVEL_Z = 125.0  # post-G28 raise altitude (above every slot)
-SBS_HOVER_Z = 85.0  # hover Z over SBS well (travel and lift)
+TRAVEL_Z = 125.0  # transit altitude — all XY motion happens here
 WELL_Z = 75.0  # dive Z into SBS well
-RESERVOIR_HOVER_Z = 105.0  # hover Z over reservoir (travel and lift)
 RESERVOIR_Z = 75.0  # dive Z into reservoir
 
 # Tip-pickup phase Z sequence (per user spec):
@@ -179,7 +178,7 @@ PARK_Z = PARK_TIP_LENGTH_MM * PARK_TIP_CLEARANCE_FACTOR  # 74.25 mm
 XY_FEED = 12000  # 200 mm/s — well under the X500/Y500 mm/s cap
 Z_FEED = 1200  # 20 mm/s — at the M203 Z20 cap (leadscrew mechanical limit)
 
-NUM_COLUMNS = 12
+NUM_COLUMNS = 11
 
 
 def gsend(
@@ -216,29 +215,53 @@ def gsend(
     raise TimeoutError(f"no `ok` after {max_secs}s for `{cmd}`")
 
 
+def _visit_xy_dive(
+    link: serial.Serial,
+    x: float,
+    y: float,
+    dive_z: float,
+    label: str,
+    *,
+    gcode_out: TextIO | None = None,
+) -> None:
+    """Collision-safe Z-first visit: lift → XY at TRAVEL_Z → dive → lift.
+
+    All inter-slot XY motion happens at `TRAVEL_Z` (above every slot),
+    so the carriage never clips a fixture on its way past. The aspirate
+    and dispense visits both use this — the only differences are the
+    target XY and the dive Z.
+    """
+    print(f"[host] --- {label} ---")
+    if gcode_out is not None:
+        gcode_out.write(f"\n; --- {label} ---\n")
+    # 1. Z first — lift to TRAVEL_Z before any XY motion
+    gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    gsend(link, "M400", gcode_out=gcode_out)
+    # 2. XY only, at TRAVEL_Z (above every slot)
+    gsend(link, f"G1 X{x:.3f} Y{y:.3f} F{XY_FEED}", gcode_out=gcode_out)
+    gsend(link, "M400", gcode_out=gcode_out)
+    # 3. Dive
+    gsend(link, f"G1 Z{dive_z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    gsend(link, "M400", gcode_out=gcode_out)
+    # 4. Lift back to TRAVEL_Z (ready for next transit)
+    gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    gsend(link, "M400", gcode_out=gcode_out)
+
+
 def visit_reservoir(
     link: serial.Serial,
     *,
     gcode_out: TextIO | None = None,
 ) -> None:
-    """Travel to reservoir, single descent to RESERVOIR_Z (aspirate), lift.
-
-    Aspirate is a SINGLE descent — no plunger up-and-back stroke. See
-    docs/deck-layout.md "Tour sequence" phase 3.
-    """
-    print("[host] --- reservoir aspirate (simulated) ---")
-    if gcode_out is not None:
-        gcode_out.write("\n; --- reservoir aspirate (simulated) ---\n")
-    gsend(
+    """Z-first aspirate visit at the reservoir."""
+    _visit_xy_dive(
         link,
-        f"G1 X{RESERVOIR_REF_X:.3f} Y{RESERVOIR_REF_Y:.3f} Z{RESERVOIR_HOVER_Z:.3f} F{XY_FEED}",
+        RESERVOIR_REF_X,
+        RESERVOIR_REF_Y,
+        RESERVOIR_Z,
+        "reservoir aspirate (simulated)",
         gcode_out=gcode_out,
     )
-    gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{RESERVOIR_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
-    gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{RESERVOIR_HOVER_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
-    gsend(link, "M400", gcode_out=gcode_out)
 
 
 def visit_column(
@@ -247,28 +270,20 @@ def visit_column(
     *,
     gcode_out: TextIO | None = None,
 ) -> None:
-    """Travel to SBS column `col` (1..12), single descent (dispense), lift.
+    """Z-first dispense visit at SBS column `col` (1..NUM_COLUMNS).
 
-    Per user spec: col 1 at Marlin Y=250, step -10 mm per cycle. Col 12
-    lands at Y=140. Travel/hover at SBS_HOVER_Z=85; dive to WELL_Z=75.
-    Dispense is a SINGLE descent — no plunger up-and-back stroke.
-    Invariant: WELL_Z >= RESERVOIR_Z (tip never lower at dispense than
-    aspirate). See docs/deck-layout.md "Tour sequence" phase 3.
+    Per user spec: col 1 at Marlin Y=180, step -10 mm per cycle.
+    Invariant: WELL_Z >= RESERVOIR_Z. See docs/deck-layout.md.
     """
     y = SBS_COL1_Y + (col - 1) * SBS_COL_PITCH
-    print(f"[host] --- SBS column {col} dispense (simulated) at Y={y:.2f} ---")
-    if gcode_out is not None:
-        gcode_out.write(f"\n; --- SBS column {col} dispense at Y={y:.2f} ---\n")
-    gsend(
+    _visit_xy_dive(
         link,
-        f"G1 X{SBS_REF_X:.3f} Y{y:.3f} Z{SBS_HOVER_Z:.3f} F{XY_FEED}",
+        SBS_REF_X,
+        y,
+        WELL_Z,
+        f"SBS column {col} dispense (simulated) at Y={y:.2f}",
         gcode_out=gcode_out,
     )
-    gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{WELL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
-    gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{SBS_HOVER_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
-    gsend(link, "M400", gcode_out=gcode_out)
 
 
 def pickup_tips(
@@ -284,7 +299,7 @@ def pickup_tips(
       3. Z → TIP_PICKUP_Z (70 — engage tips, friction-fit)
       4. Z → TIP_PICKUP_LIFT_Z (140 — lift with tips loaded)
       5. XY → (RESERVOIR_REF_X, RESERVOIR_REF_Y) at current Z
-      6. Z → RESERVOIR_HOVER_Z (105 — hand off to cycle 1)
+      6. Z → TRAVEL_Z (125 — hand off to cycle 1's Z-first transit)
     """
     print("[host] --- tip pickup (simulated, once) ---")
     if gcode_out is not None:
@@ -312,8 +327,8 @@ def pickup_tips(
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
-    # 6. Descend to reservoir hover (hand off to cycle 1)
-    gsend(link, f"G1 Z{RESERVOIR_HOVER_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    # 6. Descend to TRAVEL_Z (cycle 1's Z-first transit takes over)
+    gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
 
@@ -386,7 +401,7 @@ def _run(
 
     _phase_comment(
         gcode_out,
-        "\n; ===== phase 3: column tour (back->front, 12 columns) =====\n",
+        f"\n; ===== phase 3: column tour ({NUM_COLUMNS} cycles) =====\n",
     )
     for col in range(1, NUM_COLUMNS + 1):
         print(f"\n[host] ====== COLUMN {col}/{NUM_COLUMNS} ======")
@@ -396,13 +411,16 @@ def _run(
 
     _phase_comment(
         gcode_out,
-        "\n; ===== phase 4: park at home corner, Z = 1.5 x tip length (no G28) =====\n",
+        "\n; ===== phase 4: park at home corner (Z-first, no G28) =====\n",
     )
-    gsend(
-        link,
-        f"G1 X0.000 Y0.000 Z{PARK_Z:.3f} F{XY_FEED}",
-        gcode_out=gcode_out,
-    )
+    # Z first — at TRAVEL_Z already from last visit_column lift
+    gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    gsend(link, "M400", gcode_out=gcode_out)
+    # XY to home corner at TRAVEL_Z
+    gsend(link, f"G1 X0.000 Y0.000 F{XY_FEED}", gcode_out=gcode_out)
+    gsend(link, "M400", gcode_out=gcode_out)
+    # Descend to PARK_Z
+    gsend(link, f"G1 Z{PARK_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
 
