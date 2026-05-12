@@ -136,13 +136,12 @@ TIP_PICKUP_Y = 217.5 + DECK_OFFSET_Y  # 217.5 Marlin
 # WELL_Z == RESERVOIR_Z — each SBS well starts empty so the dispense
 # need not be above any liquid line (preserves WELL_Z >= RESERVOIR_Z
 # invariant at the boundary).
-TRAVEL_Z = 125.0  # transit altitude — all XY motion happens here
+TRAVEL_Z = 95.0  # transit altitude — all XY motion happens here
 WELL_Z = 70.0  # dive Z into SBS well
 RESERVOIR_Z = 70.0  # dive Z into reservoir
 
 # Tip-pickup phase Z sequence (per user spec).
-TIP_PICKUP_PRE_Z = 90.0  # Z before XY travel to tip box
-TIP_PICKUP_Z = 70.0  # tip engagement Z (body bottom on tip tops)
+TIP_PICKUP_Z = 70.0  # tip engagement Z (body bottom on tip tops); combined-axis target
 TIP_PICKUP_LIFT_Z = 140.0  # post-engagement lift; clears tip box + tips
 
 # End-of-tour park altitude: 1.5 × disposable tip length.
@@ -288,26 +287,28 @@ def pickup_tips(
 ) -> None:
     """One-time tip pickup at the back-right tip box.
 
-    Six-step sequence per user spec:
-      1. Z → TIP_PICKUP_PRE_Z (90 — defensive pre-XY altitude)
-      2. XY → (TIP_PICKUP_X, TIP_PICKUP_Y) at current Z
-      3. Z → TIP_PICKUP_Z (70 — engage tips, friction-fit)
-      4. Z → TIP_PICKUP_LIFT_Z (140 — lift with tips loaded)
-      5. XY → (RESERVOIR_REF_X, RESERVOIR_REF_Y) at current Z
-      6. Z → TRAVEL_Z (125 — hand off to cycle 1's Z-first transit)
+    Four-step sequence per user spec — phase 1's `G1 Z=TRAVEL_Z` already
+    parked the head at TRAVEL_Z=95, so this phase opens with a single
+    combined XYZ move from (0, 0, 95) straight to tip engagement at
+    (155, 217.5, 70). Z descends 25 mm over ~268 mm of XY travel
+    (~5° approach angle); the body bottom stays ≥ 11 mm above the tip
+    tops while the head is inside the tip-box footprint, so no shear
+    risk against the loaded tips.
+
+      1. Combined XYZ → (TIP_PICKUP_X, TIP_PICKUP_Y, TIP_PICKUP_Z)
+         direct to tip engagement.
+      2. Z → TIP_PICKUP_LIFT_Z (140 — lift with tips loaded).
+      3. XY → (RESERVOIR_REF_X, RESERVOIR_REF_Y) at TIP_PICKUP_LIFT_Z.
+      4. Z → TRAVEL_Z (95 — hand off to cycle 1's Z-first transit).
     """
     print("[host] --- tip pickup (gantry-only, once) ---")
     if gcode_out is not None:
         gcode_out.write("\n; --- tip pickup (gantry-only, once) ---\n")
-    gsend(link, f"G1 Z{TIP_PICKUP_PRE_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
-    gsend(link, "M400", gcode_out=gcode_out)
     gsend(
         link,
-        f"G1 X{TIP_PICKUP_X:.3f} Y{TIP_PICKUP_Y:.3f} F{XY_FEED}",
+        f"G1 X{TIP_PICKUP_X:.3f} Y{TIP_PICKUP_Y:.3f} Z{TIP_PICKUP_Z:.3f} F{XY_FEED}",
         gcode_out=gcode_out,
     )
-    gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{TIP_PICKUP_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
     gsend(link, f"G1 Z{TIP_PICKUP_LIFT_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
