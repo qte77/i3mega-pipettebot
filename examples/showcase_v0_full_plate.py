@@ -118,14 +118,12 @@ DEFAULT_GCODE_OUT = "showcase_v0_full_plate.gcode"
 DECK_OFFSET_X = 25.0  # +X = right (commanded X = deck X + 25)
 DECK_OFFSET_Y = 0.0  # Y axis positive (Y=0 back, Y=250 front)
 
-# SBS plate (per user spec): X=50, cycle 1 Y=190, step -10 mm per cycle.
-# 11-cycle ladder:
-#   190, 180, 170, 160, 150, 140, 130, 120, 110, 100, 90
-# Cycle 1 sits one SBS pitch further from Y=0 (back) than the prior
-# Y=180 anchor — pushes the whole ladder 10 mm toward the bed front.
+# SBS plate (per user spec): X=50, cycle 1 Y=190, step -9 mm per cycle
+# (standard SBS column pitch). 11-cycle ladder:
+#   190, 181, 172, 163, 154, 145, 136, 127, 118, 109, 100
 SBS_REF_X = 25.0 + DECK_OFFSET_X  # 50.0 Marlin
 SBS_COL1_Y = 190.0 + DECK_OFFSET_Y  # 190.0 Marlin (cycle 1)
-SBS_COL_PITCH = -10.0  # -10 mm per cycle (Y decreases each visit)
+SBS_COL_PITCH = -9.0  # -9 mm per cycle (standard SBS pitch; Y decreases each visit)
 
 # Reservoir (per user spec): X=155, Y=115.
 RESERVOIR_REF_X = 130.0 + DECK_OFFSET_X  # 155.0 Marlin
@@ -277,7 +275,7 @@ def visit_column(
 ) -> None:
     """Z-first dispense visit at SBS column `col` (1..NUM_COLUMNS).
 
-    Per user spec: col 1 at Marlin Y=180, step -10 mm per cycle.
+    Per user spec: col 1 at Marlin Y=190, step -9 mm per cycle (SBS pitch).
     Invariant: WELL_Z >= RESERVOIR_Z. See docs/deck-layout.md.
     """
     y = SBS_COL1_Y + (col - 1) * SBS_COL_PITCH
