@@ -117,18 +117,18 @@ DECK_OFFSET_Y = -50.0  # -Y = forward (commanded Y = deck Y - 50)
 # SBS plate (back-left slot; 8 rows along X at 9 mm pitch, 12 cols along
 # Y at 9 mm pitch). Channel-1 (leftmost dPette tip) over row A at deck X=16.
 #
-# Y anchor (per user spec): the first SBS column visit lands at
-# Marlin Y = -75 (= 2.5 cm in front of the reservoir aspirate at -50).
-#
-# Iteration direction: front-to-back. Col 1 at Y=-75 (front-most),
-# col 12 at Y=-75 + 11*9 = 24 (back-most). Step +9 mm per visit.
-# 12-column ladder:
-#   -75, -66, -57, -48, -39, -30, -21, -12, -3, 6, 15, 24
-# All reachable: Marlin Y=0 sits 175 mm behind the physical front, so the
-# front-most col (Y=-75) is 100 mm before the front limit.
+# Y anchor (per user spec): cycle 1 dispense lands at Marlin Y = -25,
+# cycle 2 at Y = 0, cycle 3 at Y = +25, …, stepping +25 mm per visit.
+# 12-cycle ladder:
+#   -25, 0, 25, 50, 75, 100, 125, 150, 175, 200, 225, 250
+# WARNING: cycles 10–12 (Y = 200 / 225 / 250) sit at or past the i3
+# Mega's typical Y_max (~220). Without soft endstops disabled at the
+# back limit too, the bed will clamp at Y_max and those cycles will
+# dispense at the same physical position. With M211 S0 (bootstrap),
+# the bed will travel until it hits the mechanical back stop instead.
 SBS_REF_X = 16.0 + DECK_OFFSET_X  # 41.0
-SBS_COL1_Y = -25.0 + DECK_OFFSET_Y  # -75.0 Marlin; col 1 = front-most SBS row
-SBS_COL_PITCH = 9.0  # +9 mm per visit (front-to-back)
+SBS_COL1_Y = 25.0 + DECK_OFFSET_Y  # -25.0 Marlin (cycle 1)
+SBS_COL_PITCH = 25.0  # +25 mm per cycle
 
 # Reservoir (front slot). 8 channels span 63 mm in X; X-center the
 # dPette over the reservoir (deck-frame X = 43–177 still considered
