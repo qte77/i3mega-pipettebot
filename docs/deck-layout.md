@@ -64,14 +64,15 @@ override them.
 | Reservoir aspirate | **155** | **115** | 95 (TRAVEL_Z) | **70** |
 | SBS col 1 (first dispense) | **50** | **190** | 95 (TRAVEL_Z) | **70** |
 | SBS col 11 (last dispense) | 50 | **90** | 95 (TRAVEL_Z) | 70 |
-| Tip pickup | **155** | **217.5** | 140 (TIP_PICKUP_LIFT_Z, approach + lift) | **70** (engagement) |
+| Tip pickup TO leg (no tips) | **155** | **217.5** | 90 (TIP_PICKUP_PRE_Z) | **70** (engagement) |
+| Tip pickup FROM leg (tips loaded) | **155** | **217.5** | 130 (TIP_PICKUP_LIFT_Z) | — (lifts away) |
 
 SBS pitch is **−10 mm/cycle** (Y decreases each visit). **11-cycle**
 ladder: **190, 180, 170, 160, 150, 140, 130, 120, 110, 100, 90**.
 
-Tip-box loaded-tips height: **≥ 59 mm** (minimum — `TRAVEL_Z` is
-derived from this; if a taller tip box is introduced, raise `TRAVEL_Z`
-first).
+Tip-box loaded-tips height: **≥ 65 mm** (minimum — `TIP_PICKUP_PRE_Z`
+and `TIP_PICKUP_LIFT_Z` are derived from this; if a taller tip box is
+introduced, raise both first).
 
 ### dPette geometry
 
@@ -91,11 +92,12 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 |---|---|---|
 | `DECK_OFFSET_X` | **+25** | Marlin commanded X = deck X + 25 (bed sits 2.5 cm right of nominal deck-frame plan) |
 | `DECK_OFFSET_Y` | **0** | Y convention is positive 0–250 (Y=0 back, Y=250 front); no offset needed |
-| `TRAVEL_Z` | **95** | Transit altitude — all inter-slot XY motion happens here. Clears SBS plate (top Z=13) by 82 mm, reservoir rim (Z=24) by 71 mm. The column tour never crosses the tip box (tip box Y=217.5 vs SBS Y_max=190), so the 36 mm clearance over the 59 mm loaded-tip-box minimum only applies to phase 2 |
+| `TRAVEL_Z` | **95** | Transit altitude — all inter-slot XY motion happens here. Clears SBS plate (top Z=13) by 82 mm, reservoir rim (Z=24) by 71 mm. The column tour never crosses the tip box (tip box Y=217.5 vs SBS Y_max=190), so the 30 mm clearance over the 65 mm loaded-tip-box minimum is informational only — phase 2 handles tip-box transit at `TIP_PICKUP_PRE_Z`/`LIFT_Z` |
 | `WELL_Z` | **70** | Dive Z into SBS well; **invariant `WELL_Z ≥ RESERVOIR_Z`** (equality here) |
 | `RESERVOIR_Z` | **70** | Dive Z into reservoir |
+| `TIP_PICKUP_PRE_Z` | **90** | TO-leg approach Z (no tips on yet): body bottom is the lowest physical point, so 25 mm body clearance over the 65 mm tip box is enough |
 | `TIP_PICKUP_Z` | **70** | Engagement Z; body bottom on tip tops |
-| `TIP_PICKUP_LIFT_Z` | **140** | Post-engagement lift with tips loaded; clears tip box + tips |
+| `TIP_PICKUP_LIFT_Z` | **130** | FROM-leg post-engagement lift (tips loaded): tip ends extend 49.5 mm below the body, so this sits 40 mm higher than PRE_Z to keep tip ends clear of the tip box (65 mm tip-end clearance) |
 | `TIP_PICKUP_X` | 130 (slot pre-offset) → **155 (Marlin)** | Per user spec (shared with reservoir X) |
 | `TIP_PICKUP_Y` | 217.5 (slot pre-offset) → **217.5 (Marlin)** | Per user spec |
 | `RESERVOIR_REF_X` | 130 (slot pre-offset) → **155 (Marlin)** | Per user spec (shared with tip pickup X) |
@@ -110,7 +112,7 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 > follows `G1 Z=TRAVEL_Z` → `G1 X Y` → `G1 Z=dive` → `G1 Z=TRAVEL_Z`.
 > XY motion ALWAYS happens at `TRAVEL_Z=95`, which is above every
 > slot the column tour visits (SBS plate Z=13, reservoir Z=24). The
-> tip box (Z=59 loaded) is not crossed by the column tour. The
+> tip box (Z=65 loaded) is not crossed by the column tour. The
 > combined `G1 X Y Z` form is avoided. `visit_reservoir` and
 > `visit_column` both delegate to a single `_visit_xy_dive(x, y, dive_z)`
 > helper differing only in target XY and dive Z.
@@ -142,25 +144,25 @@ comment in the tee'd G-code):
 
 1. **Bootstrap** — `M203/M201` bump, `M211 S0` (disable software
    endstops so negative-Y reservoir/SBS targets aren't clamped),
-   `G28 X Y Z` (explicit axes — plain `G28` skips Z on this firmware),
-   then `G1` to `TRAVEL_Z`. **Precondition: tips MUST be removed from
-   the dPette before this phase**, because `Z=0` is calibrated to
+   `G28 X Y Z` (explicit axes — plain `G28` skips Z on this firmware).
+   **No separate `G1 Z=TRAVEL_Z` lift** — phase 2's step 1 handles
+   the post-G28 Z ascent directly. **Precondition: tips MUST be removed
+   from the dPette before this phase**, because `Z=0` is calibrated to
    tip-end-on-deck (per [`calibration.md`](calibration.md)) — `G28 Z`
-   would drive any mounted tip into the deck. After homing, the Z
-   raise lifts the carriage clear; tips are then picked up from the
-   box in phase 2.
+   would drive any mounted tip into the deck.
 2. **Tip pickup** (once) — six-step Z-first sequence per user spec.
-   After phase 1, the head sits at `(0, 0, TRAVEL_Z=95)` (only 36 mm
-   over the loaded tip box — adequate but tight), so the phase opens
-   with a Z **ascent** to `TIP_PICKUP_LIFT_Z=140` before any XY motion.
-   Symmetric pre/post: the same 140 mm altitude is used for the
-   approach and the post-engagement lift.
-   1. `G1 Z140` (ascend to tip-box clearance — 81 mm over loaded tip
-      box).
-   2. `G1 X155 Y217.5` at Z=140 (XY to tip box at clearance altitude).
+   Asymmetric pre/post: the TO leg (approach, no tips) ascends only
+   to `TIP_PICKUP_PRE_Z=90` (body needs to clear the box), while the
+   FROM leg (lift + reservoir transit, tips loaded) uses
+   `TIP_PICKUP_LIFT_Z=130` (tip ends 49.5 mm below body need to
+   clear the box).
+   1. `G1 Z90` (ascend to TO-leg clearance — 25 mm body-bottom margin
+      over the 65 mm loaded tip box).
+   2. `G1 X155 Y217.5` at Z=90 (XY to tip box at TO-leg altitude).
    3. `G1 Z70` (engage tips — friction-fit, no plunger stroke).
-   4. `G1 Z140` (lift with tips loaded).
-   5. `G1 X155 Y115` at Z=140 (travel to reservoir; X stays at 155,
+   4. `G1 Z130` (lift with tips loaded — 65 mm tip-end margin over
+      the tip box).
+   5. `G1 X155 Y115` at Z=130 (travel to reservoir; X stays at 155,
       only Y moves — tip box and reservoir share X).
    6. `G1 Z95` (descend to `TRAVEL_Z`, hand off to cycle 1's Z-first
       transit pattern).
@@ -263,9 +265,9 @@ would otherwise drag any tip extension through near-home obstacles.
    reservoir→col-1 transition is a single forward Y move.
 3. **`TRAVEL_Z = 95`** = `WELL_Z + 25 mm` (25 mm transit margin above
    the reservoir/well dive Z). Reservoir↔SBS transit doesn't cross the
-   tip box (tip box Y=217.5 vs SBS Y_max=190), so the 36 mm clearance
-   over the 59 mm tip-box minimum applies only to the one-time
-   tip-pickup combined-axis approach — comfortably safe. The previous
+   tip box (tip box Y=217.5 vs SBS Y_max=190), so the 30 mm column-tour
+   clearance over the 65 mm tip-box minimum is informational; phase 2
+   handles tip-box transit at PRE_Z=90 / LIFT_Z=130. The previous
    125 mm transit altitude paid an extra 30 mm of Z stroke per dive (4
    per cycle × 30 mm = 120 mm/cycle), saving ~6 s per cycle at the
    Z_FEED=20 mm/s leadscrew cap.
