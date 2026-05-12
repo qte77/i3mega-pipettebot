@@ -64,7 +64,7 @@ override them.
 | Reservoir aspirate | **155** | **115** | 95 (TRAVEL_Z) | **70** |
 | SBS col 1 (first dispense) | **50** | **190** | 95 (TRAVEL_Z) | **70** |
 | SBS col 11 (last dispense) | 50 | **90** | 95 (TRAVEL_Z) | 70 |
-| Tip pickup | **155** | **217.5** | combined-axis approach | **70** (engagement) / 140 (lift) |
+| Tip pickup | **155** | **217.5** | 140 (TIP_PICKUP_LIFT_Z, approach + lift) | **70** (engagement) |
 
 SBS pitch is **−10 mm/cycle** (Y decreases each visit). **11-cycle**
 ladder: **190, 180, 170, 160, 150, 140, 130, 120, 110, 100, 90**.
@@ -94,7 +94,7 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 | `TRAVEL_Z` | **95** | Transit altitude — all inter-slot XY motion happens here. Clears SBS plate (top Z=13) by 82 mm, reservoir rim (Z=24) by 71 mm. The column tour never crosses the tip box (tip box Y=217.5 vs SBS Y_max=190), so the 36 mm clearance over the 59 mm loaded-tip-box minimum only applies to phase 2 |
 | `WELL_Z` | **70** | Dive Z into SBS well; **invariant `WELL_Z ≥ RESERVOIR_Z`** (equality here) |
 | `RESERVOIR_Z` | **70** | Dive Z into reservoir |
-| `TIP_PICKUP_Z` | **70** | Engagement Z; body bottom on tip tops (combined-axis target from `(0, 0, TRAVEL_Z)`) |
+| `TIP_PICKUP_Z` | **70** | Engagement Z; body bottom on tip tops |
 | `TIP_PICKUP_LIFT_Z` | **140** | Post-engagement lift with tips loaded; clears tip box + tips |
 | `TIP_PICKUP_X` | 130 (slot pre-offset) → **155 (Marlin)** | Per user spec (shared with reservoir X) |
 | `TIP_PICKUP_Y` | 217.5 (slot pre-offset) → **217.5 (Marlin)** | Per user spec |
@@ -149,16 +149,20 @@ comment in the tee'd G-code):
    would drive any mounted tip into the deck. After homing, the Z
    raise lifts the carriage clear; tips are then picked up from the
    box in phase 2.
-2. **Tip pickup** (once) — four-step sequence per user spec. After
-   phase 1, the head sits at `(0, 0, TRAVEL_Z=95)`; this phase opens
-   with a single combined XYZ move straight to tip engagement:
-   1. `G1 X155 Y217.5 Z70 F12000` (combined-axis approach to tip
-      engagement; Z descends 25 mm over ~268 mm of XY travel, body
-      stays ≥ 11 mm above tip tops inside the tip-box footprint).
-   2. `G1 Z140` (lift with tips loaded — clears tip box + tips).
-   3. `G1 X155 Y115` at Z=140 (travel to reservoir; X stays at 155,
+2. **Tip pickup** (once) — six-step Z-first sequence per user spec.
+   After phase 1, the head sits at `(0, 0, TRAVEL_Z=95)` (only 36 mm
+   over the loaded tip box — adequate but tight), so the phase opens
+   with a Z **ascent** to `TIP_PICKUP_LIFT_Z=140` before any XY motion.
+   Symmetric pre/post: the same 140 mm altitude is used for the
+   approach and the post-engagement lift.
+   1. `G1 Z140` (ascend to tip-box clearance — 81 mm over loaded tip
+      box).
+   2. `G1 X155 Y217.5` at Z=140 (XY to tip box at clearance altitude).
+   3. `G1 Z70` (engage tips — friction-fit, no plunger stroke).
+   4. `G1 Z140` (lift with tips loaded).
+   5. `G1 X155 Y115` at Z=140 (travel to reservoir; X stays at 155,
       only Y moves — tip box and reservoir share X).
-   4. `G1 Z95` (descend to `TRAVEL_Z`, hand off to cycle 1's Z-first
+   6. `G1 Z95` (descend to `TRAVEL_Z`, hand off to cycle 1's Z-first
       transit pattern).
 3. **Column tour** (11×) — for each SBS column N, in order 1..11, the
    `_visit_xy_dive` helper runs twice per cycle (once for reservoir,
