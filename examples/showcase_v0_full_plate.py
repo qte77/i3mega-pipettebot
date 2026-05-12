@@ -77,12 +77,13 @@ on the tip is clear of every deck slot for the rest of the tour. v0
 has no software soft-limit enforcement (see `.claude/rules/motion-safety.md`).
 
 **Side effect**: raises Marlin's Z max feedrate (`M203 Z20`) and Z
-acceleration (`M201 Z200`) for snappier vertical motion, AND **disables
-software endstops (`M211 S0`)** so the reservoir (Y=−50) and SBS col 1
-(Y=−75) targets reach past Marlin Y=0 instead of being clamped. Both
-settings last until power-cycle unless saved with `M500`. Re-enable
-soft endstops manually (`M211 S1`) after the tour if you want them on
-for other scripts.
+acceleration (`M201 Z200`) for snappier vertical motion, AND disables
+software endstops (`M211 S0`) for robustness in case any commanded Y
+falls outside the firmware-configured `Y_MIN`/`Y_MAX`. With the
+positive-Y convention (Y=0 back, Y=250 front) all current targets
+sit between 0 and ~140, so soft endstops would not typically clamp
+— `M211 S0` is kept defensively. Both settings last until power-cycle
+unless saved with `M500`.
 """
 
 from __future__ import annotations
@@ -107,43 +108,32 @@ DEFAULT_GCODE_OUT = "showcase_v0_full_plate.gcode"
 # Any change here must be reflected there (and vice versa).
 
 # Deck-to-Marlin frame offset. Marlin commanded coords = deck-frame + offset.
-# Y offset = -50: bed shifted another 5 cm forward on top of the per-slot
-# adjustments. Reachable: Marlin Y=0 sits 175 mm behind the physical bed
-# front, so the new front-most commanded Y (SBS col 12 at -56) is still
-# 119 mm before the physical front limit.
+# Y convention (per user spec): Y axis is positive 0–250 mm, with Y=0 at
+# the BACK of the bed and Y=250 at the FRONT. All commanded Y values
+# should be positive. DECK_OFFSET_Y = 0 — no Y offset needed.
 DECK_OFFSET_X = 25.0  # +X = right (commanded X = deck X + 25)
-DECK_OFFSET_Y = -50.0  # -Y = forward (commanded Y = deck Y - 50)
+DECK_OFFSET_Y = 0.0  # Y axis positive (Y=0 back, Y=250 front)
 
 # SBS plate (back-left slot; 8 rows along X at 9 mm pitch, 12 cols along
 # Y at 9 mm pitch). Channel-1 (leftmost dPette tip) over row A at deck X=16.
 #
-# Y anchor (per user spec): cycle 1 dispense at Marlin Y = -10,
-# cycle 2 at Y = -11, stepping -1 mm per cycle. 12-cycle ladder:
-#   -10, -11, -12, -13, -14, -15, -16, -17, -18, -19, -20, -21
-# All comfortably within travel (Marlin Y=0 sits 175 mm behind the
-# physical front, so the deepest landing at Y=-21 has 154 mm of margin).
+# Y anchor (sign-flipped to positive convention): cycle 1 dispense at
+# Marlin Y = +10, cycle 2 at Y = +11, stepping +1 mm per cycle.
+# 12-cycle ladder: 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21.
 SBS_REF_X = 16.0 + DECK_OFFSET_X  # 41.0
-SBS_COL1_Y = 40.0 + DECK_OFFSET_Y  # -10.0 Marlin (cycle 1)
-SBS_COL_PITCH = -1.0  # -1 mm per cycle (Y decreases each visit)
+SBS_COL1_Y = 10.0 + DECK_OFFSET_Y  # 10.0 Marlin (cycle 1)
+SBS_COL_PITCH = 1.0  # +1 mm per cycle
 
 # Reservoir (front slot). 8 channels span 63 mm in X; X-center the
-# dPette over the reservoir (deck-frame X = 43–177 still considered
-# correct). Cavity heights: rim H = 24 mm, floor at Z = 19 mm, depth 5 mm.
+# dPette over the reservoir. Cavity heights: rim H = 24 mm, floor at
+# Z = 19 mm, depth 5 mm.
 #
-# Y anchor (per user calibration, 2026-05-12): the reservoir sits
-# RIGHT ABOVE Marlin Y = -50. That is:
-#   - 5 cm in front of Marlin Y = 0 (the Marlin home corner, which is
-#     itself 17.5 cm behind the physical bed front).
-#   - 12.5 cm behind the physical bed front (Y = -175 = mechanical limit).
-#   - Comfortably reachable with 125 mm of forward-travel margin.
-#
-# The earlier deck-frame slot extent (deck Y = 10–53) DID NOT match
-# physical reality — kept only as a historical placeholder in
-# docs/deck-layout.md. Trust the Marlin-Y anchor below for runtime.
+# Y anchor (positive convention, Y=0 back / Y=250 front):
+# Marlin Y = +50. Sign-flipped from the prior -50; confirm the
+# physical reservoir actually sits at this Y, or re-anchor against the
+# new convention (front-of-bed reservoir would expect higher Y).
 RESERVOIR_REF_X = 78.5 + DECK_OFFSET_X  # 103.5; 110 X-center - 31.5 half span
-RESERVOIR_REF_Y = (
-    0.0 + DECK_OFFSET_Y
-)  # -50.0 Marlin; "right above the reservoir" per user spec
+RESERVOIR_REF_Y = 50.0 + DECK_OFFSET_Y  # 50.0 Marlin
 
 # Tip box (back-right slot; front edge at Y=80, deck X=134-215, Y=80-200,
 # H >= 59 with loaded tips).
@@ -346,9 +336,9 @@ def _run(
         gcode_out,
         _gcode_header()
         + "; raise Z max feedrate + accel for snappy moves\n"
-        + "; disable software endstops so negative Y moves are not clamped\n"
-        + "; (reservoir aspirate at Y=-50, SBS col 1 at Y=-75 — both need\n"
-        + "; the bed to travel past Marlin Y=0 into negative-Y territory)\n",
+        + "; disable software endstops defensively (Y axis is positive\n"
+        + "; 0-250 in this convention; soft endstops kept off in case any\n"
+        + "; commanded Y falls outside the firmware Y_MIN/Y_MAX range)\n",
     )
     gsend(link, "M203 Z20", gcode_out=gcode_out)
     gsend(link, "M201 Z200", gcode_out=gcode_out)
