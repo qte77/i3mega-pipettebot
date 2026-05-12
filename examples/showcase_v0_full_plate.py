@@ -127,13 +127,9 @@ SBS_COL_PITCH = -10.0  # -10 mm per cycle (Y decreases each visit)
 RESERVOIR_REF_X = 135.0 + DECK_OFFSET_X  # 160.0 Marlin
 RESERVOIR_REF_Y = 150.0 + DECK_OFFSET_Y  # 150.0 Marlin
 
-# Tip box (back-right slot; front edge at Y=80, deck X=134-215, Y=80-200,
-# H >= 59 with loaded tips).
-# Leftmost tip column sits 8.5 mm from the outer-left wall (deck X=134).
-# Tour picks up from the back-most tip column (inner Y back 195 - 5.5 margin)
-# to minimize Y travel before the first SBS column visit (deck Y=193).
-TIP_PICKUP_X = 142.5 + DECK_OFFSET_X  # 167.5; outer-left 134 + 8.5
-TIP_PICKUP_Y = 189.5 + DECK_OFFSET_Y  # 139.5 Marlin; back-most tip column center
+# Tip box (per user spec): X=170, Y=190.
+TIP_PICKUP_X = 145.0 + DECK_OFFSET_X  # 170.0 Marlin
+TIP_PICKUP_Y = 190.0 + DECK_OFFSET_Y  # 190.0 Marlin
 
 # --- Motion altitudes (deck-plate frame) --------------------------------
 # Canonical source: docs/deck-layout.md "Motion constants".
@@ -153,7 +149,17 @@ SBS_HOVER_Z = 85.0  # hover Z over SBS well (travel and lift)
 WELL_Z = 75.0  # dive Z into SBS well
 RESERVOIR_HOVER_Z = 105.0  # hover Z over reservoir (travel and lift)
 RESERVOIR_Z = 75.0  # dive Z into reservoir
-TIP_PICKUP_Z = 57.0  # body-bottom at deck-Z 111 = 52 mm above 59 mm tip tops
+
+# Tip-pickup phase Z sequence (per user spec):
+# 1. Descend to TIP_PICKUP_PRE_Z (defensive pre-XY altitude over tip box)
+# 2. Travel to (TIP_PICKUP_X, TIP_PICKUP_Y)
+# 3. Descend to TIP_PICKUP_Z (engage tips)
+# 4. Lift to TIP_PICKUP_LIFT_Z (clear of tip box with tips loaded)
+# 5. Travel to reservoir XY at TIP_PICKUP_LIFT_Z
+# 6. Descend to RESERVOIR_HOVER_Z (hand off to cycle 1)
+TIP_PICKUP_PRE_Z = 90.0  # Z before XY travel to tip box
+TIP_PICKUP_Z = 70.0  # tip engagement Z (body bottom on tip tops)
+TIP_PICKUP_LIFT_Z = 140.0  # post-engagement lift; clears tip box + tips
 
 # End-of-tour park altitude: 1.5 × disposable tip length. Sits low enough
 # to make the head accessible to the operator but high enough to clear any
@@ -272,22 +278,42 @@ def pickup_tips(
 ) -> None:
     """One-time tip pickup at the back-right tip box.
 
-    Friction-fit engagement (no plunger stroke). See docs/deck-layout.md
-    "Tour sequence" phase 2 for the geometry and the `TIP_PICKUP_Z` note
-    on calibration assumptions.
+    Six-step sequence per user spec:
+      1. Z → TIP_PICKUP_PRE_Z (90 — defensive pre-XY altitude)
+      2. XY → (TIP_PICKUP_X, TIP_PICKUP_Y) at current Z
+      3. Z → TIP_PICKUP_Z (70 — engage tips, friction-fit)
+      4. Z → TIP_PICKUP_LIFT_Z (140 — lift with tips loaded)
+      5. XY → (RESERVOIR_REF_X, RESERVOIR_REF_Y) at current Z
+      6. Z → RESERVOIR_HOVER_Z (105 — hand off to cycle 1)
     """
     print("[host] --- tip pickup (simulated, once) ---")
     if gcode_out is not None:
         gcode_out.write("\n; --- tip pickup (simulated, once) ---\n")
+    # 1. Pre-XY Z descent
+    gsend(link, f"G1 Z{TIP_PICKUP_PRE_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    gsend(link, "M400", gcode_out=gcode_out)
+    # 2. XY to tip box at current Z
     gsend(
         link,
-        f"G1 X{TIP_PICKUP_X:.3f} Y{TIP_PICKUP_Y:.3f} Z{TRAVEL_Z:.3f} F{XY_FEED}",
+        f"G1 X{TIP_PICKUP_X:.3f} Y{TIP_PICKUP_Y:.3f} F{XY_FEED}",
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
+    # 3. Engage tips
     gsend(link, f"G1 Z{TIP_PICKUP_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    # 4. Lift with tips loaded
+    gsend(link, f"G1 Z{TIP_PICKUP_LIFT_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    gsend(link, "M400", gcode_out=gcode_out)
+    # 5. XY to reservoir at current Z
+    gsend(
+        link,
+        f"G1 X{RESERVOIR_REF_X:.3f} Y{RESERVOIR_REF_Y:.3f} F{XY_FEED}",
+        gcode_out=gcode_out,
+    )
+    gsend(link, "M400", gcode_out=gcode_out)
+    # 6. Descend to reservoir hover (hand off to cycle 1)
+    gsend(link, f"G1 Z{RESERVOIR_HOVER_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
 

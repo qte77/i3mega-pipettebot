@@ -65,7 +65,7 @@ override them.
 | Reservoir aspirate | **160** | **150** | **105** | **75** |
 | SBS col 1 (first dispense) | **50** | **180** | **85** | **75** |
 | SBS col 12 (last dispense) | 50 | **70** | 85 | 75 |
-| Tip pickup | 167.5 | 139.5 | 125 (`TRAVEL_Z`) | 57 |
+| Tip pickup | **170** | **190** | 90 (pre) / 140 (lift) | **70** |
 
 SBS pitch is **−10 mm/cycle** (Y decreases each visit). 12-cycle ladder:
 **180, 170, 160, 150, 140, 130, 120, 110, 100, 90, 80, 70**. Cycle 4
@@ -99,15 +99,17 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 | `WELL_Z` | **75** | Dive Z into SBS well; **invariant `WELL_Z ≥ RESERVOIR_Z`** (equality here) |
 | `RESERVOIR_HOVER_Z` | **105** | Travel/lift Z when visiting reservoir |
 | `RESERVOIR_Z` | **75** | Dive Z into reservoir |
+| `TIP_PICKUP_PRE_Z` | **90** | Defensive Z before XY travel to tip box (descended from `TRAVEL_Z`=125 to 90, still above tip box) |
+| `TIP_PICKUP_Z` | **70** | Engagement Z; body bottom on tip tops |
+| `TIP_PICKUP_LIFT_Z` | **140** | Post-engagement lift with tips loaded; clears tip box + tips |
+| `TIP_PICKUP_X` | 145 (slot pre-offset) → **170 (Marlin)** | Per user spec |
+| `TIP_PICKUP_Y` | 190 (slot pre-offset) → **190 (Marlin)** | Per user spec |
 | `RESERVOIR_REF_X` | 135 (slot pre-offset) → **160 (Marlin)** | Per user spec |
 | `RESERVOIR_REF_Y` | 150 (slot pre-offset) → **150 (Marlin)** | Per user spec |
 | `SBS_REF_X` | 25 (slot pre-offset) → **50 (Marlin)** | Per user spec |
 | `SBS_COL1_Y` | 180 (slot pre-offset) → **180 (Marlin)** | Cycle 1 dispense Y per user spec. Step −10 mm per cycle; 12-cycle ladder 180, 170, …, 70 |
 | `SBS_COL_PITCH` | **−10 mm** | Step between consecutive cycle Y positions (Y decreases each visit) |
 | `M211 S0` (sent at bootstrap) | — | Disables Marlin software endstops defensively in case any commanded Y falls outside the firmware-configured Y_MIN/Y_MAX. Lasts until power-cycle |
-| `TIP_PICKUP_X` | 142.5 (deck) → 167.5 (Marlin) | Outer-left of tip box (134) + 8.5 mm leftmost-tip-column offset |
-| `TIP_PICKUP_Y` | 139.5 (slot pre-offset) → **139.5** (Marlin) | Back-most tip column. With Y=0=back convention, this is 139.5 mm forward of the back limit — may need re-anchoring if tip box is physically near the back |
-| `TIP_PICKUP_Z` | **57** | Bumped +50; body-bottom at deck-Z 111 = 52 mm above 59 mm tip tops (no engagement; v0 sim) |
 | `PARK_Z` | **74.25** | End-of-tour park altitude. `1.5 × 49.5 mm` (disposable tip length) — clears any forgotten tip with half its length to spare |
 
 > ℹ Per-slot hover/dive scheme: each slot has its own hover Z used for
@@ -149,9 +151,13 @@ comment in the tee'd G-code):
    would drive any mounted tip into the deck. After homing, the Z
    raise lifts the carriage clear; tips are then picked up from the
    box in phase 2.
-2. **Tip pickup** (once) — travel to `(TIP_PICKUP_X, TIP_PICKUP_Y, TRAVEL_Z)`,
-   descend to `TIP_PICKUP_Z`, lift. No plunger stroke (pickup is a
-   friction-fit, not a piston action).
+2. **Tip pickup** (once) — six-step sequence per user spec:
+   1. `G1 Z90` (defensive pre-XY descent from `TRAVEL_Z=125`).
+   2. `G1 X170 Y190` at Z=90 (travel to tip box).
+   3. `G1 Z70` (engage tips — friction-fit, no plunger stroke).
+   4. `G1 Z140` (lift with tips loaded — clears tip box + tips).
+   5. `G1 X160 Y150` at Z=140 (travel to reservoir XY).
+   6. `G1 Z105` (descend to `RESERVOIR_HOVER_Z`, hand off to cycle 1).
 3. **Column tour** (12×) — for each SBS column N, in order 1..12:
    - Travel to reservoir (Marlin X=160, Y=150) at `RESERVOIR_HOVER_Z`
      (105), single descent to `RESERVOIR_Z` (75), lift back to
