@@ -114,23 +114,16 @@ DEFAULT_GCODE_OUT = "showcase_v0_full_plate.gcode"
 DECK_OFFSET_X = 25.0  # +X = right (commanded X = deck X + 25)
 DECK_OFFSET_Y = 0.0  # Y axis positive (Y=0 back, Y=250 front)
 
-# SBS plate (back-left slot; 8 rows along X at 9 mm pitch, 12 cols along
-# Y at 9 mm pitch). Channel-1 (leftmost dPette tip) over row A at deck X=16.
-#
-# Y anchor (per user spec): cycle 1 dispense at Marlin Y = 125,
-# stepping +1 mm per cycle. 12-cycle ladder:
-#   125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136
-SBS_REF_X = 16.0 + DECK_OFFSET_X  # 41.0
-SBS_COL1_Y = 125.0 + DECK_OFFSET_Y  # 125.0 Marlin (cycle 1)
-SBS_COL_PITCH = 1.0  # +1 mm per cycle
+# SBS plate (per user spec): X=50, cycle 1 Y=250, step -10 mm per cycle.
+# 12-cycle ladder:
+#   250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150, 140
+SBS_REF_X = 25.0 + DECK_OFFSET_X  # 50.0 Marlin
+SBS_COL1_Y = 250.0 + DECK_OFFSET_Y  # 250.0 Marlin (cycle 1)
+SBS_COL_PITCH = -10.0  # -10 mm per cycle (Y decreases each visit)
 
-# Reservoir (front slot). 8 channels span 63 mm in X; X-center the
-# dPette over the reservoir. Cavity heights: rim H = 24 mm, floor at
-# Z = 19 mm, depth 5 mm.
-#
-# Y anchor (per user spec): Marlin Y = 95.
-RESERVOIR_REF_X = 78.5 + DECK_OFFSET_X  # 103.5; 110 X-center - 31.5 half span
-RESERVOIR_REF_Y = 95.0 + DECK_OFFSET_Y  # 95.0 Marlin
+# Reservoir (per user spec): X=160, Y=150.
+RESERVOIR_REF_X = 135.0 + DECK_OFFSET_X  # 160.0 Marlin
+RESERVOIR_REF_Y = 150.0 + DECK_OFFSET_Y  # 150.0 Marlin
 
 # Tip box (back-right slot; front edge at Y=80, deck X=134-215, Y=80-200,
 # H >= 59 with loaded tips).
@@ -146,17 +139,19 @@ TIP_PICKUP_Y = 189.5 + DECK_OFFSET_Y  # 139.5 Marlin; back-most tip column cente
 # derived from that. If a taller tip box is introduced, raise `TRAVEL_Z`
 # in lockstep here AND in docs/deck-layout.md.
 
-# Global Z floor: all altitudes bumped +50 mm vs the previous iteration,
-# per user spec ("Z +5 cm to the top OVERALL"). Keeps the tip clear of every
-# slot for v0 sim — no descents reach into wells, the reservoir cavity, or
-# the tip-box tip tops. For real liquid handling, descend points must be
-# re-derived against the actual slot geometry.
-TRAVEL_Z = 125.0  # 75 + 50; in-tour safe altitude (clears 59 mm tip box + margin)
-RESERVOIR_Z = 70.0  # 20 + 50 (was: 1 mm above cavity floor; now ~46 mm above rim)
-WELL_Z = (
-    72.0  # 22 + 50; INVARIANT: WELL_Z >= RESERVOIR_Z (tip never lower than aspirate)
-)
-TIP_PICKUP_Z = 57.0  # 7 + 50; body-bottom at deck-Z 111 = 52 mm above 59 mm tip tops
+# Per-slot hover and dive altitudes (per user spec). Each visit lands at
+# its slot's hover Z, then descends to the dive Z and lifts back to hover.
+# Z transitions between slots happen naturally during the next G1 X Y Z.
+#
+# WELL_Z == RESERVOIR_Z == 75 — dispense and aspirate dive to the same Z,
+# preserving the WELL_Z >= RESERVOIR_Z invariant from motion-safety.md
+# (tip never lower at dispense than at aspirate).
+TRAVEL_Z = 125.0  # post-G28 raise altitude (above every slot)
+SBS_HOVER_Z = 85.0  # hover Z over SBS well (travel and lift)
+WELL_Z = 75.0  # dive Z into SBS well
+RESERVOIR_HOVER_Z = 105.0  # hover Z over reservoir (travel and lift)
+RESERVOIR_Z = 75.0  # dive Z into reservoir
+TIP_PICKUP_Z = 57.0  # body-bottom at deck-Z 111 = 52 mm above 59 mm tip tops
 
 # End-of-tour park altitude: 1.5 × disposable tip length. Sits low enough
 # to make the head accessible to the operator but high enough to clear any
@@ -228,13 +223,13 @@ def visit_reservoir(
         gcode_out.write("\n; --- reservoir aspirate (simulated) ---\n")
     gsend(
         link,
-        f"G1 X{RESERVOIR_REF_X:.3f} Y{RESERVOIR_REF_Y:.3f} Z{TRAVEL_Z:.3f} F{XY_FEED}",
+        f"G1 X{RESERVOIR_REF_X:.3f} Y{RESERVOIR_REF_Y:.3f} Z{RESERVOIR_HOVER_Z:.3f} F{XY_FEED}",
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
     gsend(link, f"G1 Z{RESERVOIR_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    gsend(link, f"G1 Z{RESERVOIR_HOVER_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
 
@@ -244,14 +239,13 @@ def visit_column(
     *,
     gcode_out: TextIO | None = None,
 ) -> None:
-    """Travel to SBS column `col` (1..12, front→back), single descent (dispense), lift.
+    """Travel to SBS column `col` (1..12), single descent (dispense), lift.
 
-    Col 1 = front-most (Y = SBS_COL1_Y = -50 Marlin, same as reservoir Y so
-    the reservoir→first-col transition is Z-only). Col 12 = back-most
-    (Y = -50 + 11*9 = 49 Marlin). Step +9 mm per visit. Dispense is a
-    SINGLE descent — no plunger up-and-back stroke. Invariant:
-    WELL_Z >= RESERVOIR_Z (tip never lower at dispense than aspirate).
-    See docs/deck-layout.md "Tour sequence" phase 3.
+    Per user spec: col 1 at Marlin Y=250, step -10 mm per cycle. Col 12
+    lands at Y=140. Travel/hover at SBS_HOVER_Z=85; dive to WELL_Z=75.
+    Dispense is a SINGLE descent — no plunger up-and-back stroke.
+    Invariant: WELL_Z >= RESERVOIR_Z (tip never lower at dispense than
+    aspirate). See docs/deck-layout.md "Tour sequence" phase 3.
     """
     y = SBS_COL1_Y + (col - 1) * SBS_COL_PITCH
     print(f"[host] --- SBS column {col} dispense (simulated) at Y={y:.2f} ---")
@@ -259,13 +253,13 @@ def visit_column(
         gcode_out.write(f"\n; --- SBS column {col} dispense at Y={y:.2f} ---\n")
     gsend(
         link,
-        f"G1 X{SBS_REF_X:.3f} Y{y:.3f} Z{TRAVEL_Z:.3f} F{XY_FEED}",
+        f"G1 X{SBS_REF_X:.3f} Y{y:.3f} Z{SBS_HOVER_Z:.3f} F{XY_FEED}",
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
     gsend(link, f"G1 Z{WELL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    gsend(link, f"G1 Z{SBS_HOVER_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
 
