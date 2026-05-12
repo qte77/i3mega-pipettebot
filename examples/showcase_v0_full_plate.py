@@ -117,16 +117,14 @@ DECK_OFFSET_Y = -50.0  # -Y = forward (commanded Y = deck Y - 50)
 # SBS plate (back-left slot; 8 rows along X at 9 mm pitch, 12 cols along
 # Y at 9 mm pitch). Channel-1 (leftmost dPette tip) over row A at deck X=16.
 #
-# Y anchor (per user spec): cycle 1 dispense lands at Marlin Y = -25.
-# SBS wells are 10 mm apart (NOT the SBS-standard 9 mm — per user
-# calibration of the physical plate). 12-cycle ladder:
-#   -25, -15, -5, 5, 15, 25, 35, 45, 55, 65, 75, 85
+# Y anchor (per user spec): cycle 1 dispense at Marlin Y = -10,
+# cycle 2 at Y = -11, stepping -1 mm per cycle. 12-cycle ladder:
+#   -10, -11, -12, -13, -14, -15, -16, -17, -18, -19, -20, -21
 # All comfortably within travel (Marlin Y=0 sits 175 mm behind the
-# physical front, Y_max is ~220, so the 85 mm back-most landing has
-# 135 mm of margin).
+# physical front, so the deepest landing at Y=-21 has 154 mm of margin).
 SBS_REF_X = 16.0 + DECK_OFFSET_X  # 41.0
-SBS_COL1_Y = 25.0 + DECK_OFFSET_Y  # -25.0 Marlin (cycle 1)
-SBS_COL_PITCH = 10.0  # +10 mm per cycle (well pitch on this plate)
+SBS_COL1_Y = 40.0 + DECK_OFFSET_Y  # -10.0 Marlin (cycle 1)
+SBS_COL_PITCH = -1.0  # -1 mm per cycle (Y decreases each visit)
 
 # Reservoir (front slot). 8 channels span 63 mm in X; X-center the
 # dPette over the reservoir (deck-frame X = 43–177 still considered
