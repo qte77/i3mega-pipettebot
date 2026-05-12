@@ -106,7 +106,8 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 | `RESERVOIR_Z` | **70** | Aspirate descent stop; 46 mm above 24 mm reservoir rim — no actual immersion |
 | `WELL_Z` | **72** | Dispense descent stop; **invariant `WELL_Z ≥ RESERVOIR_Z`** — tip is never lower at dispense than at aspirate |
 | `RESERVOIR_REF_Y` | 0 (slot pre-offset) → **-50 (Marlin)** | Aspirate at 5 cm behind Marlin Y=0 = 12.5 cm behind physical bed front. 125 mm of margin before the physical Y front limit (Y=-175) |
-| `SBS_COL1_Y` | 0 (slot pre-offset) → **−50** (Marlin) | Front-most SBS column = first visit, anchored on reservoir Y so the reservoir→col 1 transition is Z-only. Iteration steps +9 mm per column (front-to-back); col 12 lands at Marlin Y=49 |
+| `SBS_COL1_Y` | -25 (slot pre-offset) → **−75** (Marlin) | Front-most SBS column = first visit. 2.5 cm in front of the reservoir aspirate (Y=−50). Iteration steps +9 mm per column (front-to-back); col 12 lands at Marlin Y=24 |
+| `M211 S0` (sent at bootstrap) | — | Disables Marlin software endstops so the negative-Y targets (reservoir at Y=−50, SBS col 1 at Y=−75) aren't clamped to Y=0. Lasts until power-cycle |
 | `TIP_PICKUP_X` | 142.5 (deck) → 167.5 (Marlin) | Outer-left of tip box (134) + 8.5 mm leftmost-tip-column offset |
 | `TIP_PICKUP_Y` | 189.5 (deck) → **139.5** (Marlin) | Back-most tip column; minimizes Y travel into SBS column 1 |
 | `TIP_PICKUP_Z` | **57** | Bumped +50; body-bottom at deck-Z 111 = 52 mm above 59 mm tip tops (no engagement; v0 sim) |
@@ -147,12 +148,15 @@ The full-plate tour ([`examples/showcase_v0_full_plate.py`](../examples/showcase
 runs in four phases (each phase is delimited by a `; ===== phase N =====`
 comment in the tee'd G-code):
 
-1. **Bootstrap** — full `G28`, then `G1` to `TRAVEL_Z`. **Precondition:
-   tips MUST be removed from the dPette before this phase**, because
-   `Z=0` is calibrated to tip-end-on-deck (per
-   [`calibration.md`](calibration.md)) — `G28 Z` would drive any
-   mounted tip into the deck. After homing, the Z raise lifts the
-   carriage clear; tips are then picked up from the box in phase 2.
+1. **Bootstrap** — `M203/M201` bump, `M211 S0` (disable software
+   endstops so negative-Y reservoir/SBS targets aren't clamped),
+   `G28 X Y Z` (explicit axes — plain `G28` skips Z on this firmware),
+   then `G1` to `TRAVEL_Z`. **Precondition: tips MUST be removed from
+   the dPette before this phase**, because `Z=0` is calibrated to
+   tip-end-on-deck (per [`calibration.md`](calibration.md)) — `G28 Z`
+   would drive any mounted tip into the deck. After homing, the Z
+   raise lifts the carriage clear; tips are then picked up from the
+   box in phase 2.
 2. **Tip pickup** (once) — travel to `(TIP_PICKUP_X, TIP_PICKUP_Y, TRAVEL_Z)`,
    descend to `TIP_PICKUP_Z`, lift. No plunger stroke (pickup is a
    friction-fit, not a piston action).
@@ -172,10 +176,10 @@ comment in the tee'd G-code):
    safety margin). Manually run `G28` afterwards if endstop re-reference
    is needed.
 
-Column iteration is **front-to-back**: column 1 sits at `Marlin Y = -50`
-(front-most, same as reservoir aspirate Y) and column 12 sits at
-`Marlin Y = 49` (back-most). Iteration step is `+9 mm` per column.
-Reservoir → col 1 transition is Z-only (no Y motion).
+Column iteration is **front-to-back**: column 1 sits at `Marlin Y = -75`
+(front-most, 2.5 cm in front of the reservoir aspirate at Y=−50) and
+column 12 sits at `Marlin Y = 24` (back-most). Iteration step is
+`+9 mm` per column.
 
 ### Y motion timeline
 
@@ -189,16 +193,19 @@ Bed Y positions through the tour (back ↑ , front ↓), in Marlin frame:
                  │  tip box back  (TIP_PICKUP_Y = 139.5)  ← phase 2
    +100 ─────────│  ●
                  │
-    +50 ─────────●  SBS col 12      (49)  ← phase 3 last dispense
-                 │  SBS col 11..7  (40, 31, 22, 13, 4)
+                 │
+                 │  SBS col 12   (24)  ← phase 3 last dispense
+    +20 ─────────│  ●
+                 │  SBS col 11..7  (15, 6, -3, -12, -21)
                  │
       0 ─────────●  G28 home / phase 4 park (Marlin Y=0)
                  │
-                 │  SBS col 6..2  (-5, -14, -23, -32, -41)
+                 │  SBS col 6..2  (-30, -39, -48, -57, -66)
                  │
-    -50 ─────────●  reservoir aspirate (-50) ≡ SBS col 1 (-50)
-                 │                            ← reservoir & first dispense
-                 │                              share Y (Z-only transition)
+    -50 ─────────●  reservoir aspirate (-50)
+                 │
+                 │
+    -75 ─────────●  SBS col 1   (-75)  ← phase 3 first dispense
                  │
    -100 ─────────│
                  │
@@ -211,18 +218,18 @@ Per-tour-cycle sequence:
 
 ```text
 home(Y=0) → tip pickup(Y=139.5) →
-  cycle 1:  reservoir(Y=-50) → SBS col 1  (Y=-50)  ← Z-only transition
-  cycle 2:  reservoir(Y=-50) → SBS col 2  (Y=-41)
-  cycle 3:  reservoir(Y=-50) → SBS col 3  (Y=-32)
-  cycle 4:  reservoir(Y=-50) → SBS col 4  (Y=-23)
-  cycle 5:  reservoir(Y=-50) → SBS col 5  (Y=-14)
-  cycle 6:  reservoir(Y=-50) → SBS col 6  (Y=-5)
-  cycle 7:  reservoir(Y=-50) → SBS col 7  (Y=4)
-  cycle 8:  reservoir(Y=-50) → SBS col 8  (Y=13)
-  cycle 9:  reservoir(Y=-50) → SBS col 9  (Y=22)
-  cycle 10: reservoir(Y=-50) → SBS col 10 (Y=31)
-  cycle 11: reservoir(Y=-50) → SBS col 11 (Y=40)
-  cycle 12: reservoir(Y=-50) → SBS col 12 (Y=49)
+  cycle 1:  reservoir(Y=-50) → SBS col 1  (Y=-75)
+  cycle 2:  reservoir(Y=-50) → SBS col 2  (Y=-66)
+  cycle 3:  reservoir(Y=-50) → SBS col 3  (Y=-57)
+  cycle 4:  reservoir(Y=-50) → SBS col 4  (Y=-48)
+  cycle 5:  reservoir(Y=-50) → SBS col 5  (Y=-39)
+  cycle 6:  reservoir(Y=-50) → SBS col 6  (Y=-30)
+  cycle 7:  reservoir(Y=-50) → SBS col 7  (Y=-21)
+  cycle 8:  reservoir(Y=-50) → SBS col 8  (Y=-12)
+  cycle 9:  reservoir(Y=-50) → SBS col 9  (Y=-3)
+  cycle 10: reservoir(Y=-50) → SBS col 10 (Y=6)
+  cycle 11: reservoir(Y=-50) → SBS col 11 (Y=15)
+  cycle 12: reservoir(Y=-50) → SBS col 12 (Y=24)
 park(Y=0)
 ```
 

@@ -32,10 +32,12 @@ above any prior liquid line during dispense.
 
 Phases::
 
-    1. bootstrap     — M203/M201 bump, `G28 X Y Z` (explicit axes;
-                       plain `G28` has been observed to skip Z on the
-                       AI3M Marlin variant — tips MUST be removed
-                       first, see PRECONDITION), G1 Z TRAVEL_Z.
+    1. bootstrap     — M203/M201 bump, `M211 S0` (disable software
+                       endstops so negative-Y reservoir/SBS targets are
+                       not clamped), `G28 X Y Z` (explicit axes; plain
+                       `G28` has been observed to skip Z on the AI3M
+                       Marlin variant — tips MUST be removed first,
+                       see PRECONDITION), G1 Z TRAVEL_Z.
     2. tip pickup    — travel to (TIP_PICKUP_X, TIP_PICKUP_Y, TRAVEL_Z),
                        descend to TIP_PICKUP_Z, lift.
     3. column tour   — for col in 1..12 (back→front):
@@ -75,8 +77,12 @@ on the tip is clear of every deck slot for the rest of the tour. v0
 has no software soft-limit enforcement (see `.claude/rules/motion-safety.md`).
 
 **Side effect**: raises Marlin's Z max feedrate (`M203 Z20`) and Z
-acceleration (`M201 Z200`) for snappier vertical motion. Lasts until
-power-cycle unless saved with `M500`.
+acceleration (`M201 Z200`) for snappier vertical motion, AND **disables
+software endstops (`M211 S0`)** so the reservoir (Y=−50) and SBS col 1
+(Y=−75) targets reach past Marlin Y=0 instead of being clamped. Both
+settings last until power-cycle unless saved with `M500`. Re-enable
+soft endstops manually (`M211 S1`) after the tour if you want them on
+for other scripts.
 """
 
 from __future__ import annotations
@@ -111,18 +117,17 @@ DECK_OFFSET_Y = -50.0  # -Y = forward (commanded Y = deck Y - 50)
 # SBS plate (back-left slot; 8 rows along X at 9 mm pitch, 12 cols along
 # Y at 9 mm pitch). Channel-1 (leftmost dPette tip) over row A at deck X=16.
 #
-# Y anchor (per user spec): the first SBS column visit lands at the SAME
-# Marlin Y as the reservoir aspirate (-50). The reservoir-then-first-col
-# transition is therefore Z-only — no Y motion — which keeps the bed at
-# the reservoir position for the first dispense.
+# Y anchor (per user spec): the first SBS column visit lands at
+# Marlin Y = -75 (= 2.5 cm in front of the reservoir aspirate at -50).
 #
-# Iteration direction: front-to-back. Col 1 at Y=-50 (front, = reservoir Y),
-# col 12 at Y=49 (back). Step +9 mm per visit. 12-column ladder:
-#   -50, -41, -32, -23, -14, -5, 4, 13, 22, 31, 40, 49
+# Iteration direction: front-to-back. Col 1 at Y=-75 (front-most),
+# col 12 at Y=-75 + 11*9 = 24 (back-most). Step +9 mm per visit.
+# 12-column ladder:
+#   -75, -66, -57, -48, -39, -30, -21, -12, -3, 6, 15, 24
 # All reachable: Marlin Y=0 sits 175 mm behind the physical front, so the
-# front-most col (Y=-50) is 125 mm before the front limit.
+# front-most col (Y=-75) is 100 mm before the front limit.
 SBS_REF_X = 16.0 + DECK_OFFSET_X  # 41.0
-SBS_COL1_Y = 0.0 + DECK_OFFSET_Y  # -50.0 Marlin = reservoir Y; col 1 = front-most
+SBS_COL1_Y = -25.0 + DECK_OFFSET_Y  # -75.0 Marlin; col 1 = front-most SBS row
 SBS_COL_PITCH = 9.0  # +9 mm per visit (front-to-back)
 
 # Reservoir (front slot). 8 channels span 63 mm in X; X-center the
@@ -343,10 +348,15 @@ def _run(
     """
     _phase_comment(
         gcode_out,
-        _gcode_header() + "; raise Z max feedrate + accel for snappy moves\n",
+        _gcode_header()
+        + "; raise Z max feedrate + accel for snappy moves\n"
+        + "; disable software endstops so negative Y moves are not clamped\n"
+        + "; (reservoir aspirate at Y=-50, SBS col 1 at Y=-75 — both need\n"
+        + "; the bed to travel past Marlin Y=0 into negative-Y territory)\n",
     )
     gsend(link, "M203 Z20", gcode_out=gcode_out)
     gsend(link, "M201 Z200", gcode_out=gcode_out)
+    gsend(link, "M211 S0", gcode_out=gcode_out)
 
     _phase_comment(
         gcode_out,
