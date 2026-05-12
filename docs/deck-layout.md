@@ -1,7 +1,7 @@
 ---
 title: "Deck layout"
 status: "DRAFT"
-updated: "2026-05-11"
+updated: "2026-05-12"
 owner: "lambda biolab"
 ---
 
@@ -22,53 +22,57 @@ All Marlin-Y values in this doc and the scripts are positive.
 
 ## Top view
 
-```text
-Deck-frame physical layout (slot positions unchanged).
-Bed movement adjustments are applied per-slot at runtime — see motion
-constants table.
+Anchor points only (Marlin frame, Y=0 back / Y=250 front). Slot
+extents are no longer tracked in the deck-frame abstraction — the
+tour uses absolute Marlin Y/X targets per the user-calibrated anchors.
 
-                              BACK  (Y = 220)
-       +-----------------------------------------------------+
-Y=220  |                                                     |
-Y=207  | +-----------+                       +-----------+   |
-       | |    SBS    | ← 44 mm corridor →    |  TIP BOX  |   |
-       | |   plate   |    (X = 90 – 134)     |  (outer)  |   |
-       | | 85 × 127  |                       | 81 × 120  |   |
-       | | H = 13    |                       | H ≥ 59    |   |
-       | | 12 col→Y  |                       | inner     |   |
-       | |  8 row→X  |                       | 73.7×110  |   |
-Y=100  | |           |                       +-----------+   |  Y=200
-Y= 93  | +-----------+                                       |
-       |       ↕ 27 mm (SBS → reservoir Y gap)               |
-       |       ↕ 27 mm (tip box → reservoir Y gap)           |
-Y= 53  |     +-------------------------------+               |
-       |     |   RESERVOIR  134 × 43         |               |
-       |     |   rim  Z = 24                 |               |
-       |     |   floor Z = 19  (cavity 5)    |               |
-Y= 10  |     +-------------------------------+               |
-Y=  0  +-----------------------------------------------------+
-         X=0  X=5    X=43          X=90  X=134      X=177  X=215  X=220
-                              FRONT  (Y = 0)
-         ↑ G28 lands nozzle here
-         ← bed adjustments: SBS −100 mm, reservoir aspirate at Y=−50
+```text
+                       FRONT (operator, Y=250)
+       +---------------------------------------------------------+
+Y=250  |                                                         |
+       |                                                         |
+       |                                                         |
+       |                                                         |
+Y=200  |                                                         |
+       |                                                         |
+       |                                                         |
+Y=139.5│                                       ● TIP PICKUP      |   (X=167.5)
+Y=136  │                  ● SBS col 12 (Y=136)                   |
+       |                  ▲                                      |
+Y=125  │                  ● SBS col 1  (Y=125)                   |   (X=41)
+       |                                                         |
+       |                                                         |
+Y=95   │     ● RESERVOIR (Y=95)                                  |   (X=103.5)
+       |                                                         |
+       |                                                         |
+Y=50   |                                                         |
+       |                                                         |
+       |                                                         |
+       |                                                         |
+Y=0    +---------------------------------------------------------+
+                         BACK (Y=0)   ← G28 home corner
+       X=0         X=41    X=103.5   X=167.5                 X=220
 ```
 
-## Slot extents
+## Anchor points
 
-| Slot | X (mm) | Y (mm) | H (mm) | Footprint |
-|---|---|---|---|---|
-| SBS plate (back-left) | 5 – 90 | **80 – 207** | 13 | 85 × 127, 12 col → Y, 8 row → X; front edge 80 mm from bed front (physical position). Bed-movement adjustment: −100 mm applied when visiting SBS columns (see motion constants) |
-| Tip box outer (back-right) | 134 – 215 | **80 – 200** | **≥ 59** | 81 × 120 (incl. loaded tips); front edge 80 mm from bed front |
-| Tip box inner (tip array) | ~137.65 – 211.35 | ~85 – 195 | — | 73.7 × 110 |
-| Reservoir (front, centered) | 43 – 177 | **10 – 53** | 24 (rim) / 19 (floor) | 134 × 43, length → X; cavity depth 5; front edge 10 mm from bed front |
+The tour visits four named XY positions plus a home corner. Each is
+specified in the Marlin frame (positive 0–250 Y convention). The
+deck-frame slot extents that earlier iterations tried to track are
+no longer authoritative — the user gave direct Marlin-Y anchors to
+override them.
 
-All slots inset 5 mm from the nearest deck edge for handling tolerance,
-mounting screws, and head-body clearance.
+| Anchor | Marlin X | Marlin Y | Notes |
+|---|---|---|---|
+| Home / park | 0 | 0 | `G28` lands here; phase 4 park returns here |
+| Reservoir aspirate | 103.5 | **95** | Sits 30 mm closer to BACK than SBS col 1 |
+| SBS col 1 (first dispense) | 41 | **125** | Cycle 1 |
+| SBS col 12 (last dispense) | 41 | **136** | Cycle 12; +1 mm pitch (11 mm range over 12 cycles) |
+| Tip pickup | 167.5 | 139.5 | Phase 2, once per tour |
 
-The tip-box height of **59 mm is the minimum** — that is the loaded-tips
-height of the current box, and any tip box used on this deck must be no
-taller. `TRAVEL_Z` is derived from this minimum (see below); if a taller
-box is ever introduced, `TRAVEL_Z` must be re-derived first.
+Tip-box loaded-tips height: **≥ 59 mm** (minimum — `TRAVEL_Z` is
+derived from this; if a taller tip box is introduced, raise `TRAVEL_Z`
+first).
 
 ### dPette geometry
 
@@ -79,15 +83,6 @@ body where it meets the mount). Per [`calibration.md`](calibration.md),
 this doc are tip-end altitudes and do *not* need a 54 mm offset added.
 The 54 mm matters when designing CAD parts that might foul the dPette
 body during XY travel.
-
-## Free zones
-
-| Zone | X (mm) | Y (mm) | Purpose |
-|---|---|---|---|
-| HOME pocket | 0 – 43 | 0 – 10 | `G28` landing area; no obstacle below nozzle |
-| Travel corridor | 90 – 134 | 53 – 220 | Safe low-Z N-S route between back-row slots |
-| Front-right pocket | 177 – 215 | 10 – 80 | Overflow access / future tool dock |
-| Back-side gap (SBS / tip box → deck back) | 5 – 215 | 200 – 220 | 13–20 mm strip behind the back-row slots |
 
 ## Motion constants
 
@@ -128,15 +123,16 @@ also satisfies the motion-safety "tip above liquid before dispense" rule
 
 ### Frame conventions
 
-Slot extents (above) and motion targets are spec'd in the **deck-plate
-frame** (`X = 0` at left edge, `Y = 0` at front). Marlin's frame is
-offset from the deck frame by `(DECK_OFFSET_X, DECK_OFFSET_Y)` —
-commanded coordinates in G-code are `deck_xy + offset`. The script
-folds the offset into each XY constant at module load, so the G-code
-stream is already in Marlin frame.
+Motion targets are spec'd in the **Marlin frame**: `X = 0` at the left
+edge, `Y = 0` at the bed BACK, `Y = 250` at the bed FRONT (positive-Y
+convention per this printer's calibration), `Z = 0` at the calibrated
+tip-on-deck zero. The X axis still carries a `DECK_OFFSET_X = +25`
+correction (legacy from when the deck-frame abstraction was active);
+the Y axis has no offset (`DECK_OFFSET_Y = 0`).
 
 If the bed-vs-deck alignment changes (deck plate moved, bed
-re-calibrated), only the two `DECK_OFFSET_*` constants need updating.
+re-calibrated), update the per-anchor Y values rather than introducing
+a new global offset.
 
 ## Tour sequence
 
@@ -156,15 +152,13 @@ comment in the tee'd G-code):
 2. **Tip pickup** (once) — travel to `(TIP_PICKUP_X, TIP_PICKUP_Y, TRAVEL_Z)`,
    descend to `TIP_PICKUP_Z`, lift. No plunger stroke (pickup is a
    friction-fit, not a piston action).
-3. **Column tour** (12×) — for each SBS column N, in order 1..12
-   (**front → back**, col 1 at Marlin Y=−50 = same as reservoir):
-   - Travel to reservoir at `TRAVEL_Z`, single descent to `RESERVOIR_Z`
-     (aspirate), lift back to `TRAVEL_Z`.
+3. **Column tour** (12×) — for each SBS column N, in order 1..12:
+   - Travel to reservoir at `TRAVEL_Z` (Marlin Y=95), single descent
+     to `RESERVOIR_Z` (aspirate), lift back to `TRAVEL_Z`.
    - Travel to plate column N at `TRAVEL_Z`, single descent to `WELL_Z`
-     (dispense), lift back to `TRAVEL_Z`. **First column** (col 1) is
-     at the **same Y as the reservoir**, so the reservoir→col 1
-     transition is Z-only — no Y motion. Each subsequent column steps
-     `+9 mm` back from col 1.
+     (dispense), lift back to `TRAVEL_Z`. Col 1 sits at Marlin Y=125
+     (30 mm forward of the reservoir); each subsequent column steps
+     `+1 mm` further forward, so col 12 lands at Y=136.
 4. **Park at home corner** — `G1` to `(0, 0, PARK_Z)` where
    `PARK_Z = 1.5 × tip length = 74.25 mm`. Plain G1, not `G28` — trusts
    the tour's tracked position to save ~20 s of Z homing, and parks Z
@@ -229,37 +223,42 @@ park(Y=0)
 Bootstrap snippet:
 
 ```text
-G28                         ; home — nozzle to (0, 0, 0)
+M203 X1000 Y1000 Z20        ; bump XY/Z max feedrate caps
+M201 X2000 Y2000 Z200        ; bump XY/Z max acceleration
+M211 S0                      ; disable soft endstops (defensive)
+G28 X Y Z                    ; home all axes — TIPS MUST BE REMOVED
 M400
-G1 Z125 F1200               ; raise to TRAVEL_Z before any XY motion
+G1 Z125 F1200                ; raise to TRAVEL_Z before any XY motion
 M400
 ```
 
-`G28` leaves the nozzle at the deck surface; the immediate Z raise is
-mandatory before any XY motion, since the first motion would otherwise
-drag any tip extension through near-home obstacles.
+`G28 X Y Z` (explicit axes — plain `G28` skips Z on the AI3M Marlin
+variant) leaves the nozzle at the calibrated Z=0; the immediate Z
+raise is mandatory before any XY motion, since the first motion
+would otherwise drag any tip extension through near-home obstacles.
 
 ## Rationale
 
-1. **Home corner stays clear.** Front-left `X < 43`, `Y < 10` has no
-   slot; `G28` Z-probes against bare deck.
-2. **Aspirate at Y = -50** is comfortably reachable: this printer's
-   Marlin Y=0 sits 175 mm behind the physical bed front, so the bed
-   has 125 mm of remaining forward travel at Y=-50. No soft-limit
-   adjustment needed.
-3. **Back row split** — SBS at `X = 5–90`, tip box at `X = 134–215` —
-   leaves a 44 mm-wide travel corridor (`X = 90–134`) as the only N-S
-   path that stays low-Z safe. Useful if `TRAVEL_Z` is ever reduced.
-4. **`TRAVEL_Z = 125`** = previous 75 plus a global `+50 mm` ("Z OVERALL
+1. **Home corner is bed back** (Y=0). In the positive-Y convention,
+   `G28` brings the bed all the way back; the dPette is over the rear
+   of the deck at homed state.
+2. **Reservoir at Y=95, SBS col 1 at Y=125** — both well within the
+   0–250 Y range. Reservoir sits 30 mm back of SBS col 1, so the
+   reservoir→col-1 transition is a single forward Y move.
+3. **`TRAVEL_Z = 125`** = previous 75 plus a global `+50 mm` ("Z OVERALL
    +5 cm" per user spec). Clears the 59 mm tip-box minimum by 66 mm.
    Every descend point (`RESERVOIR_Z`, `WELL_Z`, `TIP_PICKUP_Z`) also
    bumped +50; v0 sim no longer immerses into any slot.
-5. **End with `G1` to home corner**, not `G28`. The tour does pure G1
-   moves with no expected step loss, so a closing `G1 X0 Y0 Z75` lands
-   the carriage at the home corner ~20 s faster than re-homing every
-   axis. `I3MEGA_SKIP_HOME=1` similarly skips the start `G28` for
-   back-to-back runs in the same session. Run `G28` manually if
-   endstop re-reference is ever needed.
+4. **End with `G1` to home corner**, not `G28`. The tour does pure G1
+   moves with no expected step loss, so a closing `G1 X0 Y0 Z PARK_Z`
+   lands the carriage at the home corner ~20 s faster than re-homing
+   every axis. Run `G28` manually if endstop re-reference is ever
+   needed.
+5. **`M211 S0` in the bootstrap** disables Marlin software endstops so
+   commanded Y values aren't silently clamped to the firmware
+   `Y_MIN`/`Y_MAX` range. With all current anchors in 0–140, this
+   is precautionary; earlier iterations needed it because of negative
+   Y commands.
 
 ## Pipette orientation
 
@@ -274,23 +273,20 @@ axis.
 
 ## Open offsets
 
-1. **Bed-vs-plate origin alignment** — resolved empirically as
-   `DECK_OFFSET = (+25, −25)` (see [Motion constants](#motion-constants)
-   "Frame conventions"). The deck plate sits 25 mm left and 25 mm back
-   of the bed origin; the Marlin frame compensates by shifting +X / −Y.
-   Re-derive if the deck plate is repositioned.
-2. **Deck-plate thickness.** All `Z` values above are measured from the
-   deck-plate **top** surface. If the plate is bolted on top of the
-   heated bed (Marlin `Z = 0`), add the plate thickness to every `Z`
-   constant.
-3. **Channel-1 reach in X.** With SBS at deck `X = 5–90` and the 9 mm
-   row pitch, channel 1's deck X target is ≈ 14 (Marlin X ≈ 39 after
-   the `DECK_OFFSET_X`). If the dPette body fouls the X frame before
-   reaching that Marlin X, shift the SBS right by the deficit and the
-   tip box right by the same amount (preserves the 44 mm corridor).
+1. **Bed origin alignment** — Y axis settled at no offset
+   (`DECK_OFFSET_Y = 0`) once the positive-Y convention took over.
+   X retains a `+25 mm` correction. Re-derive if the deck plate is
+   repositioned or the printer's Y axis is reconfigured.
+2. **Deck-plate thickness.** All `Z` values above are measured from
+   the calibrated tip-on-deck zero. If the deck plate is repositioned
+   in Z (e.g. mounted on a riser), every `Z` constant needs an offset
+   added.
+3. **Tip-pickup Y placement** — currently at Marlin Y=139.5, mid-bed.
+   Verify against the physical tip-box position; if the tip box is at
+   the bed back, `TIP_PICKUP_Y` should be much lower (close to Y=0).
 
-These three are gating items for [`calibration.md`](calibration.md)
-step 5 — record the measured values there.
+These items belong in [`calibration.md`](calibration.md) step 5 once
+the physical anchors are confirmed.
 
 ## Related docs
 
