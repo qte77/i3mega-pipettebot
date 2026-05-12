@@ -135,8 +135,8 @@ TIP_PICKUP_Y = 217.5 + DECK_OFFSET_Y  # 217.5 Marlin
 # need not be above any liquid line (preserves WELL_Z >= RESERVOIR_Z
 # invariant at the boundary).
 TRAVEL_Z = 125.0  # transit altitude — all XY motion happens here
-WELL_Z = 75.0  # dive Z into SBS well
-RESERVOIR_Z = 75.0  # dive Z into reservoir
+WELL_Z = 70.0  # dive Z into SBS well
+RESERVOIR_Z = 70.0  # dive Z into reservoir
 
 # Tip-pickup phase Z sequence (per user spec).
 TIP_PICKUP_PRE_Z = 90.0  # Z before XY travel to tip box

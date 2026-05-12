@@ -142,12 +142,12 @@ TIP_PICKUP_Y = 217.5 + DECK_OFFSET_Y  # 217.5 Marlin
 # always above obstacles during XY transit. No hover-Z step (each visit
 # descends directly from TRAVEL_Z to dive Z).
 #
-# WELL_Z == RESERVOIR_Z == 75 — dispense and aspirate dive to the same Z,
+# WELL_Z == RESERVOIR_Z == 70 — dispense and aspirate dive to the same Z,
 # preserving the WELL_Z >= RESERVOIR_Z invariant from motion-safety.md
 # (tip never lower at dispense than at aspirate).
 TRAVEL_Z = 125.0  # transit altitude — all XY motion happens here
-WELL_Z = 75.0  # dive Z into SBS well
-RESERVOIR_Z = 75.0  # dive Z into reservoir
+WELL_Z = 70.0  # dive Z into SBS well
+RESERVOIR_Z = 70.0  # dive Z into reservoir
 
 # Tip-pickup phase Z sequence (per user spec):
 # 1. Descend to TIP_PICKUP_PRE_Z (defensive pre-XY altitude over tip box)
