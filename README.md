@@ -1,7 +1,7 @@
 ---
 title: "i3mega-pipettebot"
 status: "PROTOTYPE"
-updated: "2026-05-12"
+updated: "2026-05-13"
 owner: "lambda biolab"
 ---
 
@@ -91,6 +91,13 @@ uv run examples/showcase_v0_full_pipettebot.py
 # to measure real B3 motor timing. Run with tip in air or over waste.
 uv run examples/showcase_v0_full_dpette_cycles.py
 
+# Either dpette script accepts a TOML experiment profile via
+# PIPETTE_PROFILE — drives the cycle count, per-cycle volumes, and any
+# pre-mixed reservoir gradient notes. See `examples/profiles/` for
+# samples (calibration_curve_demo.toml, gradient_reservoir_demo.toml).
+PIPETTE_PROFILE=examples/profiles/calibration_curve_demo.toml \
+  uv run examples/showcase_v0_full_dpette_cycles.py
+
 # Home — ends at Marlin default home (X=0, Y=0, Z=0), ~2× faster than
 # full G28. Replaces slow G28 Z (4 mm/s leadscrew) with G1 Z0 at the
 # bumped M203 feedrate (40 mm/s). Trusts the tracked Z; run full G28
@@ -138,9 +145,11 @@ simulated via Z) for bring-up without the pipette. Firmware-side
 M820 pass-through is still in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md)
 but no longer required for end-to-end pipetting.
 
-Three modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
-`__init__.py` (re-exports). No deck library, no safety limits, no
-calibration in v0 — the caller passes raw `(x, y, z)`.
+Four modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
+`profiles.py` (TOML experiment-profile loader; see
+[`examples/profiles/`](examples/profiles/)), and `__init__.py`
+(re-exports). No deck library, no safety limits, no calibration in v0
+— the caller passes raw `(x, y, z)`.
 
 ## Development
 
