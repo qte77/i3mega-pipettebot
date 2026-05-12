@@ -25,8 +25,8 @@ Timing (approximate, replace after first real run):
 
   Modelled against the gantry F speeds in `showcase_v0_full_plate.py`:
   XY_FEED = 12000 mm/min (200 mm/s), Z_FEED = 1200 mm/min (20 mm/s).
-  The dPette plunger stroke for a 50 uL aspirate is ~5 mm of mechanical
-  travel; at a Z_FEED-equivalent 20 mm/s, that's ~0.25 s of motor time
+  The dPette plunger stroke for a 100 uL aspirate is ~10 mm of mechanical
+  travel; at a Z_FEED-equivalent 20 mm/s, that's ~0.5 s of motor time
   plus ~0.1 s ACK round-trip + ~0.1 s completion handshake.
 
   - B3 SUCK / B3 BLOW: ~0.4-0.8 s each (motor + 2x 6-byte serial RX).
@@ -56,7 +56,7 @@ Required environment variable:
 Optional:
 
     PIPETTE_BAUD          Default 9600 (DLAB dPette CP2102 stock).
-    PIPETTE_VOLUME_UL     Per-channel volume in microlitres. Default 50.0.
+    PIPETTE_VOLUME_UL     Per-channel volume in microlitres. Default 100.0.
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ import time
 from dpette import DPetteDriver, SerialConfig
 
 DEFAULT_BAUD = 9600
-DEFAULT_VOLUME_UL = 50.0
+DEFAULT_VOLUME_UL = 100.0
 NUM_CYCLES = 12
 
 

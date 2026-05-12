@@ -65,7 +65,7 @@ Optional:
 
     I3MEGA_BAUD          Default 250000 (Anycubic stock + MARLIN-AI3M).
     PIPETTE_BAUD         Default 9600 (DLAB dPette CP2102 stock).
-    PIPETTE_VOLUME_UL    Per-channel volume in microlitres. Default 50.0.
+    PIPETTE_VOLUME_UL    Per-channel volume in microlitres. Default 100.0.
     OUTPUT_GCODE         Path to tee Marlin commands to disk. Default
                          `showcase_v0_full_pipettebot.gcode` in cwd.
                          Set to empty (`OUTPUT_GCODE=`) to disable.
@@ -106,7 +106,7 @@ if TYPE_CHECKING:
 DEFAULT_BAUD = 250000
 DEFAULT_PIPETTE_BAUD = 9600
 DEFAULT_GCODE_OUT = "showcase_v0_full_pipettebot.gcode"
-DEFAULT_VOLUME_UL = 50.0
+DEFAULT_VOLUME_UL = 100.0
 
 # --- Deck geometry ------------------------------------------------------
 # Canonical source: docs/deck-layout.md "Slot extents" + "Motion constants".
