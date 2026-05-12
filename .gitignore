@@ -65,6 +65,7 @@ diagramforge/
 # Untracked example output
 showcase_v0_pipette_sim.gcode
 showcase_v0_full_plate.gcode
+showcase_v0_full_pipettebot.gcode
 
 # OS
 .DS_Store
