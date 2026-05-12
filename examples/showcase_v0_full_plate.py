@@ -114,11 +114,13 @@ DEFAULT_GCODE_OUT = "showcase_v0_full_plate.gcode"
 DECK_OFFSET_X = 25.0  # +X = right (commanded X = deck X + 25)
 DECK_OFFSET_Y = 0.0  # Y axis positive (Y=0 back, Y=250 front)
 
-# SBS plate (per user spec): X=50, cycle 1 Y=250, step -10 mm per cycle.
+# SBS plate (per user spec): X=50, cycle 1 Y=180, step -10 mm per cycle.
 # 12-cycle ladder:
-#   250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150, 140
+#   180, 170, 160, 150, 140, 130, 120, 110, 100, 90, 80, 70
+# Cycle 4 (Y=150) coincides with the reservoir Y — that cycle's
+# reservoir→col transition is Z-only.
 SBS_REF_X = 25.0 + DECK_OFFSET_X  # 50.0 Marlin
-SBS_COL1_Y = 250.0 + DECK_OFFSET_Y  # 250.0 Marlin (cycle 1)
+SBS_COL1_Y = 180.0 + DECK_OFFSET_Y  # 180.0 Marlin (cycle 1)
 SBS_COL_PITCH = -10.0  # -10 mm per cycle (Y decreases each visit)
 
 # Reservoir (per user spec): X=160, Y=150.
