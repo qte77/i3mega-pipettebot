@@ -145,14 +145,17 @@ TIP_PICKUP_Y = 217.5 + DECK_OFFSET_Y  # 217.5 Marlin
 # WELL_Z == RESERVOIR_Z — each SBS well starts empty so the dispense
 # need not be above any liquid line (preserves WELL_Z >= RESERVOIR_Z
 # invariant at the boundary).
-TRAVEL_Z = 125.0  # transit altitude — all XY motion happens here
+TRAVEL_Z = 95.0  # transit altitude — all XY motion happens here
 WELL_Z = 70.0  # dive Z into SBS well
 RESERVOIR_Z = 70.0  # dive Z into reservoir
 
-# Tip-pickup phase Z sequence (per user spec).
-TIP_PICKUP_PRE_Z = 90.0  # Z before XY travel to tip box
+# Tip-pickup phase Z sequence (per user spec). PRE_Z is the TO-leg
+# clearance (no tips yet — body alone needs to clear the loaded tip
+# box). LIFT_Z is the FROM-leg clearance (tips loaded — tip ends must
+# clear the box, so this sits 40 mm higher than PRE_Z).
+TIP_PICKUP_PRE_Z = 90.0  # TO leg: Z before XY to tip box (no tips on)
 TIP_PICKUP_Z = 70.0  # tip engagement Z (body bottom on tip tops)
-TIP_PICKUP_LIFT_Z = 140.0  # post-engagement lift; clears tip box + tips
+TIP_PICKUP_LIFT_Z = 130.0  # FROM leg: post-engagement lift with tips loaded
 
 # End-of-tour park altitude: 1.5 × disposable tip length.
 PARK_TIP_LENGTH_MM = 49.5
@@ -297,35 +300,50 @@ def pickup_tips(
 ) -> None:
     """One-time tip pickup at the back-right tip box.
 
-    Six-step sequence per user spec:
-      1. Z → TIP_PICKUP_PRE_Z (90 — defensive pre-XY altitude)
-      2. XY → (TIP_PICKUP_X, TIP_PICKUP_Y) at current Z
-      3. Z → TIP_PICKUP_Z (70 — engage tips, friction-fit)
-      4. Z → TIP_PICKUP_LIFT_Z (140 — lift with tips loaded)
-      5. XY → (RESERVOIR_REF_X, RESERVOIR_REF_Y) at current Z
-      6. Z → TRAVEL_Z (125 — hand off to cycle 1's Z-first transit)
+    Six-step Z-first sequence per user spec. Asymmetric pre/post: the
+    TO-leg (approach to tip box, no tips yet) uses `TIP_PICKUP_PRE_Z=90`
+    because only the body needs to clear the box, while the FROM-leg
+    (lift + travel to reservoir, tips loaded) uses
+    `TIP_PICKUP_LIFT_Z=130` because the 49.5 mm tip ends extend below
+    the body and must clear the box themselves.
+
+    Phase 1 ends with G28 only — no `G1 Z=TRAVEL_Z` lift, since step 1
+    below handles the post-G28 Z ascent directly.
+
+      1. Z UP → TIP_PICKUP_PRE_Z (90 — TO clearance over tip box).
+      2. XY → (TIP_PICKUP_X, TIP_PICKUP_Y) at TIP_PICKUP_PRE_Z.
+      3. Z DOWN → TIP_PICKUP_Z (70 — engage tips, friction-fit).
+      4. Z UP → TIP_PICKUP_LIFT_Z (130 — FROM clearance with tips on).
+      5. XY → (RESERVOIR_REF_X, RESERVOIR_REF_Y) at TIP_PICKUP_LIFT_Z.
+      6. Z DOWN → TRAVEL_Z (95 — hand off to cycle 1's Z-first transit).
     """
     print("[host] --- tip pickup (gantry-only, once) ---")
     if gcode_out is not None:
         gcode_out.write("\n; --- tip pickup (gantry-only, once) ---\n")
+    # 1. Ascend to TO-leg clearance (no tips) BEFORE any XY
     gsend(link, f"G1 Z{TIP_PICKUP_PRE_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
+    # 2. XY to tip box at TO-leg altitude
     gsend(
         link,
         f"G1 X{TIP_PICKUP_X:.3f} Y{TIP_PICKUP_Y:.3f} F{XY_FEED}",
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
+    # 3. Engage
     gsend(link, f"G1 Z{TIP_PICKUP_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
+    # 4. Lift to FROM-leg clearance (tips loaded — higher than PRE_Z)
     gsend(link, f"G1 Z{TIP_PICKUP_LIFT_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
+    # 5. XY to reservoir at FROM-leg altitude
     gsend(
         link,
         f"G1 X{RESERVOIR_REF_X:.3f} Y{RESERVOIR_REF_Y:.3f} F{XY_FEED}",
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
+    # 6. Descend to TRAVEL_Z (cycle 1's Z-first transit takes over)
     gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
@@ -383,13 +401,13 @@ def _run(
 
     _phase_comment(
         gcode_out,
-        "\n; ===== phase 1: bootstrap (G28 X Y Z + Z raise) =====\n"
+        "\n; ===== phase 1: bootstrap (G28 X Y Z, no Z lift) =====\n"
         "; PRECONDITION: tips MUST BE REMOVED before G28 fires.\n"
-        "; G28 X Y Z (explicit axes) — plain G28 skips Z on AI3M Marlin.\n",
+        "; G28 X Y Z (explicit axes) — plain G28 skips Z on AI3M Marlin.\n"
+        "; Phase 2's step 1 (Z → TIP_PICKUP_PRE_Z) handles the post-G28\n"
+        "; Z ascent directly, so no separate `G1 Z=TRAVEL_Z` here.\n",
     )
     gsend(link, "G28 X Y Z", gcode_out=gcode_out, max_secs=120)
-    gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
     _phase_comment(gcode_out, "\n; ===== phase 2: tip pickup (once) =====\n")

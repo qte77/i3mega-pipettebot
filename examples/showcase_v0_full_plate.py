@@ -16,7 +16,7 @@ PRECONDITION — READ BEFORE RUNNING:
     1. Remove tips from the dPette manually (or let the prior tour run
        its eject/discard sequence — not yet implemented in v0).
     2. Run this script. Phase 1's `G28` lands Z=0 (safe with no tips),
-       then immediately raises to TRAVEL_Z (125 mm).
+       then immediately raises to TRAVEL_Z (95 mm).
     3. Tips are picked up from the back-right tip box in phase 2.
 
 ================================================================================
@@ -67,10 +67,14 @@ Optional:
                   Set to empty (`OUTPUT_GCODE=`) to disable.
 
 **Safety**: the deck holds an SBS plate (back-left, H = 13 mm), tip box
-(back-right, H ≥ 59 mm including loaded tips — design minimum), and
-reservoir (front, rim H = 24 mm, cavity floor at Z = 19 mm). `TRAVEL_Z
-= 125` mm clears the tip box by 66 mm. **Phase 1 runs `G28 X Y Z` — TIPS
-MUST BE REMOVED FIRST** (Z=0 = tip-on-deck per the calibrated zero).
+(back-right, H ≥ 65 mm including loaded tips — design minimum), and
+reservoir (front, rim H = 24 mm, cavity floor at Z = 19 mm). The column
+tour transits at `TRAVEL_Z = 95` mm (82 mm over the SBS plate, 71 mm
+over the reservoir rim). The tip box is never crossed at TRAVEL_Z — the
+tip-pickup phase ascends to `TIP_PICKUP_PRE_Z=90` (TO leg, no tips: 25
+mm body clearance) and `TIP_PICKUP_LIFT_Z=130` (FROM leg, tips loaded:
+65 mm tip-end clearance). **Phase 1 runs `G28 X Y Z` — TIPS MUST BE
+REMOVED FIRST** (Z=0 = tip-on-deck per the calibrated zero).
 Plain `G28` skips Z on the AI3M Marlin variant; explicit axes force
 all three to home. After homing, Z lifts to TRAVEL_Z; from that point
 on the tip is clear of every deck slot for the rest of the tour. v0
@@ -133,32 +137,33 @@ TIP_PICKUP_Y = 217.5 + DECK_OFFSET_Y  # 217.5 Marlin
 
 # --- Motion altitudes (deck-plate frame) --------------------------------
 # Canonical source: docs/deck-layout.md "Motion constants".
-# Tip box loaded-tips H = 59 mm is the DESIGN MINIMUM — `TRAVEL_Z` is
-# derived from that. If a taller tip box is introduced, raise `TRAVEL_Z`
-# in lockstep here AND in docs/deck-layout.md.
+# Tip box loaded-tips H = 65 mm is the DESIGN MINIMUM — `TIP_PICKUP_PRE_Z`
+# and `TIP_PICKUP_LIFT_Z` are derived from that. If a taller tip box is
+# introduced, raise both `TIP_PICKUP_PRE_Z` and `TIP_PICKUP_LIFT_Z` here
+# AND in docs/deck-layout.md.
 
-# Visit dive altitudes. Z-first transit pattern uses TRAVEL_Z (125) for
-# all inter-slot XY motion — every slot is below 125 mm so the bed is
-# always above obstacles during XY transit. No hover-Z step (each visit
-# descends directly from TRAVEL_Z to dive Z).
+# Visit dive altitudes. Z-first transit pattern uses TRAVEL_Z (95) for
+# all inter-slot XY motion — column-tour slots (SBS plate 13 mm,
+# reservoir rim 24 mm) sit well below 95 mm. The tip box (65 mm loaded)
+# is not crossed by the column tour (tip box Y=217.5 vs SBS Y_max=190),
+# so its 30 mm clearance at TRAVEL_Z only matters for the one-time
+# tip-pickup phase — which ascends to TIP_PICKUP_PRE_Z=90 / LIFT_Z=130
+# before any XY motion crosses the tip-box footprint.
 #
 # WELL_Z == RESERVOIR_Z == 70 — dispense and aspirate dive to the same Z,
 # preserving the WELL_Z >= RESERVOIR_Z invariant from motion-safety.md
 # (tip never lower at dispense than at aspirate).
-TRAVEL_Z = 125.0  # transit altitude — all XY motion happens here
+TRAVEL_Z = 95.0  # transit altitude — all XY motion happens here
 WELL_Z = 70.0  # dive Z into SBS well
 RESERVOIR_Z = 70.0  # dive Z into reservoir
 
-# Tip-pickup phase Z sequence (per user spec):
-# 1. Descend to TIP_PICKUP_PRE_Z (defensive pre-XY altitude over tip box)
-# 2. Travel to (TIP_PICKUP_X, TIP_PICKUP_Y)
-# 3. Descend to TIP_PICKUP_Z (engage tips)
-# 4. Lift to TIP_PICKUP_LIFT_Z (clear of tip box with tips loaded)
-# 5. Travel to reservoir XY at TIP_PICKUP_LIFT_Z
-# 6. Descend to RESERVOIR_HOVER_Z (hand off to cycle 1)
-TIP_PICKUP_PRE_Z = 90.0  # Z before XY travel to tip box
+# Tip-pickup phase Z sequence (per user spec). PRE_Z is the TO-leg
+# clearance (no tips yet — body alone needs to clear the loaded tip
+# box). LIFT_Z is the FROM-leg clearance (tips loaded — tip ends must
+# clear the box, so this sits 40 mm higher than PRE_Z).
+TIP_PICKUP_PRE_Z = 90.0  # TO leg: Z before XY to tip box (no tips on)
 TIP_PICKUP_Z = 70.0  # tip engagement Z (body bottom on tip tops)
-TIP_PICKUP_LIFT_Z = 140.0  # post-engagement lift; clears tip box + tips
+TIP_PICKUP_LIFT_Z = 130.0  # FROM leg: post-engagement lift with tips loaded
 
 # End-of-tour park altitude: 1.5 × disposable tip length. Sits low enough
 # to make the head accessible to the operator but high enough to clear any
@@ -171,7 +176,7 @@ PARK_Z = PARK_TIP_LENGTH_MM * PARK_TIP_CLEARANCE_FACTOR  # 74.25 mm
 # attached yet, so commanded Z represents body-bottom-altitude − 54 mm
 # (the loaded-tip extension below the carriage). At commanded Z=57, body is
 # at deck-Z 111 — 52 mm above the tip tops (no engagement; v0 sim only).
-# Real engagement is at body-bottom = tip-top (deck-Z 59 → commanded Z=5).
+# Real engagement is at body-bottom = tip-top (deck-Z 65 → commanded Z=11).
 
 # --- Feedrates (under M203 X500 Y500 / Z20 caps after the bump below) ---
 
@@ -293,34 +298,43 @@ def pickup_tips(
 ) -> None:
     """One-time tip pickup at the back-right tip box.
 
-    Six-step sequence per user spec:
-      1. Z → TIP_PICKUP_PRE_Z (90 — defensive pre-XY altitude)
-      2. XY → (TIP_PICKUP_X, TIP_PICKUP_Y) at current Z
-      3. Z → TIP_PICKUP_Z (70 — engage tips, friction-fit)
-      4. Z → TIP_PICKUP_LIFT_Z (140 — lift with tips loaded)
-      5. XY → (RESERVOIR_REF_X, RESERVOIR_REF_Y) at current Z
-      6. Z → TRAVEL_Z (125 — hand off to cycle 1's Z-first transit)
+    Six-step Z-first sequence per user spec. Asymmetric pre/post: the
+    TO-leg (approach to tip box, no tips yet) uses `TIP_PICKUP_PRE_Z=90`
+    because only the body needs to clear the box, while the FROM-leg
+    (lift + travel to reservoir, tips loaded) uses
+    `TIP_PICKUP_LIFT_Z=130` because the 49.5 mm tip ends extend below
+    the body and must clear the box themselves.
+
+    Phase 1 ends with G28 only — no `G1 Z=TRAVEL_Z` lift, since step 1
+    below handles the post-G28 Z ascent directly.
+
+      1. Z UP → TIP_PICKUP_PRE_Z (90 — TO clearance over tip box).
+      2. XY → (TIP_PICKUP_X, TIP_PICKUP_Y) at TIP_PICKUP_PRE_Z.
+      3. Z DOWN → TIP_PICKUP_Z (70 — engage tips, friction-fit).
+      4. Z UP → TIP_PICKUP_LIFT_Z (130 — FROM clearance with tips on).
+      5. XY → (RESERVOIR_REF_X, RESERVOIR_REF_Y) at TIP_PICKUP_LIFT_Z.
+      6. Z DOWN → TRAVEL_Z (95 — hand off to cycle 1's Z-first transit).
     """
     print("[host] --- tip pickup (simulated, once) ---")
     if gcode_out is not None:
         gcode_out.write("\n; --- tip pickup (simulated, once) ---\n")
-    # 1. Pre-XY Z descent
+    # 1. Ascend to TO-leg clearance (no tips) BEFORE any XY
     gsend(link, f"G1 Z{TIP_PICKUP_PRE_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
-    # 2. XY to tip box at current Z
+    # 2. XY to tip box at TO-leg altitude
     gsend(
         link,
         f"G1 X{TIP_PICKUP_X:.3f} Y{TIP_PICKUP_Y:.3f} F{XY_FEED}",
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
-    # 3. Engage tips
+    # 3. Engage
     gsend(link, f"G1 Z{TIP_PICKUP_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
-    # 4. Lift with tips loaded
+    # 4. Lift to FROM-leg clearance (tips loaded — higher than PRE_Z)
     gsend(link, f"G1 Z{TIP_PICKUP_LIFT_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
-    # 5. XY to reservoir at current Z
+    # 5. XY to reservoir at FROM-leg altitude
     gsend(
         link,
         f"G1 X{RESERVOIR_REF_X:.3f} Y{RESERVOIR_REF_Y:.3f} F{XY_FEED}",
@@ -393,8 +407,8 @@ def _run(
     )
     gsend(link, "G28 X Y Z", gcode_out=gcode_out, max_secs=120)
     gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{TRAVEL_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
-    gsend(link, "M400", gcode_out=gcode_out)
+    # Phase 2's step 1 (Z → TIP_PICKUP_PRE_Z) handles the post-G28 Z
+    # ascent directly — no separate `G1 Z=TRAVEL_Z` lift needed.
 
     _phase_comment(gcode_out, "\n; ===== phase 2: tip pickup (once) =====\n")
     pickup_tips(link, gcode_out=gcode_out)
