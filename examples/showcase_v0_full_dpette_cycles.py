@@ -10,16 +10,20 @@ Use this to:
     rough estimates baked into `showcase_v0_full_plate.py`.
   - dry-run the cycle-count budget (24 ops < MAX_CONTIGUOUS_CYCLES=50).
 
-Sequence (12 cycles, each cycle = 1 aspirate + 1 dispense)::
+Sequence (N cycles, each cycle = 1 aspirate + 1 dispense)::
 
     1. handshake     — DPetteDriver.connect() sends A0 HELLO, then B0
                        WOL to enter PI mode (motor homes).
-    2. set volume    — B2 PI_VOLUM ONCE for the whole tour. Each cycle
-                       reuses the same volume; no per-cycle B2 packet.
-    3. tour          — for cycle in 1..12:
+    2. tour          — for cycle in 1..N:
+                         set B2 PI_VOLUM if volume changed since previous
                          pipette.aspirate()   (B3 SUCK)
                          pipette.dispense()   (B3 BLOW)
-    4. disconnect    — close the serial port.
+    3. disconnect    — close the serial port.
+
+`N` and the per-cycle volume schedule come from an `ExperimentProfile`
+(`PIPETTE_PROFILE` env var). With no profile: N=12, volume=PIPETTE_VOLUME_UL
+or 100 µL — equivalent to the original single-volume behaviour, so the
+B2 packet is sent exactly once for the whole tour.
 
 Timing (approximate, replace after first real run):
 
@@ -57,6 +61,10 @@ Optional:
 
     PIPETTE_BAUD          Default 9600 (DLAB dPette CP2102 stock).
     PIPETTE_VOLUME_UL     Per-channel volume in microlitres. Default 100.0.
+                          Ignored when PIPETTE_PROFILE is set.
+    PIPETTE_PROFILE       Path to a TOML experiment profile that specifies
+                          per-cycle volumes. See `examples/profiles/*.toml`
+                          and `src/pipettebot/profiles.py` for the schema.
 """
 
 from __future__ import annotations
@@ -64,25 +72,67 @@ from __future__ import annotations
 import os
 import sys
 import time
+from typing import TYPE_CHECKING
 
 from dpette import DPetteDriver, SerialConfig
+
+from pipettebot.profiles import load_profile
+
+if TYPE_CHECKING:
+    from pipettebot.profiles import ExperimentProfile
 
 DEFAULT_BAUD = 9600
 DEFAULT_VOLUME_UL = 100.0
 NUM_CYCLES = 12
 
 
-def _run_tour(pipette: DPetteDriver) -> None:
-    """Issue 12 × (aspirate + dispense). Logs per-op timing."""
+def _resolve_profile() -> ExperimentProfile | None:
+    path = os.environ.get("PIPETTE_PROFILE", "").strip()
+    if not path:
+        return None
+    return load_profile(path)
+
+
+def _build_volumes() -> tuple[tuple[float, ...], str]:
+    """Return (volumes_ul, banner). Banner describes the schedule for stdout."""
+    profile = _resolve_profile()
+    if profile is not None:
+        banner = f"profile {profile.name!r}: {profile.num_cycles} cycles"
+        if profile.description:
+            banner += f"\n  {profile.description}"
+        if profile.gradient_description:
+            banner += f"\n  gradient: {profile.gradient_description}"
+        return profile.volumes_ul, banner
+    volume_ul = float(os.environ.get("PIPETTE_VOLUME_UL", str(DEFAULT_VOLUME_UL)))
+    return (volume_ul,) * NUM_CYCLES, (
+        f"constant volume {volume_ul:.1f} uL x {NUM_CYCLES} cycles"
+    )
+
+
+def _run_tour(pipette: DPetteDriver, volumes_ul: tuple[float, ...]) -> None:
+    """Issue len(volumes_ul) × (aspirate + dispense). Logs per-op timing.
+
+    B2 PI_VOLUM is re-sent only when the cycle's volume differs from the
+    previous one — constant-volume tours pay exactly one B2 packet
+    (preserves the original single-volume behaviour).
+    """
+    num_cycles = len(volumes_ul)
     tour_start = time.perf_counter()
     suck_total = 0.0
     blow_total = 0.0
+    prev_volume: float | None = None
 
-    for cycle in range(1, NUM_CYCLES + 1):
-        print(f"\n[dpette] ====== CYCLE {cycle}/{NUM_CYCLES} ======")
+    for cycle in range(1, num_cycles + 1):
+        v = volumes_ul[cycle - 1]
+        print(
+            f"\n[dpette] ====== CYCLE {cycle}/{num_cycles} (volume={v:.1f} uL) ======"
+        )
+        if v != prev_volume:
+            pipette.set_volume(v)  # B2 PI_VOLUM
+            prev_volume = v
 
         t0 = time.perf_counter()
-        pipette.aspirate()  # B3 SUCK (volume already set in main)
+        pipette.aspirate()  # B3 SUCK
         dt_suck = time.perf_counter() - t0
         suck_total += dt_suck
         print(f"[dpette]   aspirate (B3 SUCK):  {dt_suck:.2f} s")
@@ -99,8 +149,8 @@ def _run_tour(pipette: DPetteDriver) -> None:
         f" ({suck_total:.1f} s in SUCK / {blow_total:.1f} s in BLOW)"
     )
     print(
-        f"[dpette] averages: SUCK {suck_total / NUM_CYCLES:.2f} s,"
-        f" BLOW {blow_total / NUM_CYCLES:.2f} s"
+        f"[dpette] averages: SUCK {suck_total / num_cycles:.2f} s,"
+        f" BLOW {blow_total / num_cycles:.2f} s"
     )
 
 
@@ -113,9 +163,10 @@ def main() -> int:
         )
         return 1
     baud = int(os.environ.get("PIPETTE_BAUD", str(DEFAULT_BAUD)))
-    volume_ul = float(os.environ.get("PIPETTE_VOLUME_UL", str(DEFAULT_VOLUME_UL)))
+    volumes_ul, banner = _build_volumes()
 
     print(f"[dpette] connecting on {port} @ {baud}")
+    print(f"[dpette] {banner}")
     pipette = DPetteDriver(SerialConfig(port=port, baudrate=baud))
     pipette.connect()  # A0 HELLO → B0 WOL (PI mode) → motor homes
     if pipette.stub_mode:
@@ -126,9 +177,7 @@ def main() -> int:
         return 1
 
     try:
-        pipette.set_volume(volume_ul)  # B2 PI_VOLUM once; reused for all 24 ops
-        print(f"[dpette] ready: PI mode, volume={volume_ul:.1f} uL per channel")
-        _run_tour(pipette)
+        _run_tour(pipette, volumes_ul)
     finally:
         pipette.disconnect()
     return 0
