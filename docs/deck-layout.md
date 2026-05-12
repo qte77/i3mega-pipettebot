@@ -34,13 +34,13 @@ Y=220  |                                  ● TIP PICKUP           |  (X=155, Y=
        |                                                         |
 Y=200  |                                                         |
 Y=190  | ● SBS col 1  (X=50, Y=190)  ← cycle 1                   |
-       | ●  col 2..4 (Y=180, 170, 160)                           |
-Y=150  | ● col 5 (Y=150)                                         |
-       | ●  col 6..7 (Y=140, 130)                                |
-Y=115  | ●  col 8 (Y=120)             ● RESERVOIR (X=155, Y=115) |
-       | ●  col 9..10 (Y=110, 100)                               |
+       | ●  col 2..4 (Y=181, 172, 163)                           |
+Y=154  | ● col 5 (Y=154)                                         |
+       | ●  col 6..7 (Y=145, 136)                                |
+Y=115  | ●  col 8 (Y=127)             ● RESERVOIR (X=155, Y=115) |
+       | ●  col 9..10 (Y=118, 109)                               |
        |                                                         |
-   Y=90| ● col 11 (Y=90)             ← cycle 11 (last dispense)  |
+  Y=100| ● col 11 (Y=100)            ← cycle 11 (last dispense)  |
        |                                                         |
     50 |                                                         |
        |                                                         |
@@ -63,12 +63,13 @@ override them.
 | Home / park | 0 | 0 | 95 | 74.25 (PARK_Z) |
 | Reservoir aspirate | **155** | **115** | 95 (TRAVEL_Z) | **70** |
 | SBS col 1 (first dispense) | **50** | **190** | 95 (TRAVEL_Z) | **70** |
-| SBS col 11 (last dispense) | 50 | **90** | 95 (TRAVEL_Z) | 70 |
+| SBS col 11 (last dispense) | 50 | **100** | 95 (TRAVEL_Z) | 70 |
 | Tip pickup TO leg (no tips) | **155** | **217.5** | 90 (TIP_PICKUP_PRE_Z) | **70** (engagement) |
 | Tip pickup FROM leg (tips loaded) | **155** | **217.5** | 130 (TIP_PICKUP_LIFT_Z) | — (lifts away) |
 
-SBS pitch is **−10 mm/cycle** (Y decreases each visit). **11-cycle**
-ladder: **190, 180, 170, 160, 150, 140, 130, 120, 110, 100, 90**.
+SBS pitch is **−9 mm/cycle** (standard SBS column pitch; Y decreases each
+visit). **11-cycle** ladder: **190, 181, 172, 163, 154, 145, 136, 127,
+118, 109, 100**.
 
 Tip-box loaded-tips height: **≥ 65 mm** (minimum — `TIP_PICKUP_PRE_Z`
 and `TIP_PICKUP_LIFT_Z` are derived from this; if a taller tip box is
@@ -103,8 +104,8 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 | `RESERVOIR_REF_X` | 130 (slot pre-offset) → **155 (Marlin)** | Per user spec (shared with tip pickup X) |
 | `RESERVOIR_REF_Y` | 115 (slot pre-offset) → **115 (Marlin)** | Per user spec |
 | `SBS_REF_X` | 25 (slot pre-offset) → **50 (Marlin)** | Per user spec |
-| `SBS_COL1_Y` | 190 (slot pre-offset) → **190 (Marlin)** | Cycle 1 dispense Y per user spec. Step −10 mm per cycle; 11-cycle ladder 190, 180, …, 90 |
-| `SBS_COL_PITCH` | **−10 mm** | Step between consecutive cycle Y positions (Y decreases each visit) |
+| `SBS_COL1_Y` | 190 (slot pre-offset) → **190 (Marlin)** | Cycle 1 dispense Y per user spec. Step −9 mm per cycle; 11-cycle ladder 190, 181, …, 100 |
+| `SBS_COL_PITCH` | **−9 mm** | Standard SBS column pitch. Step between consecutive cycle Y positions (Y decreases each visit) |
 | `M211 S0` (sent at bootstrap) | — | Disables Marlin software endstops defensively in case any commanded Y falls outside the firmware-configured Y_MIN/Y_MAX. Lasts until power-cycle |
 | `PARK_Z` | **74.25** | End-of-tour park altitude. `1.5 × 49.5 mm` (disposable tip length) — clears any forgotten tip with half its length to spare |
 
@@ -176,7 +177,7 @@ comment in the tee'd G-code):
    4. `G1 Z=TRAVEL_Z` (lift back to transit altitude, ready for next).
 
    Cycle layout: reservoir at (155, 115); SBS columns at X=50,
-   Y=190,180,…,90 (col 1 → col 11, −10 mm pitch).
+   Y=190,181,…,100 (col 1 → col 11, −9 mm SBS pitch).
 4. **Park at home corner** — Z-first sequence: `G1 Z=TRAVEL_Z` (no-op,
    already there) → `G1 X0 Y0` (XY at TRAVEL_Z) → `G1 Z=PARK_Z` where
    `PARK_Z = 1.5 × tip length = 74.25 mm`. Plain G1, not `G28` — trusts
@@ -185,7 +186,7 @@ comment in the tee'd G-code):
    safety margin). Manually run `G28` afterwards if endstop re-reference
    is needed.
 
-Column iteration steps `-10 mm` per cycle (Y decreases each visit).
+Column iteration steps `-9 mm` per cycle (standard SBS pitch; Y decreases each visit).
 Cycle 1 lands at `Marlin Y = 190`, cycle 11 at `Y = 90`.
 
 ### Y motion timeline
@@ -200,15 +201,15 @@ Bed Y positions through the tour (back ↑ , front ↓), in Marlin frame:
                  │
    +200 ─────────│
    +190 ─────────●  SBS col 1   ← phase 3 first dispense
-                 │  SBS col 2..4 (180, 170, 160)
-   +150 ─────────●  SBS col 5 (150)
-                 │  SBS col 6..7 (140, 130)
-   +120 ─────────●  SBS col 8 (closest to reservoir Y; 5 mm delta)
+                 │  SBS col 2..4 (181, 172, 163)
+   +154 ─────────●  SBS col 5 (154)
+                 │  SBS col 6..7 (145, 136)
+   +127 ─────────●  SBS col 8 (Y=127)
+   +118 ─────────●  SBS col 9 (closest to reservoir Y; 3 mm delta)
    +115 ─────────●  reservoir aspirate (every cycle)
-   +110 ─────────●  SBS col 9 (closest to reservoir Y; 5 mm delta)
-                 │  SBS col 10 (100)
+   +109 ─────────●  SBS col 10 (closest to reservoir Y; -6 mm delta)
                  │
-    +90 ─────────●  SBS col 11  ← phase 3 last dispense
+   +100 ─────────●  SBS col 11  ← phase 3 last dispense
                  │
     +50 ─────────│
                  │
@@ -222,16 +223,16 @@ Per-tour-cycle sequence:
 ```text
 home(Y=0) → tip pickup(Y=217.5) →
   cycle 1:  reservoir(Y=115) → SBS col 1  (Y=190)
-  cycle 2:  reservoir(Y=115) → SBS col 2  (Y=180)
-  cycle 3:  reservoir(Y=115) → SBS col 3  (Y=170)
-  cycle 4:  reservoir(Y=115) → SBS col 4  (Y=160)
-  cycle 5:  reservoir(Y=115) → SBS col 5  (Y=150)
-  cycle 6:  reservoir(Y=115) → SBS col 6  (Y=140)
-  cycle 7:  reservoir(Y=115) → SBS col 7  (Y=130)
-  cycle 8:  reservoir(Y=115) → SBS col 8  (Y=120)
-  cycle 9:  reservoir(Y=115) → SBS col 9  (Y=110)
-  cycle 10: reservoir(Y=115) → SBS col 10 (Y=100)
-  cycle 11: reservoir(Y=115) → SBS col 11 (Y=90)
+  cycle 2:  reservoir(Y=115) → SBS col 2  (Y=181)
+  cycle 3:  reservoir(Y=115) → SBS col 3  (Y=172)
+  cycle 4:  reservoir(Y=115) → SBS col 4  (Y=163)
+  cycle 5:  reservoir(Y=115) → SBS col 5  (Y=154)
+  cycle 6:  reservoir(Y=115) → SBS col 6  (Y=145)
+  cycle 7:  reservoir(Y=115) → SBS col 7  (Y=136)
+  cycle 8:  reservoir(Y=115) → SBS col 8  (Y=127)
+  cycle 9:  reservoir(Y=115) → SBS col 9  (Y=118)
+  cycle 10: reservoir(Y=115) → SBS col 10 (Y=109)
+  cycle 11: reservoir(Y=115) → SBS col 11 (Y=100)
 park(Y=0)
 ```
 
