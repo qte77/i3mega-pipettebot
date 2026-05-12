@@ -30,9 +30,10 @@ tour uses absolute Marlin Y/X targets per the user-calibrated anchors.
                        FRONT (operator, Y=250)
        +---------------------------------------------------------+
 Y=250  |                                                         |
+Y=220  |                                  ● TIP PICKUP           |  (X=155, Y=217.5)
        |                                                         |
+Y=200  |                                                         |
        |                                                         |
-Y=200  |                                  ● TIP PICKUP           |  (X=155, Y=190)
 Y=180  | ● SBS col 1  (X=50, Y=180)  ← cycle 1                   |
        | ●  col 2..3 (Y=170, 160)                                |
 Y=150  | ● col 4 (Y=150)                                         |
@@ -40,8 +41,7 @@ Y=150  | ● col 4 (Y=150)                                         |
 Y=115  | ●  col 7 (Y=120)             ● RESERVOIR (X=155, Y=115) |
        | ●  col 8..10 (Y=110, 100, 90)                           |
        |                                                         |
-   Y=80| ● col 11 (Y=80)                                         |
-   Y=70| ● col 12 (Y=70)            ← cycle 12 (last dispense)   |
+   Y=80| ● col 11 (Y=80)             ← cycle 11 (last dispense)  |
        |                                                         |
     50 |                                                         |
        |                                                         |
@@ -65,7 +65,7 @@ override them.
 | Reservoir aspirate | **155** | **115** | 125 (TRAVEL_Z) | **75** |
 | SBS col 1 (first dispense) | **50** | **180** | 125 (TRAVEL_Z) | **75** |
 | SBS col 11 (last dispense) | 50 | **80** | 125 (TRAVEL_Z) | 75 |
-| Tip pickup | **155** | **190** | 90 (pre) / 140 (lift) | **70** |
+| Tip pickup | **155** | **217.5** | 90 (pre) / 140 (lift) | **70** |
 
 SBS pitch is **−10 mm/cycle** (Y decreases each visit). **11-cycle**
 ladder: **180, 170, 160, 150, 140, 130, 120, 110, 100, 90, 80**.
@@ -99,11 +99,11 @@ Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase
 | `TIP_PICKUP_Z` | **70** | Engagement Z; body bottom on tip tops |
 | `TIP_PICKUP_LIFT_Z` | **140** | Post-engagement lift with tips loaded; clears tip box + tips |
 | `TIP_PICKUP_X` | 130 (slot pre-offset) → **155 (Marlin)** | Per user spec (shared with reservoir X) |
-| `TIP_PICKUP_Y` | 190 (slot pre-offset) → **190 (Marlin)** | Per user spec |
+| `TIP_PICKUP_Y` | 217.5 (slot pre-offset) → **217.5 (Marlin)** | Per user spec |
 | `RESERVOIR_REF_X` | 130 (slot pre-offset) → **155 (Marlin)** | Per user spec (shared with tip pickup X) |
 | `RESERVOIR_REF_Y` | 115 (slot pre-offset) → **115 (Marlin)** | Per user spec |
 | `SBS_REF_X` | 25 (slot pre-offset) → **50 (Marlin)** | Per user spec |
-| `SBS_COL1_Y` | 180 (slot pre-offset) → **180 (Marlin)** | Cycle 1 dispense Y per user spec. Step −10 mm per cycle; 12-cycle ladder 180, 170, …, 70 |
+| `SBS_COL1_Y` | 180 (slot pre-offset) → **180 (Marlin)** | Cycle 1 dispense Y per user spec. Step −10 mm per cycle; 11-cycle ladder 180, 170, …, 80 |
 | `SBS_COL_PITCH` | **−10 mm** | Step between consecutive cycle Y positions (Y decreases each visit) |
 | `M211 S0` (sent at bootstrap) | — | Disables Marlin software endstops defensively in case any commanded Y falls outside the firmware-configured Y_MIN/Y_MAX. Lasts until power-cycle |
 | `PARK_Z` | **74.25** | End-of-tour park altitude. `1.5 × 49.5 mm` (disposable tip length) — clears any forgotten tip with half its length to spare |
@@ -179,7 +179,7 @@ comment in the tee'd G-code):
    is needed.
 
 Column iteration steps `-10 mm` per cycle (Y decreases each visit).
-Cycle 1 lands at `Marlin Y = 180`, cycle 12 at `Y = 70`.
+Cycle 1 lands at `Marlin Y = 180`, cycle 11 at `Y = 80`.
 
 ### Y motion timeline
 
@@ -189,9 +189,10 @@ Bed Y positions through the tour (back ↑ , front ↓), in Marlin frame:
               Marlin Y (mm)   (Y=0 back, Y=250 front)
                  ↑ FRONT (operator)
    +250 ─────────│
+   +220 ─────────●  tip pickup (Y=217.5, phase 2, once)
                  │
+   +200 ─────────│
                  │
-   +200 ─────────●  tip pickup (Y=190, phase 2, once)
    +180 ─────────●  SBS col 1   ← phase 3 first dispense
                  │  SBS col 2..3 (170, 160)
    +150 ─────────●  SBS col 4 (150)
@@ -200,8 +201,8 @@ Bed Y positions through the tour (back ↑ , front ↓), in Marlin frame:
    +110 ─────────●  SBS col 8 (closest to reservoir Y; 5 mm delta)
                  │  SBS col 7, 9..10 (120, 100, 90)
    +100 ─────────│
-                 │  SBS col 11..12 (80, 70)
-    +70 ─────────●  SBS col 12  ← phase 3 last dispense
+                 │
+    +80 ─────────●  SBS col 11  ← phase 3 last dispense
                  │
     +50 ─────────│
                  │
@@ -213,7 +214,7 @@ Bed Y positions through the tour (back ↑ , front ↓), in Marlin frame:
 Per-tour-cycle sequence:
 
 ```text
-home(Y=0) → tip pickup(Y=190) →
+home(Y=0) → tip pickup(Y=217.5) →
   cycle 1:  reservoir(Y=115) → SBS col 1  (Y=180)
   cycle 2:  reservoir(Y=115) → SBS col 2  (Y=170)
   cycle 3:  reservoir(Y=115) → SBS col 3  (Y=160)
@@ -225,21 +226,23 @@ home(Y=0) → tip pickup(Y=190) →
   cycle 9:  reservoir(Y=115) → SBS col 9  (Y=100)
   cycle 10: reservoir(Y=115) → SBS col 10 (Y=90)
   cycle 11: reservoir(Y=115) → SBS col 11 (Y=80)
-  cycle 12: reservoir(Y=115) → SBS col 12 (Y=70)
 park(Y=0)
 ```
 
 Bootstrap snippet:
 
 ```text
-M203 X1000 Y1000 Z20        ; bump XY/Z max feedrate caps
-M201 X2000 Y2000 Z200        ; bump XY/Z max acceleration
+M203 Z20                     ; bump Z max feedrate cap (leadscrew limit)
+M201 Z200                    ; bump Z max acceleration
 M211 S0                      ; disable soft endstops (defensive)
 G28 X Y Z                    ; home all axes — TIPS MUST BE REMOVED
 M400
 G1 Z125 F1200                ; raise to TRAVEL_Z before any XY motion
 M400
 ```
+
+XY caps stay at firmware defaults; only Z is bumped because it's the
+slow leadscrew axis and dominates per-cycle wall-clock.
 
 `G28 X Y Z` (explicit axes — plain `G28` skips Z on the AI3M Marlin
 variant) leaves the nozzle at the calibrated Z=0; the immediate Z
@@ -251,8 +254,8 @@ would otherwise drag any tip extension through near-home obstacles.
 1. **Home corner is bed back** (Y=0). In the positive-Y convention,
    `G28` brings the bed all the way back; the dPette is over the rear
    of the deck at homed state.
-2. **Reservoir at Y=95, SBS col 1 at Y=125** — both well within the
-   0–250 Y range. Reservoir sits 30 mm back of SBS col 1, so the
+2. **Reservoir at Y=115, SBS col 1 at Y=180** — both well within the
+   0–250 Y range. Reservoir sits 65 mm back of SBS col 1, so the
    reservoir→col-1 transition is a single forward Y move.
 3. **`TRAVEL_Z = 125`** = previous 75 plus a global `+50 mm` ("Z OVERALL
    +5 cm" per user spec). Clears the 59 mm tip-box minimum by 66 mm.
@@ -265,7 +268,7 @@ would otherwise drag any tip extension through near-home obstacles.
    needed.
 5. **`M211 S0` in the bootstrap** disables Marlin software endstops so
    commanded Y values aren't silently clamped to the firmware
-   `Y_MIN`/`Y_MAX` range. With all current anchors in 0–140, this
+   `Y_MIN`/`Y_MAX` range. With all current anchors in 0–220, this
    is precautionary; earlier iterations needed it because of negative
    Y commands.
 
@@ -290,9 +293,10 @@ axis.
    the calibrated tip-on-deck zero. If the deck plate is repositioned
    in Z (e.g. mounted on a riser), every `Z` constant needs an offset
    added.
-3. **Tip-pickup Y placement** — currently at Marlin Y=139.5, mid-bed.
-   Verify against the physical tip-box position; if the tip box is at
-   the bed back, `TIP_PICKUP_Y` should be much lower (close to Y=0).
+3. **Tip-pickup Y placement** — anchored at Marlin Y=217.5 (front-right,
+   shared X=155 with the reservoir). Confirmed against the physical
+   tip-box position. Update `TIP_PICKUP_Y` if the deck rotates or the
+   tip box moves.
 
 These items belong in [`calibration.md`](calibration.md) step 5 once
 the physical anchors are confirmed.
