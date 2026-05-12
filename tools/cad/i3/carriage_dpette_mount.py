@@ -16,8 +16,9 @@ Two-piece main + cap (shared by both schemes):
     post, and the lower horseshoe clamp.
   - **cap**: separate front horseshoe piece. Mirrors the back-half
     D-cavity. CA-glues / friction-fits to the back half front face to
-    capture the pipette's Ø23.5 upper barrel. Flush with the top plate
-    in Z; narrower in X (~30 mm vs the 35 mm plate); much shorter in Y.
+    capture the pipette's Ø24.5 upper barrel. Flush with the top plate
+    in Z; 30 mm wide in X (narrower than the 35 mm plate); 23.34 mm
+    deep in Y (sides extend ~10.8 mm past the bore center per dry-fit).
 
 The upper clamp must be two-piece because the dPette+ is one rigid
 unit (lower body, upper barrel, top section all permanently joined),
@@ -106,9 +107,16 @@ POST_X_OFFSET_MM = (
 POST_Y_CENTER_MM = 14.0  # behind upper bore (Y > 13.75) and on top of lower clamp's back wall (Y > 5.75)
 
 # === Upper-clamp split (2-piece, glue/friction fit, no bolts) ===
-# Cap depth in Y must fully enclose the bore: bore radius ≈ 12 mm
-# (UPPER_CLAMP_BORE_D_MM/2 + clearance/2) + ≥ 2 mm front wall → 14 mm min.
-UPPER_CAP_D_MM = 14.0
+# Cap depth in Y: bore radius ~12.5 mm (Ø24.5 + clearance) + front wall.
+# v1 (14 mm) and v2 (17.67 mm) were too shallow per dry-fit; v3 added
+# 3.67 mm → 21.34 mm. v4 added another 2 mm → 23.34 mm.
+UPPER_CAP_D_MM = 23.34
+# Cap bore is a capsule/slot (not a circle) to give the barrel axial
+# play in Y. Short axis = UPPER_CLAMP_BORE_D_MM (matches the main
+# piece's circular bore at the Y=0 mating face); long axis grows with
+# the cap (v3: 28 mm; v4: 30 mm) to keep ~7.3 mm of front wall.
+# Main piece stays circular — only the cap is slotted.
+UPPER_CAP_BORE_LONG_MM = 30.0
 # Cap width in X: narrower than the 35 mm top plate per user spec
 # (~30 mm = bore Ø24 + 3 mm wall each side).
 UPPER_CAP_W_MM = 30.0
@@ -251,6 +259,10 @@ def build_carriage_dpette_mount_cap():
     glue or friction fit (no bolts). Sits flush with the top plate in Z
     and is narrower in X (~30 mm vs the 35 mm plate). Symmetric about
     the Y axis; much shorter in Y than the main piece.
+
+    Bore is a Y-elongated capsule (slot), not a full circle: short axis
+    matches the main piece's circular bore at the Y=0 mating face; long
+    axis gives the barrel axial play in Y.
     """
     # Mass: ~2 g PLA (volume ~1.6 cc * 1.24 g/cc).
 
@@ -259,12 +271,23 @@ def build_carriage_dpette_mount_cap():
         UPPER_CAP_W_MM, UPPER_CAP_D_MM, TOP_PLATE_T_MM
     )
 
-    # D-cavity: half-bore facing +Y (toward back half). Centre at Y=0;
-    # the host cap's Y extent clips the cylinder into a D shape.
-    bore_full = Pos(0, 0, -TOP_PLATE_T_MM / 2) * make_clamp_bore(
-        UPPER_CLAMP_BORE_D_MM, TOP_PLATE_T_MM + 2, CLAMP_BORE_CLEARANCE_MM
+    # Capsule-slot bore: centered at origin, long axis along Y. The two
+    # semicircles at the Y ends (radius = UPPER_CLAMP_BORE_D_MM/2 +
+    # clearance/2) connect via a rectangle of length
+    # UPPER_CAP_BORE_LONG_MM − short-axis-with-clearance.
+    bore_d_eff = UPPER_CLAMP_BORE_D_MM + CLAMP_BORE_CLEARANCE_MM
+    r_bore = bore_d_eff / 2
+    rect_len_y = UPPER_CAP_BORE_LONG_MM - bore_d_eff
+    slot_rect = Pos(0, 0, -TOP_PLATE_T_MM / 2) * Box(
+        bore_d_eff, rect_len_y, TOP_PLATE_T_MM + 2
     )
-    cap = cap - bore_full
+    slot_top = Pos(0, rect_len_y / 2, -TOP_PLATE_T_MM / 2) * Cylinder(
+        r_bore, TOP_PLATE_T_MM + 2
+    )
+    slot_bot = Pos(0, -rect_len_y / 2, -TOP_PLATE_T_MM / 2) * Cylinder(
+        r_bore, TOP_PLATE_T_MM + 2
+    )
+    cap = cap - slot_rect - slot_top - slot_bot
 
     return cap
 

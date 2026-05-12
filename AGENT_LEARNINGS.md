@@ -4,6 +4,34 @@ Gotchas and non-obvious lessons we hit. Keep entries short, dated, and
 actionable. Add a new entry every time you'd say "I wish someone had told me
 that earlier."
 
+## 2026-05-12 — Aggressive PrusaSlicer speed/quality settings fail on this MK4 setup
+
+Two failed runs so far (1-perimeter draft, then high-speed MK4 profile)
+point to the same pattern: pushing past the proven slice baseline causes
+either spaghetti, under-extrusion, or detachment. The proven baseline
+that consistently works for PLA on this MK4 is:
+
+- `--layer-height 0.3` / `--first-layer-height 0.3`
+- `--perimeters 2` (one perimeter peels at print speed)
+- `--top-solid-layers 3` / `--bottom-solid-layers 3`
+- `--fill-density 12%` `--fill-pattern grid`
+- `--perimeter-speed 55` `--external-perimeter-speed 35`
+  `--infill-speed 80` `--travel-speed 150` `--first-layer-speed 25`
+- `--max-volumetric-speed 11` (stock hotend melt-rate ceiling)
+- accelerations 800–1500 mm/s²
+
+**Most-recent failure mode**: bumped to layer 0.4 mm, perimeter 100,
+infill 160, max-volumetric 14, accel 1500–2000 — got under-extrusion
+mid-print on a 35×90×5 mm flat slab. The volumetric limit is the
+binding constraint: the stock hotend can't sustain 14 mm³/s without a
+high-flow nozzle / hardened heatbreak.
+
+**Rule**: don't tune slice settings inline for "faster" without
+upgrading the hotend first. If a print needs to be faster, change the
+**geometry** (less material, lower infill, fewer pieces) rather than
+the slicer profile. The MK4 marketing speeds assume Input Shaper + high
+flow; we don't have that calibrated here yet.
+
 ## 2026-05-11 — ocp-vscode browser viewer is the fastest design-feedback loop we have
 
 `ocp-vscode`'s standalone server (`python -m ocp_vscode` → browser at

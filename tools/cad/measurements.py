@@ -58,7 +58,9 @@ LOWER_CLAMP_D_MM = 11.0  # Y
 LOWER_CLAMP_H_MM = 5.0  # Z (vertical extent of the manifold itself)
 
 # Round upper barrel — narrow cylindrical section for the upper clamp.
-UPPER_CLAMP_BORE_D_MM = 23.5  # Ø23.5 mm round (re-measured)
+UPPER_CLAMP_BORE_D_MM = (
+    24.5  # Ø24.5 mm round (re-measured + +1 mm clearance per cap dry-fit)
+)
 UPPER_BARREL_HEIGHT_MM = 15.0  # vertical extent of the round section
 UPPER_TO_LOWER_SEPARATION_MM = 80.5  # axis-to-axis between clamps (re-measured)
 
