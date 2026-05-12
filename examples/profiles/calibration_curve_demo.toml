@@ -1,0 +1,21 @@
+name = "calibration_curve_demo"
+description = """
+Linear calibration curve across 11 SBS columns: 20 µL → 220 µL in 20 µL
+steps. Each column gets a different volume; all 8 channels in a column
+share that volume (dPette hardware constraint — single shared piston
+bar, B2 PI_VOLUM is global).
+
+Pairs with the 11-column tour in `examples/showcase_v0_full_pipettebot.py`
+and the 12-cycle dpette-only tour in
+`examples/showcase_v0_full_dpette_cycles.py` (last cycle is ignored when
+fewer volumes than NUM_CYCLES are listed — driven by the profile length).
+"""
+
+[volumes]
+# One value per cycle/column (list length sets the cycle count).
+# dPette re-sends B2 PI_VOLUM only when the value changes between cycles.
+per_cycle_ul = [20.0, 40.0, 60.0, 80.0, 100.0, 120.0, 140.0, 160.0, 180.0, 200.0, 220.0]
+
+[gradient]
+# No reservoir gradient — single reagent, varying dose.
+description = ""
