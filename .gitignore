@@ -35,6 +35,7 @@ uv.lock
 .claude/settings.local.json
 .mcp.json
 MEMORY.md
+.cc-voice.toml
 
 # Host shell / tool dotfiles surfaced by sandbox bind-mounts (not project content)
 .bash_profile
@@ -63,6 +64,8 @@ diagramforge/
 
 # Untracked example output
 showcase_v0_pipette_sim.gcode
+showcase_v0_full_plate.gcode
+showcase_v0_full_pipettebot.gcode
 
 # OS
 .DS_Store
