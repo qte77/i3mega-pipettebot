@@ -15,6 +15,8 @@ The print head and PCB are physically removed from the carriage; the
 chassis is repurposed as a 3-axis motion platform with the dPette
 mounted on the bare carriage (see [`docs/3d-parts.md`](docs/3d-parts.md)).
 
+![i3 Mega pipetting robot in action](docs/media/pipetting-robot.gif)
+
 > **Status: v0 prototype.** A working aspirate-then-dispense demo over
 > hardcoded coordinates. Deck calibration, dPette mount real geometry,
 > and firmware modifications are on the [backlog](AGENT_REQUESTS.md)
