@@ -1,9 +1,10 @@
 """Clean and reorient a raw 3D scan of a dPette pipette.
 
-The raw scan typically arrives with the pipette laying diagonally on a
-turntable in the scanner's reference frame, plus a few floating scan
-artifacts and a non-watertight surface (open ends where the scanner
-couldn't see).
+The canonical raw scan committed at hardware/3d-scan/pipette_scan_raw.stl
+is a turntable scan of a DLAB dPette+ electronic pipette. It arrives
+with the pipette laying diagonally in the scanner's reference frame,
+a few floating scan artifacts, and a non-watertight surface (open ends
+where the scanner couldn't see).
 
 This script normalizes the scan so it can be used as a parametric-CAD
 reference in build123d:
@@ -19,9 +20,8 @@ reference in build123d:
 
 Run:
     uv run --with trimesh --with networkx --with numpy \
-        tools/cad/scan/clean_pipette_scan.py \
-        --input  hardware/3d-scan/_scan_temp.stl \
-        --output hardware/3d-scan/dpette_scan.stl
+        tools/cad/scan/clean_pipette_scan.py
+    # defaults: hardware/3d-scan/pipette_scan_raw.stl  ->  dpette_scan.stl
 """
 
 from __future__ import annotations
@@ -126,7 +126,7 @@ def main() -> None:
     ap.add_argument(
         "--input",
         type=Path,
-        default=repo_root / "hardware" / "3d-scan" / "_scan_temp.stl",
+        default=repo_root / "hardware" / "3d-scan" / "pipette_scan_raw.stl",
     )
     ap.add_argument(
         "--output",
