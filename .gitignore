@@ -62,6 +62,9 @@ hardware/svg/
 hardware/gcode/
 diagramforge/
 
+# 3D scan binaries (large; re-derive from raw scan via tools/cad/scan/)
+hardware/3d-scan/*.stl
+
 # Untracked example output
 showcase_v0_pipette_sim.gcode
 showcase_v0_full_plate.gcode
