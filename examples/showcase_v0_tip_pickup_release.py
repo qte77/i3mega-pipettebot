@@ -63,20 +63,20 @@ DEFAULT_GCODE_OUT = "showcase_v0_tip_pickup_release.gcode"
 # Every coordinate below names the deck slot it represents — per
 # `.claude/rules/motion-safety.md`, untrusted coordinates in v0.
 
-POST_HOME_TRAVEL_Z = 90.0   # safe Z after G28, clear of all fixtures
-TIP_BOX_X = 170.0           # tip-box pickup column (back-right corner)
-TIP_BOX_Y = 152.0           # tip-box pickup row
-TIP_PICKUP_Z = 59.0         # dPette cones pressed into tips
-TIP_BOX_CLEAR_Z = 119.0     # min clearance: above tip-box top, below release bar
-LATERAL_PARK_X = 45.0       # X clear of the release-bar footprint
-PEAK_Z = 170.0              # above the release bar (cross-deck traverse altitude)
-RELEASE_X = 70.0            # under the release bar
-RELEASE_Y = 212.0           # under the release bar (back of bed)
-BAR_ENGAGE_Z = 145.0        # hook dropped into engagement from above the bar
+POST_HOME_TRAVEL_Z = 90.0  # safe Z after G28, clear of all fixtures
+TIP_BOX_X = 170.0  # tip-box pickup column (back-right corner)
+TIP_BOX_Y = 152.0  # tip-box pickup row
+TIP_PICKUP_Z = 59.0  # dPette cones pressed into tips
+TIP_BOX_CLEAR_Z = 119.0  # min clearance: above tip-box top, below release bar
+LATERAL_PARK_X = 45.0  # X clear of the release-bar footprint
+PEAK_Z = 170.0  # above the release bar (cross-deck traverse altitude)
+RELEASE_X = 70.0  # under the release bar
+RELEASE_Y = 212.0  # under the release bar (back of bed)
+BAR_ENGAGE_Z = 145.0  # hook dropped into engagement from above the bar
 
 # Feedrates (under M203 X500 Y500 / Z20 caps after the M203 bump below).
 XY_FEED = 6000  # 100 mm/s
-Z_FEED = 1200   # 20 mm/s — needs M203 Z20 sent first
+Z_FEED = 1200  # 20 mm/s — needs M203 Z20 sent first
 
 
 def gsend(
