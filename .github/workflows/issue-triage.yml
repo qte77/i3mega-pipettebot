@@ -12,7 +12,7 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     steps:
-      - uses: qte77/gha-issue-triage@4948301c5167f5d8ec0fb16b7c67de3acae5645e  # main @ 2026-05-14
+      - uses: qte77/gha-issue-triage@4b617128c81fc7b78d94695eba0f06c6c1ee7146  # main @ 2026-05-14
         with:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # AI_TOKEN omitted → defaults to github.token (covered by models: read above)
