@@ -56,13 +56,13 @@ setup_uv:  ## Install uv (Python package manager) if missing
 	fi
 
 setup_prod:  ## uv sync (runtime deps only — pyserial + dpette)
-	uv sync
+	uv sync --inexact
 
 setup_dev:  ## uv sync --extra dev (runtime + ruff/mypy/pytest/complexipy/hypothesis)
-	uv sync --extra dev
+	uv sync --inexact --extra dev
 
 setup_cad:  ## uv sync --extra cad (build123d for CAD parts pipeline)
-	uv sync --extra cad
+	uv sync --inexact --extra cad
 
 setup_slicer:  ## Probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)
 	if command -v orca-slicer > /dev/null 2>&1; then
