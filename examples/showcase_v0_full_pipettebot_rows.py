@@ -61,7 +61,7 @@ tip-box row.
 
 After the last cycle, the park sequence:
 
-    G1 X30                       ; lateral clear from the bar
+    G1 X50                       ; lateral clear from the bar (≥50 mm)
     G1 Z50 X10 Y10               ; diagonal — descend below bar towards home corner
     G28                          ; home
 
@@ -182,7 +182,7 @@ WELL_CLEAR_Z = 115.0  # post-dispense lift; also clears the release bar
 RELEASE_ENGAGE_Z = 98.0  # hook drops into engagement from above the bar
 RELEASE_CLEAR_Z = 115.0  # post-eject lift (= cross-deck transit altitude)
 PARK_BELOW_BAR_Z = 50.0  # safe Z near home corner below the bar's bottom edge
-PARK_CLEARANCE_X = 30.0  # X clear of bar before the final descent
+PARK_CLEARANCE_X = 50.0  # X clear of bar (≥50 mm) before any move above bar height
 PARK_FINAL_X = 10.0  # final park X — towards home corner, clear of bar footprint
 PARK_FINAL_Y = 10.0  # final park Y — towards home corner
 
