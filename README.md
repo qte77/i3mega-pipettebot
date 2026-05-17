@@ -116,12 +116,16 @@ uv run examples/showcase_v0_full_pipettebot.py
 # to measure real B3 motor timing. Run with tip in air or over waste.
 uv run examples/showcase_v0_full_dpette_cycles.py
 
-# Either dpette script accepts a TOML experiment profile via
-# PIPETTE_PROFILE — drives the cycle count, per-cycle volumes, and any
-# pre-mixed reservoir gradient notes. See `examples/experiment_profiles/`
-# for samples (calibration_curve_demo.toml, gradient_reservoir_demo.toml).
+# Every v0 showcase (column/dpette-cycles/rows) accepts a TOML experiment
+# profile via PIPETTE_PROFILE — drives the cycle count, per-cycle volumes,
+# and any pre-mixed reservoir gradient notes. Profile length overrides the
+# script's default (NUM_COLUMNS / NUM_CYCLES). See
+# `examples/experiment_profiles/` for samples
+# (calibration_curve_demo.toml, gradient_reservoir_demo.toml).
 PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
   uv run examples/showcase_v0_full_dpette_cycles.py
+PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
+  uv run examples/showcase_v0_full_pipettebot_rows.py
 
 # Every gantry-using example also accepts MOTION_PROFILE to dial gantry
 # accel/jerk between slow / mid / fast (or off to skip the install).
