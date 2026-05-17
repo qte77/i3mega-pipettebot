@@ -50,12 +50,12 @@ Per-cycle gantry shape (mirrors the hand-traced G-code calibration):
     G1 Z115                      ; lift to bar-clearance altitude
 
     --- EJECT @ release bar ---
-    G1 X10 Y215                  ; cross-deck transit to release area
+    G1 X10 Y220                  ; cross-deck transit to release area
     G1 X5                        ; slide onto bar engagement column
     G1 Z98                       ; descend — hook engages bar from above
     G1 Z115                      ; lift — bar holds handle, body rises → tip ejected
 
-Between cycles the head sits at (X=5, Y=215, Z=115); cycle N+1's
+Between cycles the head sits at (X=5, Y=220, Z=115); cycle N+1's
 first move (`G1 Z90 X171 Y...`) is a single diagonal back to the next
 tip-box row.
 
@@ -179,12 +179,12 @@ WELL_Y_ROW1 = 79.0  # cycle 1; cycle N at WELL_Y_ROW1 + (N-1)*SBS_ROW_PITCH
 # (not the moving bed) at the front of the chassis, oriented along the
 # Y axis at carriage X≈5, engagement Z=RELEASE_ENGAGE_Z. To align the
 # dPette under the fixed hook, the bed slides forward so the commanded
-# Marlin Y reads Y=215 at engagement. X=5 not X=0 — X=0 is too close to
-# the X-min endstop, was a stale value. Y=215 re-measured per user
+# Marlin Y reads Y=220 at engagement. X=5 not X=0 — X=0 is too close to
+# the X-min endstop, was a stale value. Y=220 re-measured per user
 # fixture after an earlier value of Y=190 was found to miss the hook.
 RELEASE_APPROACH_X = 10.0
 RELEASE_BAR_X = 5.0
-RELEASE_BAR_Y = 215.0  # shared Y for both approach and engagement
+RELEASE_BAR_Y = 220.0  # shared Y for both approach and engagement
 
 # --- Motion altitudes ---------------------------------------------------
 POST_HOME_LIFT_Z = 45.0  # initial lift after G28 before any XY
@@ -567,7 +567,7 @@ def _run(
     _phase_comment(
         gcode_out,
         "\n; ===== phase 3: park towards home corner then G28 =====\n"
-        "; at end of last cycle head sits at (X=5, Y=215, Z=115).\n"
+        "; at end of last cycle head sits at (X=5, Y=220, Z=115).\n"
         "; max safe Z near home is the bar's bottom edge — clear X first,\n"
         "; then diagonal descent below bar towards the home corner,\n"
         "; then home.\n",
