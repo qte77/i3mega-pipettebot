@@ -31,8 +31,8 @@ Single source of truth for agents working in this repo. `CLAUDE.md` and
 
 | Question                                        | Answer for v0                                                    |
 |-------------------------------------------------|------------------------------------------------------------------|
-| Where does new code go?                         | `src/pipettebot/`. Four modules: `gantry`, `bot`, `profiles`, `__init__`. |
-| Where do experiment profiles live?              | `examples/profiles/*.toml`; loader in `src/pipettebot/profiles.py`. See issue #79. |
+| Where does new code go?                         | `src/pipettebot/`. Four modules: `gantry`, `bot`, `experiment_profile`, `__init__`. |
+| Where do experiment profiles live?              | `examples/experiment_profiles/*.toml`; loader in `src/pipettebot/experiment_profile.py`. See issue #79. |
 | Where does deck geometry live?                  | Deferred. Caller passes raw `(x, y, z)` in v0.                   |
 | How is dpette imported?                         | Git dep, pinned to a commit SHA before v0.0.1 tag.               |
 | Where do hardware experiments go?               | `tools/` — diagnostics (`preflight.py`, `diagnose_axis.py`, `marlin_repl.py`), CAD (`tools/cad/`), slicer (`tools/slicer/`). Logs to `captures/`. |
@@ -54,7 +54,7 @@ src/pipettebot/                        (library, used by examples & tests)
     │                                     (note: GcodeGantry._send is one-line-per-ack;
     │                                      the showcase example uses raw serial to
     │                                      sidestep that until the lib is fixed)
-    └── ExperimentProfile             ──► load_profile(path) → typed dataclass with
+    └── ExperimentProfile             ──► load_experiment_profile(path) → typed dataclass with
                                           per-cycle volumes + optional gradient note
 
 dpette.DPetteDriver               ──► /dev/cu.usbserial-* (different device) @ 9600
@@ -83,7 +83,7 @@ cover both layers without hardware.
 |------------------------------------------|------------------------------------------------------------------|
 | Add a new `PipetteBot` op                | Edit `src/pipettebot/bot.py`; add a `test_bot.py` case.          |
 | Add a Marlin command                     | Edit `src/pipettebot/gantry.py::GcodeGantry`; mirror in tests.   |
-| Add an experiment profile                | Drop a TOML under `examples/profiles/`; loader is `src/pipettebot/profiles.py`. |
+| Add an experiment profile                | Drop a TOML under `examples/experiment_profiles/`; loader is `src/pipettebot/experiment_profile.py`. |
 | Add a deck or calibration feature        | Don't yet — file under AGENT_REQUESTS.md. v0 stays raw `(x,y,z)`. |
 | Send a raw dPette packet                 | Don't. Use `dpette.DPetteDriver` methods.                        |
 | Modify Marlin firmware                   | Don't yet. Open an ADR in AGENT_REQUESTS.md.                     |

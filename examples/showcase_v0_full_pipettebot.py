@@ -68,8 +68,8 @@ Optional:
     PIPETTE_VOLUME_UL    Per-channel volume in microlitres. Default 100.0.
                          Ignored when PIPETTE_PROFILE is set.
     PIPETTE_PROFILE      Path to a TOML experiment profile that specifies
-                         per-column volumes. See `examples/profiles/*.toml`
-                         and `src/pipettebot/profiles.py` for the schema.
+                         per-column volumes. See `examples/experiment_profiles/*.toml`
+                         and `src/pipettebot/experiment_profile.py` for the schema.
                          Profile length sets the column count (overrides
                          NUM_COLUMNS).
     OUTPUT_GCODE         Path to tee Marlin commands to disk. Default
@@ -107,8 +107,8 @@ from typing import TYPE_CHECKING
 
 from dpette import DPetteDriver, SerialConfig
 
+from pipettebot.experiment_profile import load_experiment_profile
 from pipettebot.gantry import open_marlin_port
-from pipettebot.profiles import load_profile
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -116,7 +116,7 @@ if TYPE_CHECKING:
 
     import serial  # type: ignore[import-untyped]
 
-    from pipettebot.profiles import ExperimentProfile
+    from pipettebot.experiment_profile import ExperimentProfile
 
 DEFAULT_BAUD = 250000
 DEFAULT_PIPETTE_BAUD = 9600
@@ -477,7 +477,7 @@ def _resolve_profile() -> ExperimentProfile | None:
     path = os.environ.get("PIPETTE_PROFILE", "").strip()
     if not path:
         return None
-    return load_profile(path)
+    return load_experiment_profile(path)
 
 
 def _build_volumes() -> tuple[tuple[float, ...], str]:

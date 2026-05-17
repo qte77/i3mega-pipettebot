@@ -120,7 +120,7 @@ uv run examples/showcase_v0_full_dpette_cycles.py
 # PIPETTE_PROFILE — drives the cycle count, per-cycle volumes, and any
 # pre-mixed reservoir gradient notes. See `examples/profiles/` for
 # samples (calibration_curve_demo.toml, gradient_reservoir_demo.toml).
-PIPETTE_PROFILE=examples/profiles/calibration_curve_demo.toml \
+PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
   uv run examples/showcase_v0_full_dpette_cycles.py
 
 # Home — full `G28` to (X=0, Y=0, Z=0). Bootstrap installs the same
@@ -171,8 +171,8 @@ M820 pass-through is still in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md)
 but no longer required for end-to-end pipetting.
 
 Four modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
-`profiles.py` (TOML experiment-profile loader; see
-[`examples/profiles/`](examples/profiles/)), and `__init__.py`
+`experiment_profile.py` (TOML experiment-profile loader; see
+[`examples/experiment_profiles/`](examples/experiment_profiles/)), and `__init__.py`
 (re-exports). No deck library, no safety limits, no calibration in v0
 — the caller passes raw `(x, y, z)`.
 
