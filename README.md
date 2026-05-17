@@ -19,7 +19,7 @@ separate USB-serial link via
 [![CI / pytest](https://github.com/qte77/i3mega-pipettebot/actions/workflows/ci.yml/badge.svg)](https://github.com/qte77/i3mega-pipettebot/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/qte77/i3mega-pipettebot/actions/workflows/codeql.yml/badge.svg)](https://github.com/qte77/i3mega-pipettebot/actions/workflows/codeql.yml)
 [![CodeFactor](https://www.codefactor.io/repository/github/qte77/i3mega-pipettebot/badge)](https://www.codefactor.io/repository/github/qte77/i3mega-pipettebot)
-[![Dependabot](https://img.shields.io/badge/dependabot-passing-brightgreen?logo=dependabot)](.github/dependabot.yml)
+[![Dependabot](https://github.com/qte77/i3mega-pipettebot/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/qte77/i3mega-pipettebot/actions/workflows/dependabot/dependabot-updates)
 
 > **Status: v0 prototype.** A working aspirate-then-dispense demo over
 > hardcoded coordinates. Deck calibration, dPette mount real geometry,
