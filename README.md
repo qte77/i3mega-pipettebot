@@ -1,7 +1,7 @@
 ---
 title: "i3mega-pipettebot"
 status: "PROTOTYPE"
-updated: "2026-05-13"
+updated: "2026-05-17"
 owner: "qte77"
 ---
 

@@ -1,7 +1,7 @@
 ---
 title: "3D parts: design rationale + labware reference"
 status: "DRAFT"
-updated: "2026-05-10"
+updated: "2026-05-17"
 owner: "lambda biolab"
 ---
 

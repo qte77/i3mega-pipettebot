@@ -1,7 +1,7 @@
 ---
 title: "Hardware setup"
 status: "DRAFT"
-updated: "2026-05-07"
+updated: "2026-05-17"
 owner: "qte77"
 ---
 

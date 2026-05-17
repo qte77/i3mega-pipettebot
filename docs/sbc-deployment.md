@@ -1,7 +1,7 @@
 ---
 title: "Single-Board Computer (SBC) on-printer deployment (Path 2)"
 status: "DRAFT"
-updated: "2026-05-08"
+updated: "2026-05-17"
 owner: "lambda biolab"
 ---
 
