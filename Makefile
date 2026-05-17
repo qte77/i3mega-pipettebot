@@ -46,6 +46,14 @@ PY_CAD := $(shell test -x .venv/bin/python && echo .venv/bin/python || echo "uv 
 # MARK: SETUP
 
 
+# All setup_{prod,dev,cad} recipes pass `--inexact` to `uv sync`. By
+# default `uv sync` is exact — it uninstalls everything not in the
+# requested extras — so without this flag `make setup_dev` would wipe
+# out `build123d` from a prior `make setup_cad`, and vice versa. With
+# `--inexact` the recipes are additive: any chain ends with the union
+# of installed extras, matching the `setup_all` recipe's intent.
+# See https://docs.astral.sh/uv/reference/cli/#uv-sync for details.
+
 setup_uv:  ## Install uv (Python package manager) if missing
 	if command -v uv > /dev/null 2>&1; then
 		echo "uv already installed: $$(uv --version)"
@@ -56,13 +64,13 @@ setup_uv:  ## Install uv (Python package manager) if missing
 	fi
 
 setup_prod:  ## uv sync (runtime deps only — pyserial + dpette)
-	uv sync
+	uv sync --inexact
 
 setup_dev:  ## uv sync --extra dev (runtime + ruff/mypy/pytest/complexipy/hypothesis)
-	uv sync --extra dev
+	uv sync --inexact --extra dev
 
 setup_cad:  ## uv sync --extra cad (build123d for CAD parts pipeline)
-	uv sync --extra cad
+	uv sync --inexact --extra cad
 
 setup_slicer:  ## Probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)
 	if command -v orca-slicer > /dev/null 2>&1; then
@@ -70,7 +78,8 @@ setup_slicer:  ## Probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)
 	elif command -v OrcaSlicer > /dev/null 2>&1; then
 		echo "OrcaSlicer already installed: $$(OrcaSlicer --version 2>&1 | head -1)"
 	elif command -v prusa-slicer > /dev/null 2>&1; then
-		echo "prusa-slicer already installed (fallback): $$(prusa-slicer --version 2>&1 | head -1)"
+		# PrusaSlicer has no --version flag; the banner line lives in --help output.
+		echo "prusa-slicer already installed (fallback): $$(prusa-slicer --help 2>&1 | grep -m1 '^PrusaSlicer-' || echo 'version unknown')"
 	else
 		echo "No slicer found. Install one of:"
 		echo "  - OrcaSlicer (preferred): https://github.com/SoftFever/OrcaSlicer/releases"
@@ -96,8 +105,9 @@ setup_diagramforge:  ## Clone diagramforge at $(DIAGRAMFORGE_SHA) if .gitmodules
 	fi
 
 setup_all: setup_dev setup_cad  ## setup_dev + setup_cad + best-effort slicer/diagramforge
-	-$(MAKE) setup_slicer
-	-$(MAKE) setup_diagramforge
+	# -s on sub-make suppresses both recipe echo and the auto "Entering directory" chatter
+	-$(MAKE) -s setup_slicer
+	-$(MAKE) -s setup_diagramforge
 
 
 # MARK: LINT

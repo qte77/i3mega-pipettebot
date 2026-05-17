@@ -12,10 +12,15 @@ make setup_dev
 make validate
 ```
 
-`make setup_dev` runs `uv sync --extra dev`. Other entry points:
-`make setup_prod` for runtime-only (`uv sync`); `make setup_uv` to
-bootstrap uv itself; `make setup_all` for dev + cad + best-effort
+`make setup_dev` runs `uv sync --inexact --extra dev`. Other entry points:
+`make setup_prod` for runtime-only (`uv sync --inexact`); `make setup_uv`
+to bootstrap uv itself; `make setup_all` for dev + cad + best-effort
 slicer/diagramforge. `make help` lists everything.
+
+The `--inexact` flag makes the setup recipes **additive** — running
+`setup_dev` after `setup_cad` keeps build123d installed (and vice
+versa). Without it, `uv sync` is exact and uninstalls anything not in
+the requested extras.
 
 The Makefile is the single quality gate (`make validate` runs ruff format
 check + lint, mypy strict, and pytest mocked). Each recipe prefers the

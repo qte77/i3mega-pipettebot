@@ -29,7 +29,9 @@ separate USB-serial link via
 ## Why this matters
 
 A pipetting robot you can build for the price of a 3D printer, with a
-disposable-tip workflow and Python control.
+disposable-tip workflow and Python control. See
+[docs/UserStory.md](docs/UserStory.md) for the target personas,
+end-to-end workflows, and what is explicitly out of scope for v0.
 
 | Solution                                | Cost          | Tips        | API control |
 |-----------------------------------------|---------------|-------------|-------------|
@@ -200,6 +202,11 @@ back to `uv run`. On read-only hosts where `uv run` can't write to
 `~/.cache/uv`, run `make setup_dev` first (which materialises the venv)
 or set `UV_CACHE_DIR=$TMPDIR/uv-cache`.
 
+The `setup_*` recipes pass `--inexact` to `uv sync` so they are
+**additive**: running `setup_dev` after `setup_cad` keeps `build123d`
+installed (and vice versa). Without `--inexact`, `uv sync` is exact
+and uninstalls anything outside the requested extras.
+
 Hardware tests are gated by `@pytest.mark.hardware`:
 
 ```bash
@@ -216,6 +223,7 @@ but deliberately **not** part of v0.
 
 ## Documentation
 
+- [docs/UserStory.md](docs/UserStory.md) — user personas, target workflows, scope and acceptance criteria
 - [docs/hardware.md](docs/hardware.md) — i3 Mega + dPette wiring, port discovery, firmware sanity check, dPette+ specs
 - [docs/calibration.md](docs/calibration.md) — well-A1 origin procedure, 9 mm pitch check
 - [docs/deck-layout.md](docs/deck-layout.md) — deck slot extents, motion constants, four-phase tour sequence (canonical spec for `showcase_v0_full_plate.py`)
