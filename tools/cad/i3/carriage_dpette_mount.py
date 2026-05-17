@@ -55,9 +55,11 @@ from measurements import (
     LOWER_CLAMP_D_MM,
     LOWER_CLAMP_H_MM,
     LOWER_CLAMP_W_MM,
+    PLA_DENSITY_G_PER_CC,
     SCREW_HOLE_D_MM,
     SCREW_PITCH_X_MM,
     SCREW_PITCH_Y_MM,
+    UPPER_BARREL_HEIGHT_MM,
     UPPER_CLAMP_BORE_D_MM,
     UPPER_TO_LOWER_SEPARATION_MM,
     VPLATE_TOP_HOLE_D_MM,
@@ -65,14 +67,20 @@ from measurements import (
     VPLATE_TOP_OFFSET_MM,
     VPLATE_TOP_X_OFFSET_MM,
 )
-
-# Re-exports — accessed reflectively as `mount.X` by mass-budget / geometry tests.
-# The `as X` self-rename is the PEP 484 idiom for an explicit re-export.
-from measurements import PLA_DENSITY_G_PER_CC as PLA_DENSITY_G_PER_CC
-from measurements import UPPER_BARREL_HEIGHT_MM as UPPER_BARREL_HEIGHT_MM
 from util.export import export_part
 
 sys.path.pop()
+
+# `PLA_DENSITY_G_PER_CC` and `UPPER_BARREL_HEIGHT_MM` are re-exported here
+# for reflective access as `mount.X` by mass-budget / geometry tests.
+__all__ = [
+    "PLA_DENSITY_G_PER_CC",
+    "UPPER_BARREL_HEIGHT_MM",
+    "build_carriage_dpette_mount",
+    "build_carriage_dpette_mount_cap",
+    "build_carriage_dpette_mount_main",
+    "build_carriage_dpette_mount_main_lbracket",
+]
 
 
 # === Mount geometry (parametric — design knobs for this specific mount) ===
