@@ -86,14 +86,9 @@ exclude = [
     "tools/cad/",     # build123d uses dynamic imports without type stubs
     "tools/slicer/",  # subprocess wrapping; not strict-typed
 ]
-
-[[tool.mypy.overrides]]
-module = "dpette.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "build123d.*"
-ignore_missing_imports = true
+# Note: `[[tool.mypy.overrides]]` for dpette and build123d were removed
+# because `src/` (the only path mypy checks) imports neither. Re-add them
+# alongside any future src import of those packages.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
