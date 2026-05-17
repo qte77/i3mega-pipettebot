@@ -45,6 +45,10 @@ We use **stock Marlin without modifications** in v0. The G-code surface we
 need is small: `G28`, `G1`, `M114`, `M115`, `M400`. Both 1.4.x and 2.x
 support all of these.
 
+For project provenance, fork lineage, license posture, and OSS
+alternatives to the Marlin/slicer stack, see
+[`research-oss-toolchain.md`](research-oss-toolchain.md).
+
 ### Confirming the printer port
 
 After plugging in the printer, find its `/dev/tty*` device:
