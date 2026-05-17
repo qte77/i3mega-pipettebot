@@ -79,9 +79,11 @@ Environment variables (all optional — modes chosen from env presence):
     PIPETTE_PORT         dPette USB-serial path. If unset, aspirate /
                          dispense ops are skipped and logged as
                          `; skipped` in the tee.
-    NUM_CYCLES           Number of rows to fill. Default 12, range 1..12.
-                         12 is the natural 96-well max (8 channels × 12
-                         rows = 96 wells). See bed-range warning below.
+    NUM_CYCLES           Number of rows to fill. Default 8, range 1..8.
+                         FIXME: cap lowered 12 → 8 for safety — the
+                         current bed/plate part layout is not yet
+                         safety-compliant for the full 12-row tour.
+                         See bed-range warning below.
     I3MEGA_BAUD          Default 250000 (Anycubic stock + MARLIN-AI3M).
     PIPETTE_BAUD         Default 9600 (DLAB dPette CP2102 stock).
     PIPETTE_VOLUME_UL    Per-channel volume in microlitres. Default 100.0.
@@ -105,11 +107,12 @@ Run modes (auto-selected from env presence):
     DRY RUN       neither set — no serial; G-code tee only (useful for
                   inspecting the generated tour before plugging in).
 
-**Bed-range warning**: tip-box row Y = 156 + 9·(N−1). At N=12 that's
-Y=255 — outside the i3 Mega Y=0–250 envelope. Cycles 11 and 12 will
-drive the head past the front frame. `M211 S0` (bootstrap) disables
-soft endstops so Marlin will obey; verify your tip-box position
-allows N>10 before running.
+**Bed-range warning**: tip-box row Y = 156 + 9·(N−1). At N=8 that's
+Y=219 — within the Y=0–250 envelope but close to the front of bed
+travel. The hard cap is `MAX_NUM_CYCLES=8` for safety until the bed
+part layout is re-arranged (see FIXME on the constant). `M211 S0`
+(bootstrap) disables soft endstops so Marlin will obey; verify your
+tip-box position before running.
 
 **Safety**: dPette dispense at WELL_DISPENSE_Z = aspirate Z = 70 mm.
 Each SBS well starts empty, so the B3 BLOW piston-return suction
@@ -147,8 +150,13 @@ DEFAULT_PIPETTE_BAUD = 9600
 DEFAULT_GCODE_OUT = "showcase_v0_full_pipettebot_rows.gcode"
 
 # --- Cycle envelope -----------------------------------------------------
-DEFAULT_NUM_CYCLES = 12
-MAX_NUM_CYCLES = 12  # 96-well plate = 8 channels × 12 rows
+# FIXME: cap lowered 12 → 8 for safety. The current part layout on the
+# bed/plate is not yet safety-compliant for the full 12-row tour — at
+# N>8 the tip-box and well-plate footprints clash with fixtures on the
+# bed. Restore to 12 (96-well plate = 8 channels × 12 rows) once the
+# bed layout is re-arranged and re-measured.
+DEFAULT_NUM_CYCLES = 8
+MAX_NUM_CYCLES = 8
 MIN_NUM_CYCLES = 1
 
 # --- Deck geometry (Marlin frame) ---------------------------------------
@@ -499,7 +507,7 @@ def _run(
         gcode_out,
         _gcode_header(num_cycles, volume_desc)
         + "; disable software endstops (Y axis positive 0-250; tip-box rows\n"
-        + "; can reach Y=255 at cycle 12 — verify clearance before N>10)\n",
+        + "; FIXME cap at MAX_NUM_CYCLES=8 — restore to 12 after bed re-layout)\n",
     )
     profile = select_profile(os.environ.get("MOTION_PROFILE"))
     if profile is None:
@@ -592,7 +600,12 @@ def _resolve_num_cycles() -> int:
         raise SystemExit(f"ERROR: NUM_CYCLES must be an integer, got {raw!r}") from None
     if not MIN_NUM_CYCLES <= n <= MAX_NUM_CYCLES:
         raise SystemExit(
-            f"ERROR: NUM_CYCLES must be in {MIN_NUM_CYCLES}..{MAX_NUM_CYCLES}, got {n}"
+            f"ERROR: NUM_CYCLES must be in {MIN_NUM_CYCLES}..{MAX_NUM_CYCLES}, got {n}.\n"
+            f"       Cap is temporarily {MAX_NUM_CYCLES} (FIXME) — the current\n"
+            f"       bed/plate part layout is not safety-compliant for N>{MAX_NUM_CYCLES}:\n"
+            f"       tip-box and well-plate footprints clash with fixtures on\n"
+            f"       the bed past that point. Restore to 12 only after the bed\n"
+            f"       layout is re-arranged and re-measured."
         )
     return n
 
