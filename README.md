@@ -37,8 +37,8 @@ disposable-tip workflow and Python control.
 | [Science Jubilee][sj] + OT-2 pipette    | ~$900+ build  | Disposable  | Python      |
 | [Opentrons OT-2][ot2]                   | from $15,950  | Disposable  | Python      |
 
-[sj]: https://science-jubilee.readthedocs.io/
-[ot2]: https://www.opentrons.com/ot-2-robot/
+[sj]: https://science-jubilee.readthedocs.io/en/latest/
+[ot2]: https://opentrons.com/products/ot-2-robot
 
 The Opentrons price is the vendor's published list price (see link).
 The Jubilee + OT-2-pipette figure is a community build-cost estimate
