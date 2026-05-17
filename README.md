@@ -57,12 +57,13 @@ Requires [`uv`](https://docs.astral.sh/uv/).
 
 git clone https://github.com/qte77/i3mega-pipettebot.git
 cd i3mega-pipettebot
-make init
+make setup_dev
 make test
 ```
 
-`make init` runs `uv sync --extra dev`; `make test` runs the mocked-serial
-test suite (no hardware required).
+`make setup_dev` runs `uv sync --extra dev`; `make test` runs the
+mocked-serial test suite (no hardware required). `make help` lists every
+recipe grouped by section.
 
 ### Run the v0 demo (requires hardware)
 
@@ -176,7 +177,12 @@ Four modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
 
 | Recipe                  | What it runs                                                  |
 |-------------------------|---------------------------------------------------------------|
-| `make init`             | `uv sync --extra dev`                                         |
+| `make setup_uv`         | install uv (idempotent — skips if already on PATH)            |
+| `make setup_prod`       | `uv sync` (runtime deps only — pyserial + dpette)             |
+| `make setup_dev`        | `uv sync --extra dev` (runtime + ruff/mypy/pytest/complexipy/hypothesis) |
+| `make setup_cad`        | `uv sync --extra cad` (build123d)                             |
+| `make setup_slicer`     | probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)    |
+| `make setup_all`        | `setup_dev` + `setup_cad` + best-effort slicer/diagramforge   |
 | `make validate`         | `ruff format --check` + `ruff check` + `mypy --strict` + `pytest -m "not hardware"` |
 | `make quick_validate`   | `ruff check` + `mypy` only (no tests)                         |
 | `make lint`             | `ruff check` + `mypy --strict`                                |
@@ -185,12 +191,14 @@ Four modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
 | `make check_complexity` | `complexipy src/pipettebot/` (max 15)                         |
 | `make check_links`      | `lychee` against the repo (config in `.lychee.toml`)          |
 | `make check_docs`       | `markdownlint-cli2 "**/*.md"`                                 |
-| `make setup_cad`        | `uv sync --extra cad` (build123d)                             |
-| `make setup_slicer`     | probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)    |
-| `make setup_all`        | `init` + `setup_cad` + best-effort slicer/diagramforge        |
 | `make render_parts`     | build123d → STL/SVG (driven by `tools/cad/parts.json`)        |
 | `make check_prints`     | headless slice via `tools/slicer/validate.py --all`           |
 | `make render_all`       | `render_parts` + `check_prints` (full CAD-to-slicer gate)     |
+
+Recipes prefer the local `.venv/bin/<tool>` binary if installed, else fall
+back to `uv run`. On read-only hosts where `uv run` can't write to
+`~/.cache/uv`, run `make setup_dev` first (which materialises the venv)
+or set `UV_CACHE_DIR=$TMPDIR/uv-cache`.
 
 Hardware tests are gated by `@pytest.mark.hardware`:
 
