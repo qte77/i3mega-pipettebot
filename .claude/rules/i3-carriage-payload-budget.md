@@ -9,11 +9,21 @@ paths:
 
 > Total carriage payload (mount + pipette + tips) must stay below 300 g.
 
-The Anycubic i3 Mega (AI3M) carriage starts losing steps under XY
-acceleration once payload exceeds ~300 g empirically — varies with belt
-tension and acceleration. Worked example for the dPette+ 8-channel
-target lives in [`docs/3d-parts.md`](../../docs/3d-parts.md): 250 g
-pipette + 3 g tips → ~47 g headroom for the printed mount.
+The 300 g cap is a **mechanical motion limit** of the Anycubic i3 Mega
+(AI3M) carriage — stepper torque, belt friction, and typical XY accel
+combine such that the carriage drops steps above ~300 g empirically
+(varies with belt tension and accel setting). It is a property of the
+printer, not a description of what is currently mounted.
+
+The stock hot end, extruder, fans, and PCB were physically removed
+(see [`docs/hardware.md`](docs/hardware.md) "Workspace constraints"),
+so the current baseline carriage payload is just the bare carriage
+plate. This gives us more **headroom under** the cap — it does **not**
+raise the cap.
+
+Worked example for the dPette+ 8-channel target lives in
+[`docs/3d-parts.md`](docs/3d-parts.md): 250 g pipette + 3 g tips
+→ ~47 g headroom for the printed mount.
 
 ## Every carriage-mounted part declares its mass
 
