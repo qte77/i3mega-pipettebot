@@ -1,12 +1,20 @@
 name: Issue Triage
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, reopened]
 
 permissions:
   issues: write
   contents: read
   models: read    # required for the github.token AI_TOKEN default to call GitHub Models
+
+concurrency:
+  # One in-flight triage per issue so a quick edit doesn't race with the
+  # initial open and stack two summary comments before the sticky-edit
+  # logic kicks in. `issue.number` is numeric (GitHub webhook schema) —
+  # not user-controllable text, so safe to embed in the concurrency key.
+  group: issue-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
 
 jobs:
   triage:
