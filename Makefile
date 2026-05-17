@@ -78,7 +78,7 @@ setup_slicer:  ## Probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)
 	elif command -v OrcaSlicer > /dev/null 2>&1; then
 		echo "OrcaSlicer already installed: $$(OrcaSlicer --version 2>&1 | head -1)"
 	elif command -v prusa-slicer > /dev/null 2>&1; then
-		echo "prusa-slicer already installed (fallback): $$(prusa-slicer --version 2>&1 | head -1)"
+		echo "prusa-slicer already installed (fallback): $$(prusa-slicer --help 2>&1 | grep -m1 '^PrusaSlicer-' || echo 'version unknown')"
 	else
 		echo "No slicer found. Install one of:"
 		echo "  - OrcaSlicer (preferred): https://github.com/SoftFever/OrcaSlicer/releases"

@@ -200,6 +200,11 @@ back to `uv run`. On read-only hosts where `uv run` can't write to
 `~/.cache/uv`, run `make setup_dev` first (which materialises the venv)
 or set `UV_CACHE_DIR=$TMPDIR/uv-cache`.
 
+The `setup_*` recipes pass `--inexact` to `uv sync` so they are
+**additive**: running `setup_dev` after `setup_cad` keeps `build123d`
+installed (and vice versa). Without `--inexact`, `uv sync` is exact
+and uninstalls anything outside the requested extras.
+
 Hardware tests are gated by `@pytest.mark.hardware`:
 
 ```bash
