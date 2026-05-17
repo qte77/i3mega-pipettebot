@@ -101,7 +101,6 @@ POST_Y_CENTER_MM = 14.0  # behind upper bore (Y > 13.75) and on top of lower cla
 UPPER_CAP_D_MM = 8.0  # front cap thickness in Y
 UPPER_BOLT_PITCH_X_MM = 28.0  # ±14 mm from bore centre, clear of Ø27 bore
 UPPER_BOLT_HOLE_D_MM = 3.4  # M3 clearance
-UPPER_BOLT_BACK_LEN_MM = 14.0  # bolt thread engagement into back half
 
 # === L-bracket reinforcement (scheme b) — mount-side design knobs ===
 # V-plate hole pattern is imported from measurements.py (VPLATE_TOP_*).
