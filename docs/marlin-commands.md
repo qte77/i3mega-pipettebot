@@ -12,6 +12,9 @@ for the full set. The same table is built into
 [`tools/marlin_repl.py`](../tools/marlin_repl.py) under the `?` /
 `help` command.
 
+For project provenance, fork lineage, license posture, and credible OSS
+alternatives to Marlin, see [`research-oss-toolchain.md`](research-oss-toolchain.md).
+
 ## Coordinate orientation (i3 Mega, front view)
 
 | Axis  | Min direction              | Max direction              |
