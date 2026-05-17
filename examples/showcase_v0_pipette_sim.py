@@ -43,16 +43,13 @@ and (X=105, Y=20). Bed must be clear of objects at those XY locations
 or the gantry will collide. v0 has no software soft-limit enforcement
 (see `.claude/rules/motion-safety.md`).
 
-**Side effect**: this script installs the liquid-handling motion
-profile — `M203 X500 Y500 Z20` (peak feedrate caps, Z at leadscrew
-limit), `M201 X1200 Y1500 Z80` (per-axis max accel; Z softened from
-the AI3M default ~200 to protect the leadscrew and the cantilevered
-pipette), `M204 P1200 R1200 T1200` (default print/retract/travel
-accel), `M205 X3 Y5 Z0.2 E0` (classic jerk — tight X for tip-pendulum
-+ droplet-shed control; tight Z for clean meniscus contact). These
-changes last until power-cycle unless saved with `M500`. AI3M defaults
-were `Z6 / Z60` for Z feedrate/accel; the new Z cap (`Z20 / Z80`) is
-softer on accel but still raised on feedrate.
+**Side effect**: installs the liquid-handling motion profile via
+`pipettebot.motion_profile.select_profile(MOTION_PROFILE)`. Defaults
+to MID when env unset; set `MOTION_PROFILE=slow|fast` to dial, or
+`MOTION_PROFILE=off` to skip and keep Marlin's RAM/EEPROM motion
+settings untouched. All installed settings last until power cycle
+unless saved with `M500`. See `src/pipettebot/motion_profile.py` for
+the bundled profile values.
 """
 
 from __future__ import annotations
@@ -63,6 +60,7 @@ import time
 from typing import TYPE_CHECKING
 
 from pipettebot.gantry import open_marlin_port
+from pipettebot.motion_profile import select_profile
 
 if TYPE_CHECKING:
     from typing import TextIO
@@ -158,14 +156,20 @@ def _run(link: serial.Serial, gcode_out: TextIO | None) -> None:
     """The full motion sequence — single entry point for both hardware and tee paths."""
     if gcode_out is not None:
         gcode_out.write(_gcode_header())
-        gcode_out.write(
-            "; liquid-handling motion profile — soft Z (leadscrew + cantilever),\n"
-            "; tight jerk (tip-pendulum + droplet-shed control on X, meniscus on Z)\n"
-        )
-    gsend(link, "M203 X500 Y500 Z20", gcode_out=gcode_out)
-    gsend(link, "M201 X1200 Y1500 Z80", gcode_out=gcode_out)
-    gsend(link, "M204 P1200 R1200 T1200", gcode_out=gcode_out)
-    gsend(link, "M205 X3 Y5 Z0.2 E0", gcode_out=gcode_out)
+    profile = select_profile(os.environ.get("MOTION_PROFILE"))
+    if profile is None:
+        print("[host] motion profile: SKIPPED (MOTION_PROFILE opt-out)")
+        if gcode_out is not None:
+            gcode_out.write("; motion profile: SKIPPED (MOTION_PROFILE opt-out)\n")
+    else:
+        print(f"[host] motion profile: {profile.name}")
+        if gcode_out is not None:
+            gcode_out.write(
+                f"; motion profile: {profile.name} "
+                "(via pipettebot.motion_profile.select_profile)\n"
+            )
+        for cmd in profile.as_marlin():
+            gsend(link, cmd, gcode_out=gcode_out)
 
     if gcode_out is not None:
         gcode_out.write("\n; ===== initial home =====\n")

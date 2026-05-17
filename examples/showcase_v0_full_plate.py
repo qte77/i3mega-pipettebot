@@ -80,19 +80,16 @@ all three to home. After homing, Z lifts to TRAVEL_Z; from that point
 on the tip is clear of every deck slot for the rest of the tour. v0
 has no software soft-limit enforcement (see `.claude/rules/motion-safety.md`).
 
-**Side effect**: installs the liquid-handling motion profile —
-`M203 X500 Y500 Z20` (peak feedrate caps, Z at leadscrew limit),
-`M201 X1200 Y1500 Z80` (per-axis max accel; Z softened from the AI3M
-default ~200 to protect the leadscrew and cantilevered pipette),
-`M204 P1200 R1200 T1200` (default print/retract/travel accel),
-`M205 X3 Y5 Z0.2 E0` (classic jerk — tight X for tip-pendulum +
-droplet-shed control; tight Z for clean meniscus contact). Also
-disables soft endstops (`M211 S0`) for robustness in case any
-commanded Y falls outside the firmware-configured `Y_MIN`/`Y_MAX`.
-With the positive-Y convention (Y=0 back, Y=250 front) all current
-targets sit between 0 and ~140, so soft endstops would not typically
-clamp — `M211 S0` is kept defensively. All settings last until
-power-cycle unless saved with `M500`.
+**Side effect**: installs the liquid-handling motion profile via
+`pipettebot.motion_profile.select_profile(MOTION_PROFILE)`. Defaults
+to MID when env unset; set `MOTION_PROFILE=slow|fast` to dial, or
+`MOTION_PROFILE=off` to skip. Also disables soft endstops (`M211 S0`)
+for robustness in case any commanded Y falls outside the firmware-
+configured `Y_MIN`/`Y_MAX`. With the positive-Y convention (Y=0 back,
+Y=250 front) all current targets sit between 0 and ~140, so soft
+endstops would not typically clamp — `M211 S0` is kept defensively.
+All settings last until power-cycle unless saved with `M500`. See
+`src/pipettebot/motion_profile.py` for the bundled profile values.
 """
 
 from __future__ import annotations
@@ -103,6 +100,7 @@ import time
 from typing import TYPE_CHECKING
 
 from pipettebot.gantry import open_marlin_port
+from pipettebot.motion_profile import select_profile
 
 if TYPE_CHECKING:
     from typing import TextIO
@@ -386,16 +384,25 @@ def _run(
     _phase_comment(
         gcode_out,
         _gcode_header()
-        + "; liquid-handling motion profile — soft Z (leadscrew + cantilever),\n"
-        + "; tight jerk (tip-pendulum + droplet-shed control on X, meniscus on Z)\n"
         + "; disable software endstops defensively (Y axis is positive\n"
         + "; 0-250 in this convention; soft endstops kept off in case any\n"
         + "; commanded Y falls outside the firmware Y_MIN/Y_MAX range)\n",
     )
-    gsend(link, "M203 X500 Y500 Z20", gcode_out=gcode_out)
-    gsend(link, "M201 X1200 Y1500 Z80", gcode_out=gcode_out)
-    gsend(link, "M204 P1200 R1200 T1200", gcode_out=gcode_out)
-    gsend(link, "M205 X3 Y5 Z0.2 E0", gcode_out=gcode_out)
+    profile = select_profile(os.environ.get("MOTION_PROFILE"))
+    if profile is None:
+        print("[host] motion profile: SKIPPED (MOTION_PROFILE opt-out)")
+        _phase_comment(
+            gcode_out, "; motion profile: SKIPPED (MOTION_PROFILE opt-out)\n"
+        )
+    else:
+        print(f"[host] motion profile: {profile.name}")
+        _phase_comment(
+            gcode_out,
+            f"; motion profile: {profile.name} "
+            "(via pipettebot.motion_profile.select_profile)\n",
+        )
+        for cmd in profile.as_marlin():
+            gsend(link, cmd, gcode_out=gcode_out)
     gsend(link, "M211 S0", gcode_out=gcode_out)
 
     _phase_comment(

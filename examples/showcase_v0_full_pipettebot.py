@@ -87,15 +87,12 @@ dispense Z need not be above any liquid line (first-and-only fill per
 well). The B3 BLOW piston return creates suction; submerged dispense
 would draw extra liquid, but with empty target wells this is moot.
 
-**Side effect**: installs the liquid-handling motion profile —
-`M203 X500 Y500 Z20` (peak feedrate caps, Z at leadscrew limit),
-`M201 X1200 Y1500 Z80` (per-axis max accel; Z softened from the AI3M
-default ~200 to protect the leadscrew and cantilevered pipette),
-`M204 P1200 R1200 T1200` (default print/retract/travel accel),
-`M205 X3 Y5 Z0.2 E0` (classic jerk — tight X for tip-pendulum +
-droplet-shed control; tight Z for clean meniscus contact). Also
-disables soft endstops (`M211 S0`). All last until power cycle unless
-saved with `M500`.
+**Side effect**: installs the liquid-handling motion profile via
+`pipettebot.motion_profile.select_profile(MOTION_PROFILE)`. Defaults
+to MID when env unset; set `MOTION_PROFILE=slow|fast` to dial, or
+`MOTION_PROFILE=off` to skip. Also disables soft endstops (`M211 S0`).
+All installed settings last until power cycle unless saved with `M500`.
+See `src/pipettebot/motion_profile.py` for the bundled profile values.
 """
 
 from __future__ import annotations
@@ -109,6 +106,7 @@ from dpette import DPetteDriver, SerialConfig
 
 from pipettebot.experiment_profile import load_experiment_profile
 from pipettebot.gantry import open_marlin_port
+from pipettebot.motion_profile import select_profile
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -397,14 +395,23 @@ def _run(
     _phase_comment(
         gcode_out,
         _gcode_header(volumes_ul)
-        + "; liquid-handling motion profile — soft Z (leadscrew + cantilever),\n"
-        + "; tight jerk (tip-pendulum + droplet-shed control on X, meniscus on Z)\n"
         + "; disable software endstops defensively (Y axis positive 0-250)\n",
     )
-    gsend(link, "M203 X500 Y500 Z20", gcode_out=gcode_out)
-    gsend(link, "M201 X1200 Y1500 Z80", gcode_out=gcode_out)
-    gsend(link, "M204 P1200 R1200 T1200", gcode_out=gcode_out)
-    gsend(link, "M205 X3 Y5 Z0.2 E0", gcode_out=gcode_out)
+    profile = select_profile(os.environ.get("MOTION_PROFILE"))
+    if profile is None:
+        print("[host] motion profile: SKIPPED (MOTION_PROFILE opt-out)")
+        _phase_comment(
+            gcode_out, "; motion profile: SKIPPED (MOTION_PROFILE opt-out)\n"
+        )
+    else:
+        print(f"[host] motion profile: {profile.name}")
+        _phase_comment(
+            gcode_out,
+            f"; motion profile: {profile.name} "
+            "(via pipettebot.motion_profile.select_profile)\n",
+        )
+        for cmd in profile.as_marlin():
+            gsend(link, cmd, gcode_out=gcode_out)
     gsend(link, "M211 S0", gcode_out=gcode_out)
 
     _phase_comment(

@@ -15,24 +15,27 @@ bug. Remove tips before running if that matters.
 Phases
 ------
 
-1. Bootstrap — install the liquid-handling motion profile
-   (`M203 X500 Y500 Z20`, `M201 X1200 Y1500 Z80`,
-   `M204 P1200 R1200 T1200`, `M205 X3 Y5 Z0.2 E0`). These don't
-   affect homing speed (compile-time `HOMING_FEEDRATE` on stock
-   Marlin 1.1.x), but they govern any G1 after this script and
-   persist until power-cycle. Aligns this script's post-state with
-   what every `showcase_v0_*.py` installs in its own bootstrap, so
-   chaining a home before a tour doesn't leave stale snappy caps
-   from a prior run.
+1. Bootstrap — install the liquid-handling motion profile via
+   `pipettebot.motion_profile.select_profile(MOTION_PROFILE)`. Defaults
+   to MID when env unset; set `MOTION_PROFILE=slow|fast` to dial, or
+   `MOTION_PROFILE=off` to skip and keep Marlin's RAM/EEPROM motion
+   settings untouched. The profile doesn't affect homing speed
+   (compile-time `HOMING_FEEDRATE` on stock Marlin 1.1.x), but it
+   governs any G1 after this script and persists until power-cycle —
+   aligns this script's post-state with what every `showcase_v0_*.py`
+   installs in its own bootstrap.
 2. Home      — full `G28`. Ends at (X=0, Y=0, Z=0).
 
 Required environment variable:
 
-    I3MEGA_PORT   Marlin USB-serial path. Run `tools/preflight.py` first.
+    I3MEGA_PORT     Marlin USB-serial path. Run `tools/preflight.py` first.
 
 Optional:
 
-    I3MEGA_BAUD   Default 250000 (Anycubic stock + MARLIN-AI3M).
+    I3MEGA_BAUD     Default 250000 (Anycubic stock + MARLIN-AI3M).
+    MOTION_PROFILE  Bundled profile name: `slow` / `mid` / `fast`
+                    (default `mid`). Empty or `off` to skip the install.
+                    See `src/pipettebot/motion_profile.py` for values.
 """
 
 from __future__ import annotations
@@ -43,6 +46,7 @@ import time
 from typing import TYPE_CHECKING
 
 from pipettebot.gantry import open_marlin_port
+from pipettebot.motion_profile import select_profile
 
 if TYPE_CHECKING:
     import serial  # type: ignore[import-untyped]
@@ -98,11 +102,13 @@ def main() -> int:
 
         t0 = time.monotonic()
 
-        print("[host] phase 1: install liquid-handling motion profile")
-        gsend(link, "M203 X500 Y500 Z20")
-        gsend(link, "M201 X1200 Y1500 Z80")
-        gsend(link, "M204 P1200 R1200 T1200")
-        gsend(link, "M205 X3 Y5 Z0.2 E0")
+        profile = select_profile(os.environ.get("MOTION_PROFILE"))
+        if profile is None:
+            print("[host] phase 1: motion profile SKIPPED (MOTION_PROFILE opt-out)")
+        else:
+            print(f"[host] phase 1: install motion profile '{profile.name}'")
+            for cmd in profile.as_marlin():
+                gsend(link, cmd)
 
         print("[host] phase 2: G28 — return to Marlin default home (0, 0, 0)")
         gsend(link, "G28", max_secs=120)
