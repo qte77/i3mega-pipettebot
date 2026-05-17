@@ -118,10 +118,17 @@ uv run examples/showcase_v0_full_dpette_cycles.py
 
 # Either dpette script accepts a TOML experiment profile via
 # PIPETTE_PROFILE — drives the cycle count, per-cycle volumes, and any
-# pre-mixed reservoir gradient notes. See `examples/profiles/` for
-# samples (calibration_curve_demo.toml, gradient_reservoir_demo.toml).
+# pre-mixed reservoir gradient notes. See `examples/experiment_profiles/`
+# for samples (calibration_curve_demo.toml, gradient_reservoir_demo.toml).
 PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
   uv run examples/showcase_v0_full_dpette_cycles.py
+
+# Every gantry-using example also accepts MOTION_PROFILE to dial gantry
+# accel/jerk between slow / mid / fast (or off to skip the install).
+# Default is mid (liquid-handling friendly). See
+# `src/pipettebot/motion_profile.py` for the bundled values + semantics.
+MOTION_PROFILE=fast NUM_CYCLES=1 \
+  uv run examples/showcase_v0_full_pipettebot_rows.py
 
 # Home — full `G28` to (X=0, Y=0, Z=0). Bootstrap installs the same
 # liquid-handling motion profile (M203/M201/M204/M205) that every
