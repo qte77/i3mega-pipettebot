@@ -102,3 +102,9 @@ markers = [
     "hardware: requires physical i3 Mega + dPette hookup",
     "cad: requires build123d installed (uv sync --extra cad)",
 ]
+
+[tool.uv]
+# Cap the resolver to releases published on or before this date so CI and
+# fresh clones get the same versions regardless of when they run. Bump this
+# when you want to take newer wheels.
+exclude-newer = "2026-05-17T00:00:00Z"
