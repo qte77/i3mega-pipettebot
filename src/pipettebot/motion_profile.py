@@ -18,15 +18,34 @@ Usage in examples::
             gsend(link, cmd, gcode_out=gcode_out)
 
 `MID` is the default (returned when env is unset). Empty string or
-`"off"` returns ``None`` (opt-out). Unknown names raise ``ValueError``
-with the valid set listed in the message.
+`"off"` returns ``None`` (opt-out — Marlin keeps RAM/EEPROM motion
+settings as-is). Unknown names raise ``ValueError`` with the valid
+set listed in the message.
 
-Feedrate caps (M203) are shared across all profiles — they reflect
-the leadscrew mechanical limit on Z and a reasonable XY cruise speed,
-not a tuning choice. The dialed lever is per-axis accel + classic
-jerk. Z accel is held at the leadscrew-friendly floor of 200 mm/s²
-in MID; SLOW drops it to 80 (over-cautious, mostly there for very
-delicate first-runs); FAST raises it to 400.
+Profile semantics
+-----------------
+
+- **MID** (default): liquid-handling friendly. Z accel held at the
+  leadscrew-friendly floor of 200 mm/s² (balances dive speed with
+  leadscrew + cantilever shock). X/Y accel kept careful (600 / 800
+  mm/s²) to limit plate slosh on Y and tip-pendulum + droplet shed
+  on X. Tight classic jerk. This is what every showcase script gets
+  when MOTION_PROFILE is unset.
+
+- **SLOW**: extra-gentle (Z accel 80, X/Y accel 300/400, jerk 1.5/2/0.15).
+  Use for first-time runs on a new fixture, very viscous reagents,
+  or any time you want the gantry to look obviously cautious.
+
+- **FAST**: quicker tours (Z accel 400, X/Y accel 1000/1200, jerk 5/8/0.4).
+  Use once you know the deck geometry is solid and liquid surface
+  quality is acceptable — saves cycle time at the cost of more
+  aggressive motion (more meniscus disturbance, more tip-pendulum
+  swing, harsher leadscrew starts).
+
+Feedrate caps (M203 X500 Y500 Z20) are shared across all profiles —
+they reflect the leadscrew mechanical limit on Z and a reasonable XY
+cruise speed, not a tuning choice. The dialed lever is per-axis accel
+(M201) and classic jerk (M205).
 """
 
 from __future__ import annotations
