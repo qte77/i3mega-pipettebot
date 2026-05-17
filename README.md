@@ -1,6 +1,6 @@
 # i3mega-pipettebot
 
-> Turn an **Anycubic i3 Mega** into a sub-$300 disposable-tip pipetting robot
+> Turn an **Anycubic i3 Mega** into a sub-$200 disposable-tip pipetting robot
 > driven by a **DLAB dPette** electronic pipette and Python.
 
 Marlin / Trigorilla stays unmodified; the print head and PCB are physically
@@ -35,7 +35,7 @@ end-to-end workflows, and what is explicitly out of scope for v0.
 
 | Solution                                | Cost          | Tips        | API control |
 |-----------------------------------------|---------------|-------------|-------------|
-| **i3 Mega + dPette + this repo**        | **~$300**     | Disposable  | Python      |
+| **i3 Mega + dPette + this repo**        | **~$200**     | Disposable  | Python      |
 | [Science Jubilee][sj] + OT-2 pipette    | ~$900+ build  | Disposable  | Python      |
 | [Opentrons OT-2][ot2]                   | from $15,950  | Disposable  | Python      |
 
