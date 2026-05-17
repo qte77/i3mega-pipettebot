@@ -1,9 +1,14 @@
 ---
 title: "Deck layout"
-status: "DRAFT"
-updated: "2026-05-13"
+status: "STALE"
+updated: "2026-05-17"
 owner: "lambda biolab"
 ---
+
+> **STALE.** The full-plate tour has since gained tip pickup, liquid
+> aspiration, B3 blow-out at each well, and tip release — this document
+> still describes the simpler aspirate/dispense-only layout. Refresh
+> before relying on it.
 
 Physical arrangement of labware on the 220 × 220 mm deck plate that sits
 on the i3 Mega bed. The full-plate tour

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-05-11
-- **Scope:** Three repos — new [qte77/cadkit](https://github.com/qte77/cadkit) (the extracted package), [Lambda-Biolab/i3mega-pipettebot](https://github.com/Lambda-Biolab/i3mega-pipettebot), [Lambda-Biolab/so101-biolab-automation](https://github.com/Lambda-Biolab/so101-biolab-automation)
+- **Scope:** Three repos — new [qte77/cadkit](https://github.com/qte77/cadkit) (the extracted package), [qte77/i3mega-pipettebot](https://github.com/qte77/i3mega-pipettebot), [Lambda-Biolab/so101-biolab-automation](https://github.com/Lambda-Biolab/so101-biolab-automation)
 
 ## Context
 
@@ -110,4 +110,4 @@ When either repo needs an unshared bit (a new geom primitive, a slicer feature, 
 
 - [ADR 0001 — repo-structure alignment](./0001-repo-structure-alignment.md) — sets the precedent for "avoid drift between vendored copies"; this ADR applies the same principle to the CAD tool-chain
 - [dpette-usb-driver](https://github.com/Lambda-Biolab/dpette-usb-driver) — the model for git-pinned consumption (commit SHA in `pyproject.toml`)
-- Cross-repo tracking issues will be opened once `qte77/cadkit` is scaffolded: one in [Lambda-Biolab/i3mega-pipettebot](https://github.com/Lambda-Biolab/i3mega-pipettebot) for the i3 migration, one in [Lambda-Biolab/so101-biolab-automation](https://github.com/Lambda-Biolab/so101-biolab-automation) for the so101 migration. The new `qte77/cadkit` repo holds its own first-issue for the initial scaffold.
+- Cross-repo tracking issues will be opened once `qte77/cadkit` is scaffolded: one in [qte77/i3mega-pipettebot](https://github.com/qte77/i3mega-pipettebot) for the i3 migration, one in [Lambda-Biolab/so101-biolab-automation](https://github.com/Lambda-Biolab/so101-biolab-automation) for the so101 migration. The new `qte77/cadkit` repo holds its own first-issue for the initial scaffold.

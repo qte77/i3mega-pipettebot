@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-05-11
-- **Scope:** Both [Lambda-Biolab/i3mega-pipettebot](https://github.com/Lambda-Biolab/i3mega-pipettebot) and [Lambda-Biolab/so101-biolab-automation](https://github.com/Lambda-Biolab/so101-biolab-automation)
+- **Scope:** Both [qte77/i3mega-pipettebot](https://github.com/qte77/i3mega-pipettebot) and [Lambda-Biolab/so101-biolab-automation](https://github.com/Lambda-Biolab/so101-biolab-automation)
 
 ## Context
 
@@ -82,6 +82,6 @@ Each numbered step is one PR. Steps 1–3 in so101 can interleave with i3mega's 
 ## References
 
 - This ADR — [docs/adr/0001-repo-structure-alignment.md](./0001-repo-structure-alignment.md)
-- Decision context captured in handoff session for [`i3mega-pipettebot`](https://github.com/Lambda-Biolab/i3mega-pipettebot), 2026-05-11
+- Decision context captured in handoff session for [`i3mega-pipettebot`](https://github.com/qte77/i3mega-pipettebot), 2026-05-11
 - Cross-repo tracking issue in so101: [Lambda-Biolab/so101-biolab-automation#4](https://github.com/Lambda-Biolab/so101-biolab-automation/issues/4)
 - AGENTS.md doc hierarchy convention: this is the first ADR; future architecture decisions go in `docs/adr/NNNN-<slug>.md`

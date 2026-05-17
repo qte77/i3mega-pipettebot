@@ -7,7 +7,7 @@ The primary risks are operational, not network-based.
 
 For software issues with security implications (e.g. malformed serial input
 that could brick a pipette), open a private security advisory at
-<https://github.com/Lambda-Biolab/i3mega-pipettebot/security/advisories/new>.
+<https://github.com/qte77/i3mega-pipettebot/security/advisories/new>.
 
 ## Operational safety
 

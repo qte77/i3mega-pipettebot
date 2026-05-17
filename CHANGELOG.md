@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `.github/workflows/codeql.yml` — GitHub CodeQL static analysis (Python, `security-and-quality` query suite).
+- `.github/dependabot.yml` — weekly dependency-update PRs for GitHub Actions and pip.
 - Experiment profiles: `pipettebot.profiles.load_profile` (TOML) + `PIPETTE_PROFILE` env var on both dpette showcases; per-cycle B2 PI_VOLUM only re-sent on change. Sample profiles for calibration curves and reservoir gradients in `examples/profiles/`. Closes Phase 1 of #79 (#82).
 - `examples/showcase_v0_full_pipettebot.py` — canonical end-to-end demo: same Z-first gantry tour as `showcase_v0_full_plate.py` but with REAL `dpette.DPetteDriver` aspirate/dispense. Single `_visit_xy_dive` helper grows an `on_dive` callback that fires `pipette.aspirate`/`pipette.dispense` between dive M400 and lift (motion-safety: tip stationary). PI volume set once via B2; 22 ops < dPette `MAX_CONTIGUOUS_CYCLES=50`. `WELL_Z == RESERVOIR_Z == 75` (boundary case of the invariant — each SBS well starts empty). Tee'd `.gcode` keeps only Marlin commands; dPette ops appear inline as `; >>>`/`; <<<` comments with per-op wall-clock.
 - `examples/showcase_v0_full_dpette_cycles.py` — dPette-only mirror of the 12-cycle reservoir→SBS tour (no gantry). Bench-tests B3 SUCK/BLOW timing in isolation; `PIPETTE_PORT`/`PIPETTE_BAUD`/`PIPETTE_VOLUME_UL` env vars parallel the gantry script's `I3MEGA_*` pattern.
@@ -34,6 +36,15 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Repo identity migration `Lambda-Biolab` → `qte77`: own URLs across README, SECURITY, CONTRIBUTING, pyproject, tools/setup_pi.sh, ADRs, docs. NOTICE copyright updated to `qte77`; dropped the "developed by Lambda-Biolab" distribution clause. `.lychee.toml` allowlist regex switched. Branch-protection wording in AGENTS.md + CONTRIBUTING.md drops the "Lambda-Biolab" prefix (rule is repo-level). Owner frontmatter on README + `docs/hardware.md` set to `qte77`. `dpette-usb-driver` and `so101-biolab-automation` URLs preserved as those repos legitimately stay on Lambda-Biolab.
+- README rework: removed YAML frontmatter; badge row moved below the hero (Version, License, CI/pytest, CodeQL, CodeFactor, Dependabot); demo GIF centred via an HTML wrapper; comparison table cites first-party project pages (Science Jubilee, Opentrons OT-2 at $15,950 list price); Quickstart code block embeds the `uv` install command as a comment; Development table expanded to every Makefile recipe.
+- `Makefile` — `help` is now the default goal; recipes grouped by `# MARK: <SECTION>` (SETUP, LINT, TEST, QUALITY, CAD, META, HELP); each recipe carries a `## <description>` tail that an awk-based `help` recipe scans into a coloured grouped index. Recipe behaviour and the `.venv` vs `uv run` dispatch are unchanged.
+- `Makefile::setup_diagramforge` — pin the soft-clone to a known commit SHA (`DIAGRAMFORGE_SHA`); avoids the prior "always-HEAD" drift. Bump the variable to take a newer diagramforge.
+- `examples/home_G28_fast.py` description in README aligned with the reverted plain-G28 implementation (M203/M201 caps pre-set; no `G1 Z0 @ 40 mm/s` shortcut).
+- `CONTRIBUTING.md` — "Three v0 modules" corrected to four (`gantry`, `bot`, `profiles`, `__init__`); "Backlog" section renamed to "Deferred work" and reframed: actionable work in GitHub issues; `AGENT_REQUESTS.md` is an agent-handoff channel, not a task tracker.
+- `docs/hardware.md` — linkify inline `dpette-usb-driver` mention; "Lambda Biolab v0 setup" → "qte77 v0 setup".
+- `docs/deck-layout.md` marked **STALE** pending update for the full pipette loop (tip pickup, aspiration, B3 blow, tip release).
+- Frontmatter `updated:` bumped to 2026-05-17 on touched docs (README, 3d-parts, deck-layout, hardware, sbc-deployment).
 - Showcase deck-tour geometry tightened: `TRAVEL_Z` 125 → 95 mm (~6 s/cycle saved at Z_FEED=20 mm/s); asymmetric tip-pickup (`TIP_PICKUP_PRE_Z=90` for the no-tips approach, `TIP_PICKUP_LIFT_Z=130` for the tips-loaded lift); tip-box loaded-tips design minimum 59 → 65 mm; phase 1 drops its redundant Z lift after G28 (#82).
 - `SBS_COL_PITCH` −10 → −9 mm (standard SBS column pitch). 11-cycle Y ladder: 190, 181, 172, …, 100 (was …, 90). Cumulative pitch error eliminated (#83).
 - `docs/sbc-deployment.md` — Pi setup section now invokes `tools/setup_pi.sh` via `curl | bash` instead of a 5-step manual recipe. Four stale `AGENT_REQUESTS.md` links repointed to live issues (#6, #11) and label conventions. **Single-Board Computer (SBC)** spelled out on first use. armhf vs arm64 image guidance clarified for Pi 1 B+ (#65).

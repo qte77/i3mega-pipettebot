@@ -6,7 +6,7 @@ Requires [`uv`](https://docs.astral.sh/uv/). Install once:
 `curl -LsSf https://astral.sh/uv/install.sh | sh`.
 
 ```bash
-git clone https://github.com/Lambda-Biolab/i3mega-pipettebot.git
+git clone https://github.com/qte77/i3mega-pipettebot.git
 cd i3mega-pipettebot
 make init
 make validate
@@ -21,14 +21,14 @@ pre-commit hooks; CI runs the same recipes.
 
 ## Branching and PRs
 
-- Branch from `main`. Lambda-Biolab branch protection rejects merge commits — use **squash merges** only.
+- Branch from `main`. Branch protection rejects merge commits — use **squash merges** only.
 - Topical commits: one logical change per commit, descriptive message.
 - Open a PR; ensure CI is green; squash-merge.
 
 ## Code conventions
 
 - Python ≥3.11, mypy strict, ruff (rule sets in `pyproject.toml`).
-- `src/pipettebot/` for library code. Three v0 modules only — see AGENTS.md.
+- `src/pipettebot/` for library code. Four v0 modules (`gantry`, `bot`, `profiles`, `__init__`) — see AGENTS.md.
 - Tests use mocked serial fixtures from `tests/conftest.py`. New features need new tests.
 
 ## Hardware experiments
@@ -37,7 +37,9 @@ pre-commit hooks; CI runs the same recipes.
 - Probe scripts go in `tools/` (create as needed); raw serial captures go in `captures/` (gitignored).
 - Document non-obvious findings in [AGENT_LEARNINGS.md](AGENT_LEARNINGS.md).
 
-## Backlog
+## Deferred work
 
-Anything you'd like to add but isn't ready to ship: write it up in
-[AGENT_REQUESTS.md](AGENT_REQUESTS.md) before opening an issue.
+Actionable items belong in [open issues](https://github.com/qte77/i3mega-pipettebot/issues).
+[AGENT_REQUESTS.md](AGENT_REQUESTS.md) is a short-term communication
+channel for agents and humans (hand-off notes, requests, decisions
+that need input) — not a backlog or task tracker.

@@ -1,8 +1,8 @@
 ---
 title: "Hardware setup"
 status: "DRAFT"
-updated: "2026-05-07"
-owner: "lambda biolab"
+updated: "2026-05-17"
+owner: "qte77"
 ---
 
 This guide covers the **physical and electrical setup** of an Anycubic
@@ -22,7 +22,7 @@ PC ──CP2102──► DLAB dPette                                         /de
 ```
 
 The PC is the orchestrator. Marlin executes G-code; the dPette executes
-6-byte serial commands via `dpette-usb-driver`. They never talk to each
+6-byte serial commands via [`dpette-usb-driver`](https://github.com/Lambda-Biolab/dpette-usb-driver). They never talk to each
 other directly in v0.
 
 ## Anycubic i3 Mega
@@ -107,7 +107,7 @@ DLAB ships two pipette families that share the same 6-byte protocol:
 | dPette / dPette 7016 | 1 | Single-channel — well-by-well dispensing |
 | **dPette+ multi-channel** | 8 or 12 | Parallel dispensing across a row at SBS 9 mm pitch |
 
-The Lambda Biolab v0 setup targets the **8-channel dPette+**.
+The qte77 v0 setup targets the **8-channel dPette+**.
 
 ### dPette+ 8-channel specs
 
@@ -187,9 +187,9 @@ done
   The i3 Mega is no longer a 3D printer — it is a 3-axis motion
   platform.
 - The dPette mount design is tracked in
-  [#40](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/40)
+  [#40](https://github.com/qte77/i3mega-pipettebot/issues/40)
   (carriage measurement) and
-  [#41](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/41)
+  [#41](https://github.com/qte77/i3mega-pipettebot/issues/41)
   (barrel-bore module).
 - Tip racks and well plates live on the moving bed (i3 Mega is a
   bed-slinger: bed = Y axis). Tape them down with removable tape; the

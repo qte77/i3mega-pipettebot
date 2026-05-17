@@ -1,41 +1,61 @@
----
-title: "i3mega-pipettebot"
-status: "PROTOTYPE"
-updated: "2026-05-13"
-owner: "lambda biolab"
----
+# i3mega-pipettebot
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-[![CI](https://github.com/Lambda-Biolab/i3mega-pipettebot/actions/workflows/ci.yml/badge.svg)](https://github.com/Lambda-Biolab/i3mega-pipettebot/actions/workflows/ci.yml)
+> Turn an **Anycubic i3 Mega** into a sub-$300 disposable-tip pipetting robot
+> driven by a **DLAB dPette** electronic pipette and Python.
 
-Turn an **Anycubic i3 Mega** (Marlin / Trigorilla) into a 3-axis pipetting
-robot driven by **DLAB dPette** electronic pipettes via the
+Marlin / Trigorilla stays unmodified; the print head and PCB are physically
+removed from the carriage and the chassis is repurposed as a 3-axis motion
+platform with the dPette mounted on the bare carriage
+(see [`docs/3d-parts.md`](docs/3d-parts.md)). The pipette is driven over a
+separate USB-serial link via
 [`dpette-usb-driver`](https://github.com/Lambda-Biolab/dpette-usb-driver).
-The print head and PCB are physically removed from the carriage; the
-chassis is repurposed as a 3-axis motion platform with the dPette
-mounted on the bare carriage (see [`docs/3d-parts.md`](docs/3d-parts.md)).
 
-![i3 Mega pipetting robot in action](assets/images/pipetting-robot.gif)
+<p align="center">
+  <img src="assets/images/pipetting-robot.gif" alt="i3 Mega pipetting robot in action" width="80%" />
+</p>
+
+![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![CI / pytest](https://github.com/qte77/i3mega-pipettebot/actions/workflows/ci.yml/badge.svg)](https://github.com/qte77/i3mega-pipettebot/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/qte77/i3mega-pipettebot/actions/workflows/codeql.yml/badge.svg)](https://github.com/qte77/i3mega-pipettebot/actions/workflows/codeql.yml)
+[![CodeFactor](https://www.codefactor.io/repository/github/qte77/i3mega-pipettebot/badge)](https://www.codefactor.io/repository/github/qte77/i3mega-pipettebot)
+[![Dependabot](https://img.shields.io/badge/dependabot-passing-brightgreen?logo=dependabot)](.github/dependabot.yml)
 
 > **Status: v0 prototype.** A working aspirate-then-dispense demo over
 > hardcoded coordinates. Deck calibration, dPette mount real geometry,
-> and firmware modifications are on the [backlog](AGENT_REQUESTS.md)
-> and [open issues](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues).
+> and firmware modifications are tracked in [open issues](https://github.com/qte77/i3mega-pipettebot/issues);
+> short-term agent-to-human handoffs live in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md).
 
 ## Why this matters
 
-| Solution                              | Cost      | Tips        | API control |
-|---------------------------------------|-----------|-------------|-------------|
-| **i3 Mega + dPette + this repo**      | **~$300** | Disposable  | Python      |
-| Science Jubilee + OT-2 pipette        | ~$900+    | Disposable  | Python      |
-| Opentrons OT-2                        | ~$10,000+ | Disposable  | Python      |
+A pipetting robot you can build for the price of a 3D printer, with a
+disposable-tip workflow and Python control.
+
+| Solution                                | Cost          | Tips        | API control |
+|-----------------------------------------|---------------|-------------|-------------|
+| **i3 Mega + dPette + this repo**        | **~$300**     | Disposable  | Python      |
+| [Science Jubilee][sj] + OT-2 pipette    | ~$900+ build  | Disposable  | Python      |
+| [Opentrons OT-2][ot2]                   | from $15,950  | Disposable  | Python      |
+
+[sj]: https://science-jubilee.readthedocs.io/
+[ot2]: https://www.opentrons.com/ot-2-robot/
+
+The Opentrons price is the vendor's published list price (see link).
+The Jubilee + OT-2-pipette figure is a community build-cost estimate
+anchored at the [Science Jubilee project][sj]; the toolhead family includes
+[OT-2 pipettes with disposable tips][sj-pipette].
+
+[sj-pipette]: https://science-jubilee.readthedocs.io/en/latest/building/pipette_tool.html
 
 ## Quickstart
 
-Requires [`uv`](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
+Requires [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
-git clone https://github.com/Lambda-Biolab/i3mega-pipettebot.git
+# Install uv once (if you don't have it):
+# curl -LsSf https://astral.sh/uv/install.sh | sh
+
+git clone https://github.com/qte77/i3mega-pipettebot.git
 cd i3mega-pipettebot
 make init
 make test
@@ -100,10 +120,9 @@ uv run examples/showcase_v0_full_dpette_cycles.py
 PIPETTE_PROFILE=examples/profiles/calibration_curve_demo.toml \
   uv run examples/showcase_v0_full_dpette_cycles.py
 
-# Home — ends at Marlin default home (X=0, Y=0, Z=0), ~2× faster than
-# full G28. Replaces slow G28 Z (4 mm/s leadscrew) with G1 Z0 at the
-# bumped M203 feedrate (40 mm/s). Trusts the tracked Z; run full G28
-# manually if you suspect Z drift.
+# Home — full `G28` to (X=0, Y=0, Z=0). M203/M201 caps are pre-set so
+# any post-home G1 motion in a follow-up script runs at the bumped
+# feedrate/accel. No partial-axis shortcuts.
 uv run examples/home_G28_fast.py
 ```
 
@@ -155,15 +174,23 @@ Four modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
 
 ## Development
 
-| Recipe | What it runs |
-|---|---|
-| `make validate` | ruff format + lint, mypy strict, pytest mocked |
-| `make quick_validate` | lint + mypy only |
-| `make lint_fix` | auto-fix formatting and lint |
-| `make test` | pytest (hardware tests excluded) |
-| `make setup_cad` | install build123d (`uv sync --extra cad`) |
-| `make setup_slicer` | probe for OrcaSlicer (preferred) or PrusaSlicer (fallback) |
-| `make render_all` | render all parts to `hardware/{stl,svg}/` and slice for printability check |
+| Recipe                  | What it runs                                                  |
+|-------------------------|---------------------------------------------------------------|
+| `make init`             | `uv sync --extra dev`                                         |
+| `make validate`         | `ruff format --check` + `ruff check` + `mypy --strict` + `pytest -m "not hardware"` |
+| `make quick_validate`   | `ruff check` + `mypy` only (no tests)                         |
+| `make lint`             | `ruff check` + `mypy --strict`                                |
+| `make lint_fix`         | `ruff format` + `ruff check --fix`                            |
+| `make test`             | `pytest -v` (hardware tests excluded via `pyproject.toml`)    |
+| `make check_complexity` | `complexipy src/pipettebot/` (max 15)                         |
+| `make check_links`      | `lychee` against the repo (config in `.lychee.toml`)          |
+| `make check_docs`       | `markdownlint-cli2 "**/*.md"`                                 |
+| `make setup_cad`        | `uv sync --extra cad` (build123d)                             |
+| `make setup_slicer`     | probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)    |
+| `make setup_all`        | `init` + `setup_cad` + best-effort slicer/diagramforge        |
+| `make render_parts`     | build123d → STL/SVG (driven by `tools/cad/parts.json`)        |
+| `make check_prints`     | headless slice via `tools/slicer/validate.py --all`           |
+| `make render_all`       | `render_parts` + `check_prints` (full CAD-to-slicer gate)     |
 
 Hardware tests are gated by `@pytest.mark.hardware`:
 
@@ -187,10 +214,12 @@ but deliberately **not** part of v0.
 - [docs/marlin-commands.md](docs/marlin-commands.md) — Marlin G/M-code reference + i3 Mega coordinate orientation
 - [docs/3d-parts.md](docs/3d-parts.md) — CAD pipeline design rationale, payload + Z envelope math, SBS labware reference
 - [docs/sbc-deployment.md](docs/sbc-deployment.md) — Path 2 (Single-Board Computer on-printer) deployment
+- [docs/adr/](docs/adr/) — architectural decision records
 - [AGENTS.md](AGENTS.md) — agent rules, decision framework, architecture
 - [AGENT_LEARNINGS.md](AGENT_LEARNINGS.md) — gotchas as we discover them
-- [AGENT_REQUESTS.md](AGENT_REQUESTS.md) — deferred features and questions
+- [AGENT_REQUESTS.md](AGENT_REQUESTS.md) — short-term agent-to-human handoffs
 - [CONTRIBUTING.md](CONTRIBUTING.md) — dev workflow
+- [CHANGELOG.md](CHANGELOG.md) — version history
 
 ## License
 
