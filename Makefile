@@ -23,6 +23,12 @@
 .SILENT:
 .ONESHELL:
 
+# Pin diagramforge (TypeScript/Node draw.io bridge) to a known-good commit.
+# diagramforge is a dev-time visualisation tool, not a runtime dep, so we
+# soft-clone instead of using a real git submodule. Bump this SHA when you
+# want a newer version.
+DIAGRAMFORGE_SHA := d17ebf0e07063a4c8c61675f69faeeb88449bea9
+
 # Prefer the pre-built venv to avoid `uv run` writing to ~/.cache/uv,
 # which fails on read-only hosts (sandbox builds, sealed Pi images, some
 # CI runners). `make init` / `make setup_cad` populate .venv first; the
@@ -67,9 +73,9 @@ setup_slicer:  ## Probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)
 		exit 1
 	fi
 
-setup_diagramforge:  ## Clone diagramforge submodule if .gitmodules registers a URL
+setup_diagramforge:  ## Clone diagramforge at $(DIAGRAMFORGE_SHA) if .gitmodules registers a URL
 	if [ -e diagramforge/.git ]; then
-		echo "diagramforge already present"
+		echo "diagramforge already present (HEAD: $$(git -C diagramforge rev-parse --short HEAD))"
 	elif [ ! -f .gitmodules ]; then
 		echo "WARN: .gitmodules missing — skipping"
 	else
@@ -77,8 +83,9 @@ setup_diagramforge:  ## Clone diagramforge submodule if .gitmodules registers a 
 		if [ -z "$$url" ]; then
 			echo "WARN: submodule.diagramforge.url not set in .gitmodules — skipping"
 		else
-			echo "Cloning diagramforge from $$url ..."
+			echo "Cloning diagramforge from $$url at $(DIAGRAMFORGE_SHA) ..."
 			git clone "$$url" diagramforge
+			git -C diagramforge checkout --detach "$(DIAGRAMFORGE_SHA)"
 		fi
 	fi
 
