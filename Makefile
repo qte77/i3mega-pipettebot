@@ -105,8 +105,9 @@ setup_diagramforge:  ## Clone diagramforge at $(DIAGRAMFORGE_SHA) if .gitmodules
 	fi
 
 setup_all: setup_dev setup_cad  ## setup_dev + setup_cad + best-effort slicer/diagramforge
-	-$(MAKE) setup_slicer
-	-$(MAKE) setup_diagramforge
+	# -s on sub-make suppresses both recipe echo and the auto "Entering directory" chatter
+	-$(MAKE) -s setup_slicer
+	-$(MAKE) -s setup_diagramforge
 
 
 # MARK: LINT
