@@ -2,11 +2,11 @@
 title: "i3mega-pipettebot"
 status: "PROTOTYPE"
 updated: "2026-05-13"
-owner: "lambda biolab"
+owner: "qte77"
 ---
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-[![CI](https://github.com/Lambda-Biolab/i3mega-pipettebot/actions/workflows/ci.yml/badge.svg)](https://github.com/Lambda-Biolab/i3mega-pipettebot/actions/workflows/ci.yml)
+[![CI](https://github.com/qte77/i3mega-pipettebot/actions/workflows/ci.yml/badge.svg)](https://github.com/qte77/i3mega-pipettebot/actions/workflows/ci.yml)
 
 Turn an **Anycubic i3 Mega** (Marlin / Trigorilla) into a 3-axis pipetting
 robot driven by **DLAB dPette** electronic pipettes via the
@@ -20,7 +20,7 @@ mounted on the bare carriage (see [`docs/3d-parts.md`](docs/3d-parts.md)).
 > **Status: v0 prototype.** A working aspirate-then-dispense demo over
 > hardcoded coordinates. Deck calibration, dPette mount real geometry,
 > and firmware modifications are on the [backlog](AGENT_REQUESTS.md)
-> and [open issues](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues).
+> and [open issues](https://github.com/qte77/i3mega-pipettebot/issues).
 
 ## Why this matters
 
@@ -35,7 +35,7 @@ mounted on the bare carriage (see [`docs/3d-parts.md`](docs/3d-parts.md)).
 Requires [`uv`](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
 
 ```bash
-git clone https://github.com/Lambda-Biolab/i3mega-pipettebot.git
+git clone https://github.com/qte77/i3mega-pipettebot.git
 cd i3mega-pipettebot
 make init
 make test

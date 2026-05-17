@@ -39,7 +39,7 @@ ribbed/triangulated stalks instead of solid blocks.
 `.claude/rules/i3-carriage-payload-budget.md` enforces a `# Mass:`
 annotation on every `build_*()` in `tools/cad/i3/`. Hypothesis tests
 asserting `mount + pipette + tips < 300` are tracked in
-[#42](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/42).
+[#42](https://github.com/qte77/i3mega-pipettebot/issues/42).
 
 ## Z envelope
 
@@ -94,11 +94,11 @@ Constant in code (midpoint of the range, single source of truth):
 `tools/cad/i3/carriage_dpette_mount.py::CLAMP_FORWARD_OFFSET_MM = 22.0`.
 
 Open work: real geometry blocked on carriage measurements
-([#40](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/40));
+([#40](https://github.com/qte77/i3mega-pipettebot/issues/40));
 barrel-bore primitives extracted into a reusable module
-([#41](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/41));
+([#41](https://github.com/qte77/i3mega-pipettebot/issues/41));
 real scan vendored from so101
-([#43](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/43)).
+([#43](https://github.com/qte77/i3mega-pipettebot/issues/43)).
 
 ## SBS labware reference
 
@@ -133,9 +133,9 @@ dPette+ 8-channel product page is in [`hardware.md`](hardware.md).
 
 | # | Topic |
 |---|---|
-| [#40](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/40) | Measure AI3M carriage screw pattern |
-| [#41](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/41) | Extract barrel-bore primitives into reusable module |
-| [#42](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/42) | Hypothesis tests for mount payload budget |
-| [#43](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/43) | Vendor real dPette barrel scan |
-| [#44](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/44) | Confirm OrcaSlicer install method |
-| [#45](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/45) | ADR: Arduino host architecture |
+| [#40](https://github.com/qte77/i3mega-pipettebot/issues/40) | Measure AI3M carriage screw pattern |
+| [#41](https://github.com/qte77/i3mega-pipettebot/issues/41) | Extract barrel-bore primitives into reusable module |
+| [#42](https://github.com/qte77/i3mega-pipettebot/issues/42) | Hypothesis tests for mount payload budget |
+| [#43](https://github.com/qte77/i3mega-pipettebot/issues/43) | Vendor real dPette barrel scan |
+| [#44](https://github.com/qte77/i3mega-pipettebot/issues/44) | Confirm OrcaSlicer install method |
+| [#45](https://github.com/qte77/i3mega-pipettebot/issues/45) | ADR: Arduino host architecture |

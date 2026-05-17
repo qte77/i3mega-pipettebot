@@ -24,8 +24,8 @@ Single source of truth for agents working in this repo. `CLAUDE.md` and
 4. **No firmware modifications in v0.** Stock Marlin only. All firmware
    work (Stage 1+) is in AGENT_REQUESTS.md and must not be merged to
    `main` without an ADR.
-5. **Topical commits with squash-merge.** Lambda-Biolab branch protection
-   rejects merge commits. Use `git merge --squash` or PR squash.
+5. **Topical commits with squash-merge.** Branch protection rejects merge
+   commits. Use `git merge --squash` or PR squash.
 
 ## Decision Framework
 

@@ -6,7 +6,7 @@ Requires [`uv`](https://docs.astral.sh/uv/). Install once:
 `curl -LsSf https://astral.sh/uv/install.sh | sh`.
 
 ```bash
-git clone https://github.com/Lambda-Biolab/i3mega-pipettebot.git
+git clone https://github.com/qte77/i3mega-pipettebot.git
 cd i3mega-pipettebot
 make init
 make validate
@@ -21,7 +21,7 @@ pre-commit hooks; CI runs the same recipes.
 
 ## Branching and PRs
 
-- Branch from `main`. Lambda-Biolab branch protection rejects merge commits — use **squash merges** only.
+- Branch from `main`. Branch protection rejects merge commits — use **squash merges** only.
 - Topical commits: one logical change per commit, descriptive message.
 - Open a PR; ensure CI is green; squash-merge.
 

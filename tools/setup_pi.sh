@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/Lambda-Biolab/i3mega-pipettebot.git"
+REPO_URL="https://github.com/qte77/i3mega-pipettebot.git"
 REPO_DIR="${REPO_DIR:-$HOME/i3mega-pipettebot}"
 ENV_FILE="config.local/pipettebot.env"
 

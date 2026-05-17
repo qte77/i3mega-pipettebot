@@ -13,7 +13,7 @@ printer + pipette + board into a single self-contained appliance. No
 firmware patch, no soldering, no warranty voided — the dPette and
 printer keep their stock cables. You give up host-less SD-card
 autonomy (that is **Path 3** — `M820` UART tap, tracked under the
-`firmware` label and ADR [#6](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/6)).
+`firmware` label and ADR [#6](https://github.com/qte77/i3mega-pipettebot/issues/6)).
 
 > **Status: Draft.** No physical Pi has been bolted to the reference
 > i3 Mega yet. BOM, wiring, and mount design are to be confirmed when
@@ -25,7 +25,7 @@ Path 1 (laptop-as-host) is fine for development but ties a $1k+
 machine to a benchtop while a $300 robot runs. The dPette and the
 i3 Mega are both USB **devices** — they cannot be wired directly to
 each other (see [`hardware.md`](hardware.md) and
-[issue #18](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/18)).
+[issue #18](https://github.com/qte77/i3mega-pipettebot/issues/18)).
 The cheapest USB host that runs `pipettebot` is a Raspberry Pi 1
 Model B+ (2014, often free if on hand — see "Pi 1 B+ specifics" below)
 or a Pi Zero 2 W (~$15 new). Mounting one to the printer removes the
@@ -117,7 +117,7 @@ One-time bring-up. After this the Pi runs unattended.
    paths discovered via `tools/preflight.py`:
 
     ```bash
-    curl -fsSL https://raw.githubusercontent.com/Lambda-Biolab/i3mega-pipettebot/main/tools/setup_pi.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/qte77/i3mega-pipettebot/main/tools/setup_pi.sh | bash
     ```
 
     The script is idempotent — safe to re-run. On a Pi 1 B+ (700 MHz
@@ -186,7 +186,7 @@ export PIPETTE_PORT=/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge
 (Real-hardware unit at the time of writing has the i3 Mega on a
 **CP2102N** with serial `12495223cab7e7119d56ec82d4b43ea0`, not the
 CH340 the older docs assume — see
-[issue #18](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/18).)
+[issue #18](https://github.com/qte77/i3mega-pipettebot/issues/18).)
 
 ## Running
 
@@ -228,7 +228,7 @@ WantedBy=multi-user.target
 Then `sudo systemctl enable --now pipettebot` runs it on boot. For v0
 you almost certainly don't want auto-start of physical motion — keep
 this disabled and trigger runs manually over SSH until safety
-interlocks land (see [issue #11](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/11)
+interlocks land (see [issue #11](https://github.com/qte77/i3mega-pipettebot/issues/11)
 — soft-limit and crash-guard module).
 
 ## What this **doesn't** unlock
@@ -238,7 +238,7 @@ interlocks land (see [issue #11](https://github.com/Lambda-Biolab/i3mega-pipette
   Pi. To run a `.gcode` file off the printer's SD card and have it
   pipette, you need **Path 3** (`M820` pass-through, UART tap on the
   dPette, level-shifter PCB, Marlin firmware patch). Tracked under
-  the `firmware` label and ADR [#6](https://github.com/Lambda-Biolab/i3mega-pipettebot/issues/6).
+  the `firmware` label and ADR [#6](https://github.com/qte77/i3mega-pipettebot/issues/6).
 - **No PC at all** — you still want a laptop or workstation to SSH in
   for editing, debugging, and triggering runs. The Pi is the
   *runtime* host, not a development environment.
