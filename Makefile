@@ -1,5 +1,7 @@
 .PHONY: \
-	init \
+	setup_uv \
+	setup_prod \
+	setup_dev \
 	setup_cad \
 	setup_slicer \
 	setup_diagramforge \
@@ -29,30 +31,34 @@
 # want a newer version.
 DIAGRAMFORGE_SHA := d17ebf0e07063a4c8c61675f69faeeb88449bea9
 
-# Prefer the pre-built venv to avoid `uv run` writing to ~/.cache/uv,
-# which fails on read-only hosts (sandbox builds, sealed Pi images, some
-# CI runners). `make init` / `make setup_cad` populate .venv first; the
-# `uv run` fallback covers fresh clones where neither has run yet.
-USE_VENV := $(shell test -x .venv/bin/python && echo yes || echo no)
-ifeq ($(USE_VENV),yes)
-  PY := .venv/bin/python
-  RUFF := .venv/bin/ruff
-  MYPY := .venv/bin/mypy
-  PYTEST := .venv/bin/pytest
-  PY_CAD := .venv/bin/python
-else
-  PY := uv run python
-  RUFF := uv run ruff
-  MYPY := uv run mypy
-  PYTEST := uv run pytest
-  PY_CAD := uv run --extra cad python
-endif
+# Per-tool dispatch: prefer the binary in .venv/bin if it exists, else fall
+# back to `uv run`. `uv run` lazily resolves and installs into .venv, so
+# `make test` works even if you only ran `uv sync` (no `--extra dev`). On
+# read-only hosts that block ~/.cache/uv writes, set UV_CACHE_DIR to a
+# writable path (e.g. `UV_CACHE_DIR=$$TMPDIR/uv-cache make test`).
+RUFF   := $(shell test -x .venv/bin/ruff   && echo .venv/bin/ruff   || echo "uv run ruff")
+MYPY   := $(shell test -x .venv/bin/mypy   && echo .venv/bin/mypy   || echo "uv run mypy")
+PYTEST := $(shell test -x .venv/bin/pytest && echo .venv/bin/pytest || echo "uv run pytest")
+PY     := $(shell test -x .venv/bin/python && echo .venv/bin/python || echo "uv run python")
+PY_CAD := $(shell test -x .venv/bin/python && echo .venv/bin/python || echo "uv run --extra cad python")
 
 
 # MARK: SETUP
 
 
-init:  ## uv sync --extra dev (default dev environment)
+setup_uv:  ## Install uv (Python package manager) if missing
+	if command -v uv > /dev/null 2>&1; then
+		echo "uv already installed: $$(uv --version)"
+	else
+		echo "Installing uv ..."
+		curl -LsSf https://astral.sh/uv/install.sh | sh
+		echo "uv installed. You may need to restart your shell or 'source ~/.bashrc'."
+	fi
+
+setup_prod:  ## uv sync (runtime deps only — pyserial + dpette)
+	uv sync
+
+setup_dev:  ## uv sync --extra dev (runtime + ruff/mypy/pytest/complexipy/hypothesis)
 	uv sync --extra dev
 
 setup_cad:  ## uv sync --extra cad (build123d for CAD parts pipeline)
@@ -89,7 +95,7 @@ setup_diagramforge:  ## Clone diagramforge at $(DIAGRAMFORGE_SHA) if .gitmodules
 		fi
 	fi
 
-setup_all: init setup_cad  ## init + setup_cad + best-effort slicer/diagramforge
+setup_all: setup_dev setup_cad  ## setup_dev + setup_cad + best-effort slicer/diagramforge
 	-$(MAKE) setup_slicer
 	-$(MAKE) setup_diagramforge
 
@@ -132,8 +138,8 @@ check_complexity:  ## complexipy src/pipettebot/ --max-complexity-allowed 15
 check_links:  ## lychee link checker (.lychee.toml config)
 	lychee --config .lychee.toml .
 
-check_docs:  ## markdownlint-cli2 over all *.md (excludes node_modules/.venv/.git)
-	markdownlint-cli2 "**/*.md" "#node_modules" "#.venv" "#.git"
+check_docs:  ## markdownlint-cli2 over all *.md (excludes node_modules/.venv/.git/vendored clones)
+	markdownlint-cli2 "**/*.md" "#node_modules" "#.venv" "#.git" "#diagramforge" "#hardware" "#captures"
 
 
 # MARK: CAD

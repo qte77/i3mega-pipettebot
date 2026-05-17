@@ -8,16 +8,19 @@ Requires [`uv`](https://docs.astral.sh/uv/). Install once:
 ```bash
 git clone https://github.com/qte77/i3mega-pipettebot.git
 cd i3mega-pipettebot
-make init
+make setup_dev
 make validate
 ```
 
-`make init` runs `uv sync --extra dev`.
+`make setup_dev` runs `uv sync --extra dev`. Other entry points:
+`make setup_prod` for runtime-only (`uv sync`); `make setup_uv` to
+bootstrap uv itself; `make setup_all` for dev + cad + best-effort
+slicer/diagramforge. `make help` lists everything.
 
 The Makefile is the single quality gate (`make validate` runs ruff format
-check + lint, mypy strict, and pytest mocked). All recipes invoke tools via
-`uv run`, so the project venv stays in sync without manual activation. No
-pre-commit hooks; CI runs the same recipes.
+check + lint, mypy strict, and pytest mocked). Each recipe prefers the
+local `.venv/bin/<tool>` binary, falling back to `uv run` if the venv
+is missing. No pre-commit hooks; CI runs the same recipes.
 
 ## Branching and PRs
 

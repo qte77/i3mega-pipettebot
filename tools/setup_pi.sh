@@ -59,7 +59,7 @@ cd "$REPO_DIR"
 log "syncing dependencies"
 START=$(date +%s)
 if [ "$USE_UV" = "1" ]; then
-    make init
+    make setup_dev
 else
     python3 -m venv .venv
     .venv/bin/pip install --upgrade pip
