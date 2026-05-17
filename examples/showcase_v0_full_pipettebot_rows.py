@@ -50,12 +50,12 @@ Per-cycle gantry shape (mirrors the hand-traced G-code calibration):
     G1 Z115                      ; lift to bar-clearance altitude
 
     --- EJECT @ release bar ---
-    G1 X10 Y220                  ; cross-deck transit to release area
-    G1 X0                        ; slide onto bar engagement column
+    G1 X10 Y190                  ; cross-deck transit to release area
+    G1 X5                        ; slide onto bar engagement column
     G1 Z98                       ; descend — hook engages bar from above
     G1 Z115                      ; lift — bar holds handle, body rises → tip ejected
 
-Between cycles the head sits at (X=0, Y=220, Z=115); cycle N+1's
+Between cycles the head sits at (X=5, Y=190, Z=115); cycle N+1's
 first move (`G1 Z90 X171 Y...`) is a single diagonal back to the next
 tip-box row.
 
@@ -169,11 +169,15 @@ RESERVOIR_Y = 100.0  # aspirate position
 WELL_X = 51.0
 WELL_Y_ROW1 = 79.0  # cycle 1; cycle N at WELL_Y_ROW1 + (N-1)*SBS_ROW_PITCH
 
-# Release bar: approach diagonally to (X=10, Y=220) above the slide,
-# slide laterally to X=0, then engage from above.
+# Release bar: a horizontal rod oriented along the Y axis at physical
+# location X≈5, Z≈190 (above the deck). The dPette approaches at
+# carriage Y=190, slides X=10→5 to engage the hook over the bar from
+# above, then lifts to eject. (X=5 not X=0 — X=0 is too close to the
+# X-min endstop, was a stale value. Y=190 not 220 — 220 is the bed
+# Y-max, not the bar's physical location; measured per user fixture.)
 RELEASE_APPROACH_X = 10.0
-RELEASE_BAR_X = 0.0
-RELEASE_BAR_Y = 220.0  # shared Y for both approach and engagement
+RELEASE_BAR_X = 5.0
+RELEASE_BAR_Y = 190.0  # shared Y for both approach and engagement
 
 # --- Motion altitudes ---------------------------------------------------
 POST_HOME_LIFT_Z = 45.0  # initial lift after G28 before any XY
