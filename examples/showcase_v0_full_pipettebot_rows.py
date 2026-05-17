@@ -62,14 +62,14 @@ tip-box row.
 After the last cycle, the park sequence:
 
     G1 X50                       ; lateral clear from the bar (≥50 mm)
-    G1 Z100                      ; descend to just above bar (X stays at 50)
-    G1 Z50 X10 Y10               ; diagonal — descend below bar towards home corner
+    G1 Z95                       ; descend below bar engagement (X stays at 50)
+    G1 Z50 X10 Y10               ; diagonal — entirely below bar, towards home corner
     G28                          ; home
 
-  The two-stage descent matters: the pure-Z drop at X=50 happens
-  entirely with ≥50 mm bar clearance, so the bar zone is exited before
-  any X<50 motion. The diagonal then enters bar zone for only a sliver
-  (≈2 mm of Z) before passing safely below.
+  The two-stage descent matters: the pure-Z drop happens at X=50 with
+  full ≥50 mm bar clearance and ends below bar engagement (Z=98). The
+  subsequent diagonal stays below bar height end-to-end, so the X<50
+  excursion is risk-free.
 
 Environment variables (all optional — modes chosen from env presence):
 
@@ -183,7 +183,7 @@ WELL_CLEAR_Z = 115.0  # post-dispense lift; also clears the release bar
 RELEASE_ENGAGE_Z = 98.0  # hook drops into engagement from above the bar
 RELEASE_CLEAR_Z = 115.0  # post-eject lift (= cross-deck transit altitude)
 PARK_BELOW_BAR_Z = 50.0  # safe Z near home corner below the bar's bottom edge
-PARK_INTERMEDIATE_Z = 100.0  # descend to just above bar before the diagonal park
+PARK_INTERMEDIATE_Z = 95.0  # descend below bar engagement at X=50 before diagonal park
 PARK_CLEARANCE_X = 50.0  # X clear of bar (≥50 mm) before any move above bar height
 PARK_FINAL_X = 10.0  # final park X — towards home corner, clear of bar footprint
 PARK_FINAL_Y = 10.0  # final park Y — towards home corner
