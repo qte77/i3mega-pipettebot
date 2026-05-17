@@ -123,9 +123,10 @@ uv run examples/showcase_v0_full_dpette_cycles.py
 PIPETTE_PROFILE=examples/profiles/calibration_curve_demo.toml \
   uv run examples/showcase_v0_full_dpette_cycles.py
 
-# Home — full `G28` to (X=0, Y=0, Z=0). M203/M201 caps are pre-set so
-# any post-home G1 motion in a follow-up script runs at the bumped
-# feedrate/accel. No partial-axis shortcuts.
+# Home — full `G28` to (X=0, Y=0, Z=0). Bootstrap installs the same
+# liquid-handling motion profile (M203/M201/M204/M205) that every
+# showcase_v0_*.py installs, so chaining a home before a tour leaves a
+# known motion state. No partial-axis shortcuts.
 uv run examples/home_G28_fast.py
 ```
 

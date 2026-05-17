@@ -148,8 +148,9 @@ The full-plate tour ([`examples/showcase_v0_full_plate.py`](../examples/showcase
 runs in four phases (each phase is delimited by a `; ===== phase N =====`
 comment in the tee'd G-code):
 
-1. **Bootstrap** — `M203/M201` bump, `M211 S0` (disable software
-   endstops so negative-Y reservoir/SBS targets aren't clamped),
+1. **Bootstrap** — install the liquid-handling motion profile
+   (`M203/M201/M204/M205`, see "Bootstrap snippet" below), `M211 S0`
+   (disable software endstops so negative-Y reservoir/SBS targets aren't clamped),
    `G28 X Y Z` (explicit axes — plain `G28` skips Z on this firmware).
    **No separate `G1 Z=TRAVEL_Z` lift** — phase 2's step 1 handles
    the post-G28 Z ascent directly. **Precondition: tips MUST be removed
@@ -244,8 +245,10 @@ park(Y=0)
 Bootstrap snippet:
 
 ```text
-M203 Z20                     ; bump Z max feedrate cap (leadscrew limit)
-M201 Z200                    ; bump Z max acceleration
+M203 X500 Y500 Z20           ; peak feedrate caps (Z at leadscrew limit)
+M201 X1200 Y1500 Z80         ; per-axis max accel — Z softened (leadscrew + cantilever)
+M204 P1200 R1200 T1200       ; default print/retract/travel accel
+M205 X3 Y5 Z0.2 E0           ; classic jerk — tight X (tip pendulum + droplet), tight Z (meniscus)
 M211 S0                      ; disable soft endstops (defensive)
 G28 X Y Z                    ; home all axes — TIPS MUST BE REMOVED
 M400
@@ -253,8 +256,11 @@ G1 Z95 F1200                 ; raise to TRAVEL_Z before any XY motion
 M400
 ```
 
-XY caps stay at firmware defaults; only Z is bumped because it's the
-slow leadscrew axis and dominates per-cycle wall-clock.
+This is the unified **liquid-handling motion profile** installed by
+every `examples/*.py` gantry script. Z accel is softened from the AI3M
+default ~200 to protect the leadscrew and the cantilevered pipette;
+X jerk is tight to limit tip-pendulum oscillation and droplet shed
+during transit; Z jerk is tight for clean meniscus contact.
 
 `G28 X Y Z` (explicit axes — plain `G28` skips Z on the AI3M Marlin
 variant) leaves the nozzle at the calibrated Z=0; the immediate Z
