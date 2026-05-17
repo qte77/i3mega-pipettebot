@@ -42,6 +42,15 @@ PYTEST := $(shell test -x .venv/bin/pytest && echo .venv/bin/pytest || echo "uv 
 PY     := $(shell test -x .venv/bin/python && echo .venv/bin/python || echo "uv run python")
 PY_CAD := $(shell test -x .venv/bin/python && echo .venv/bin/python || echo "uv run --extra cad python")
 
+# Quiet mode (default: quiet; set VERBOSE=1 for full tool output).
+# Each recipe echoes a `--- <name>` header so the active step stays visible.
+VERBOSE ?=
+ifndef VERBOSE
+  RUFF_QUIET   := --quiet
+  PYTEST_QUIET := -q --tb=short --no-header
+  CPLX_QUIET   := -q
+endif
+
 
 # MARK: SETUP
 
@@ -113,37 +122,43 @@ setup_all: setup_dev setup_cad  ## setup_dev + setup_cad + best-effort slicer/di
 # MARK: LINT
 
 
-lint:  ## ruff check + mypy strict on src/tests/examples/tools
-	$(RUFF) check src/ tests/ examples/ tools/
+lint:  ## ruff check + mypy strict on src/tests/examples/tools (VERBOSE=1 for full output)
+	echo "--- lint$(if $(RUFF_QUIET), [quiet])"
+	$(RUFF) check $(RUFF_QUIET) src/ tests/ examples/ tools/
 	$(MYPY) src/
 
-lint_fix:  ## ruff format + ruff check --fix
-	$(RUFF) format src/ tests/ examples/ tools/
-	$(RUFF) check --fix src/ tests/ examples/ tools/
+lint_fix:  ## ruff format + ruff check --fix (VERBOSE=1 for full output)
+	echo "--- lint_fix$(if $(RUFF_QUIET), [quiet])"
+	$(RUFF) format $(RUFF_QUIET) src/ tests/ examples/ tools/
+	$(RUFF) check $(RUFF_QUIET) --fix src/ tests/ examples/ tools/
 
 
 # MARK: TEST
 
 
-test:  ## pytest -v (hardware tests excluded by pyproject)
-	$(PYTEST) -v
+test:  ## pytest (hardware tests excluded by pyproject; VERBOSE=1 for full output)
+	echo "--- test$(if $(PYTEST_QUIET), [quiet])"
+	$(PYTEST) $(if $(PYTEST_QUIET),$(PYTEST_QUIET),-v)
 
 
 # MARK: QUALITY
 
 
-validate:  ## Full gate: ruff format --check + ruff check + mypy --strict + pytest -m "not hardware"
-	$(RUFF) format --check src/ tests/ examples/ tools/
-	$(RUFF) check src/ tests/ examples/ tools/
+validate:  ## Full gate: ruff format --check + ruff check + mypy --strict + pytest (VERBOSE=1 for full output)
+	echo "--- validate$(if $(RUFF_QUIET), [quiet])"
+	$(RUFF) format $(RUFF_QUIET) --check src/ tests/ examples/ tools/
+	$(RUFF) check $(RUFF_QUIET) src/ tests/ examples/ tools/
 	$(MYPY) src/
-	$(PYTEST) -v -m "not hardware"
+	$(PYTEST) $(if $(PYTEST_QUIET),$(PYTEST_QUIET),-v) -m "not hardware"
 
-quick_validate:  ## ruff check + mypy only (no tests)
-	$(RUFF) check src/ tests/ examples/ tools/
+quick_validate:  ## ruff check + mypy only (no tests; VERBOSE=1 for full output)
+	echo "--- quick_validate$(if $(RUFF_QUIET), [quiet])"
+	$(RUFF) check $(RUFF_QUIET) src/ tests/ examples/ tools/
 	$(MYPY) src/
 
-check_complexity:  ## complexipy src/pipettebot/ --max-complexity-allowed 15
-	uv run complexipy src/pipettebot/ --max-complexity-allowed 15
+check_complexity:  ## complexipy src/pipettebot/ --max-complexity-allowed 15 (VERBOSE=1 for full output)
+	echo "--- check_complexity$(if $(CPLX_QUIET), [quiet])"
+	uv run complexipy $(CPLX_QUIET) src/pipettebot/ --max-complexity-allowed 15
 
 check_links:  ## lychee link checker (.lychee.toml config)
 	lychee --config .lychee.toml .
