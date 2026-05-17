@@ -73,7 +73,7 @@ def _resolve_volumes(data: dict[str, Any], path: Path) -> tuple[float, ...]:
             raise ValueError(f"{path}: volumes.per_cycle_ul must be a non-empty list")
         volumes = tuple(float(v) for v in per_cycle)
     else:
-        assert constant is not None  # narrowed by the (None, None) check above
+        assert constant is not None, "narrowed by (None, None) check above"  # noqa: S101
         if not isinstance(num_cycles, int) or num_cycles <= 0:
             raise ValueError(
                 f"{path}: volumes.num_cycles must be a positive int when "

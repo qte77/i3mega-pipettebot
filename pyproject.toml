@@ -62,14 +62,14 @@ target-version = "py311"
 src = ["src"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH", "C90"]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH", "C90", "S"]
 
 [tool.ruff.lint.mccabe]
-max-complexity = 8
+max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
 "examples/*" = ["E501"]
-"tests/*" = ["E501", "TC001", "TC002", "TC003"]
+"tests/*" = ["E501", "TC001", "TC002", "TC003", "S101"]   # assert is the pytest mechanism
 "tools/cad/**" = ["E501", "ANN", "S603"]   # CAD scripts: dynamic build123d imports, subprocess calls
 "tools/slicer/**" = ["S603"]               # subprocess calls run trusted slicer binaries
 

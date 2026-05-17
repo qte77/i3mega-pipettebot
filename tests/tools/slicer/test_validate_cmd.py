@@ -26,12 +26,12 @@ def _import_validate():
 validate = _import_validate()
 
 
-def test_build_slicer_cmd_includes_export_gcode_flag():
+def test_build_slicer_cmd_includes_export_gcode_flag(tmp_path: Path):
     cmd = validate._build_slicer_cmd(
         "/usr/bin/orca-slicer",
         Path("hardware/stl/labware/plate_holder.stl"),
         Path("tools/slicer/profiles/pla_plus_02mm.ini"),
-        Path("/tmp/out.gcode"),
+        tmp_path / "out.gcode",
     )
     assert cmd[0] == "/usr/bin/orca-slicer"
     assert "--export-gcode" in cmd
