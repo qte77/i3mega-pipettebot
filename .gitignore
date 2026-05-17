@@ -59,6 +59,7 @@ captures/*.txt
 # 3D-parts pipeline (generated artifacts, soft-cloned tooling)
 hardware/stl/
 hardware/svg/
+hardware/step/
 hardware/gcode/
 diagramforge/
 
