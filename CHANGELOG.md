@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `src/pipettebot/cli_profile.py` — shared `PIPETTE_PROFILE` env-var resolver for the showcase scripts. Exports `resolve_profile(env=os.environ) -> ExperimentProfile | None` and `build_volumes(default_count, unit_label, *, env) -> (volumes_ul, banner)`. `env=` injection makes the helpers trivially unit-testable without monkeypatch. 16 behavior tests in `tests/test_cli_profile.py`. Re-exported from `pipettebot` as `resolve_profile` + `build_volumes`. Replaces three near-identical local helpers (`_resolve_profile()` + `_build_volumes()`) that had been or would be copied across `showcase_v0_full_pipettebot.py`, `showcase_v0_full_dpette_cycles.py`, and `showcase_v0_full_pipettebot_rows.py`.
 - `.github/workflows/codeql.yml` — GitHub CodeQL static analysis (Python, `security-and-quality` query suite).
 - `.github/dependabot.yml` — weekly dependency-update PRs for GitHub Actions and pip.
 - `docs/UserStory.md` — user personas (resource-constrained researcher, maker/educator, open-source contributor), target workflows with driver scripts, and what's out of scope for v0. Referenced from README "Why this matters" and the Documentation index.
@@ -37,6 +38,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- `examples/showcase_v0_full_pipettebot_rows.py` accepts `PIPETTE_PROFILE` for per-cycle volume schedules — feature parity with the two existing column-tour showcases. Profile length overrides `NUM_CYCLES`; B2 PI_VOLUM is re-sent per-cycle only when the volume changes from the prior cycle (sentinel pattern). `showcase_v0_full_pipettebot.py` and `showcase_v0_full_dpette_cycles.py` refactored to import from `pipettebot.cli_profile` instead of carrying local helpers; no behavior change there.
 - Repo identity migration `Lambda-Biolab` → `qte77`: own URLs across README, SECURITY, CONTRIBUTING, pyproject, tools/setup_pi.sh, ADRs, docs. NOTICE copyright updated to `qte77`; dropped the "developed by Lambda-Biolab" distribution clause. `.lychee.toml` allowlist regex switched. Branch-protection wording in AGENTS.md + CONTRIBUTING.md drops the "Lambda-Biolab" prefix (rule is repo-level). Owner frontmatter on README + `docs/hardware.md` set to `qte77`. `dpette-usb-driver` and `so101-biolab-automation` URLs preserved as those repos legitimately stay on Lambda-Biolab.
 - README rework: removed YAML frontmatter; badge row moved below the hero (Version, License, CI/pytest, CodeQL, CodeFactor, Dependabot); demo GIF centred via an HTML wrapper; comparison table cites first-party project pages (Science Jubilee, Opentrons OT-2 at $15,950 list price); Quickstart code block embeds the `uv` install command as a comment; Development table expanded to every Makefile recipe.
 - `Makefile` — `help` is now the default goal; recipes grouped by `# MARK: <SECTION>` (SETUP, LINT, TEST, QUALITY, CAD, META, HELP); each recipe carries a `## <description>` tail that an awk-based `help` recipe scans into a coloured grouped index. Recipe behaviour and the `.venv` vs `uv run` dispatch are unchanged.

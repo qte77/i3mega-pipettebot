@@ -31,8 +31,8 @@ Single source of truth for agents working in this repo. `CLAUDE.md` and
 
 | Question                                        | Answer for v0                                                    |
 |-------------------------------------------------|------------------------------------------------------------------|
-| Where does new code go?                         | `src/pipettebot/`. Four modules: `gantry`, `bot`, `profiles`, `__init__`. |
-| Where do experiment profiles live?              | `examples/profiles/*.toml`; loader in `src/pipettebot/profiles.py`. See issue #79. |
+| Where does new code go?                         | `src/pipettebot/`. Five modules: `gantry`, `bot`, `profiles`, `cli_profile`, `__init__`. |
+| Where do experiment profiles live?              | `examples/profiles/*.toml`; loader in `src/pipettebot/profiles.py`; env-var resolver shared via `src/pipettebot/cli_profile.py`. See issue #79. |
 | Where does deck geometry live?                  | Deferred. Caller passes raw `(x, y, z)` in v0.                   |
 | How is dpette imported?                         | Git dep, pinned to a commit SHA before v0.0.1 tag.               |
 | Where do hardware experiments go?               | `tools/` — diagnostics (`preflight.py`, `diagnose_axis.py`, `marlin_repl.py`), CAD (`tools/cad/`), slicer (`tools/slicer/`). Logs to `captures/`. |
@@ -54,8 +54,11 @@ src/pipettebot/                        (library, used by examples & tests)
     │                                     (note: GcodeGantry._send is one-line-per-ack;
     │                                      the showcase example uses raw serial to
     │                                      sidestep that until the lib is fixed)
-    └── ExperimentProfile             ──► load_profile(path) → typed dataclass with
-                                          per-cycle volumes + optional gradient note
+    ├── ExperimentProfile             ──► load_profile(path) → typed dataclass with
+    │                                     per-cycle volumes + optional gradient note
+    └── cli_profile                   ──► resolve_profile(env) + build_volumes(default_count,
+                                          unit_label) — shared PIPETTE_PROFILE env-var
+                                          resolver used by the three "full" showcase scripts
 
 dpette.DPetteDriver               ──► /dev/cu.usbserial-* (different device) @ 9600
                                        used by `preflight.py`; not exercised in the

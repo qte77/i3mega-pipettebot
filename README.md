@@ -116,12 +116,16 @@ uv run examples/showcase_v0_full_pipettebot.py
 # to measure real B3 motor timing. Run with tip in air or over waste.
 uv run examples/showcase_v0_full_dpette_cycles.py
 
-# Either dpette script accepts a TOML experiment profile via
-# PIPETTE_PROFILE — drives the cycle count, per-cycle volumes, and any
-# pre-mixed reservoir gradient notes. See `examples/profiles/` for
-# samples (calibration_curve_demo.toml, gradient_reservoir_demo.toml).
+# All three "full" scripts (showcase_v0_full_pipettebot, full_dpette_cycles,
+# full_pipettebot_rows) accept a TOML experiment profile via PIPETTE_PROFILE
+# — drives the cycle count, per-cycle volumes, and any pre-mixed reservoir
+# gradient notes. Profile length overrides NUM_CYCLES/NUM_COLUMNS. B2
+# PI_VOLUM is re-sent only when the per-cycle volume changes. See
+# `examples/profiles/` for samples.
 PIPETTE_PROFILE=examples/profiles/calibration_curve_demo.toml \
   uv run examples/showcase_v0_full_dpette_cycles.py
+PIPETTE_PROFILE=examples/profiles/calibration_curve_demo.toml \
+  uv run examples/showcase_v0_full_pipettebot_rows.py
 
 # Home — full `G28` to (X=0, Y=0, Z=0). M203/M201 caps are pre-set so
 # any post-home G1 motion in a follow-up script runs at the bumped
@@ -169,11 +173,12 @@ simulated via Z) for bring-up without the pipette. Firmware-side
 M820 pass-through is still in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md)
 but no longer required for end-to-end pipetting.
 
-Four modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
+Five modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
 `profiles.py` (TOML experiment-profile loader; see
-[`examples/profiles/`](examples/profiles/)), and `__init__.py`
-(re-exports). No deck library, no safety limits, no calibration in v0
-— the caller passes raw `(x, y, z)`.
+[`examples/profiles/`](examples/profiles/)), `cli_profile.py` (shared
+`PIPETTE_PROFILE` env-var resolver for the showcase scripts), and
+`__init__.py` (re-exports). No deck library, no safety limits, no
+calibration in v0 — the caller passes raw `(x, y, z)`.
 
 ## Development
 
