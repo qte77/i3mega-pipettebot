@@ -43,10 +43,13 @@ and (X=105, Y=20). Bed must be clear of objects at those XY locations
 or the gantry will collide. v0 has no software soft-limit enforcement
 (see `.claude/rules/motion-safety.md`).
 
-**Side effect**: this script raises Marlin's Z max feedrate (`M203 Z20`)
-and Z acceleration (`M201 Z200`) for snappier strokes. These changes
-last until power-cycle unless saved with `M500`. Originals on this
-hardware were `Z6` / `Z60` per AI3M defaults.
+**Side effect**: installs the liquid-handling motion profile via
+`pipettebot.motion_profile.select_profile(MOTION_PROFILE)`. Defaults
+to MID when env unset; set `MOTION_PROFILE=slow|fast` to dial, or
+`MOTION_PROFILE=off` to skip and keep Marlin's RAM/EEPROM motion
+settings untouched. All installed settings last until power cycle
+unless saved with `M500`. See `src/pipettebot/motion_profile.py` for
+the bundled profile values.
 """
 
 from __future__ import annotations
@@ -57,6 +60,7 @@ import time
 from typing import TYPE_CHECKING
 
 from pipettebot.gantry import open_marlin_port
+from pipettebot.motion_profile import select_profile
 
 if TYPE_CHECKING:
     from typing import TextIO
@@ -152,9 +156,20 @@ def _run(link: serial.Serial, gcode_out: TextIO | None) -> None:
     """The full motion sequence — single entry point for both hardware and tee paths."""
     if gcode_out is not None:
         gcode_out.write(_gcode_header())
-        gcode_out.write("; raise Z max feedrate + accel for snappy strokes\n")
-    gsend(link, "M203 Z20", gcode_out=gcode_out)
-    gsend(link, "M201 Z200", gcode_out=gcode_out)
+    profile = select_profile(os.environ.get("MOTION_PROFILE"))
+    if profile is None:
+        print("[host] motion profile: SKIPPED (MOTION_PROFILE opt-out)")
+        if gcode_out is not None:
+            gcode_out.write("; motion profile: SKIPPED (MOTION_PROFILE opt-out)\n")
+    else:
+        print(f"[host] motion profile: {profile.name}")
+        if gcode_out is not None:
+            gcode_out.write(
+                f"; motion profile: {profile.name} "
+                "(via pipettebot.motion_profile.select_profile)\n"
+            )
+        for cmd in profile.as_marlin():
+            gsend(link, cmd, gcode_out=gcode_out)
 
     if gcode_out is not None:
         gcode_out.write("\n; ===== initial home =====\n")

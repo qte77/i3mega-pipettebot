@@ -50,6 +50,7 @@ import time
 from typing import TYPE_CHECKING
 
 from pipettebot.gantry import open_marlin_port
+from pipettebot.motion_profile import select_profile
 
 if TYPE_CHECKING:
     from typing import TextIO
@@ -160,9 +161,20 @@ def _release(link: serial.Serial, gcode_out: TextIO | None) -> None:
 def _run(link: serial.Serial, gcode_out: TextIO | None) -> None:
     if gcode_out is not None:
         gcode_out.write(_gcode_header())
-        gcode_out.write("; raise Z max feedrate + accel for snappy strokes\n")
-    gsend(link, "M203 Z20", gcode_out=gcode_out)
-    gsend(link, "M201 Z200", gcode_out=gcode_out)
+    profile = select_profile(os.environ.get("MOTION_PROFILE"))
+    if profile is None:
+        print("[host] motion profile: SKIPPED (MOTION_PROFILE opt-out)")
+        if gcode_out is not None:
+            gcode_out.write("; motion profile: SKIPPED (MOTION_PROFILE opt-out)\n")
+    else:
+        print(f"[host] motion profile: {profile.name}")
+        if gcode_out is not None:
+            gcode_out.write(
+                f"; motion profile: {profile.name} "
+                "(via pipettebot.motion_profile.select_profile)\n"
+            )
+        for cmd in profile.as_marlin():
+            gsend(link, cmd, gcode_out=gcode_out)
 
     if gcode_out is not None:
         gcode_out.write("\n; ===== initial home =====\n")

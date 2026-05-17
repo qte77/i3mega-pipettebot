@@ -50,12 +50,12 @@ Per-cycle gantry shape (mirrors the hand-traced G-code calibration):
     G1 Z115                      ; lift to bar-clearance altitude
 
     --- EJECT @ release bar ---
-    G1 X10 Y220                  ; cross-deck transit to release area
-    G1 X0                        ; slide onto bar engagement column
+    G1 X10 Y190                  ; cross-deck transit to release area
+    G1 X5                        ; slide onto bar engagement column
     G1 Z98                       ; descend — hook engages bar from above
     G1 Z115                      ; lift — bar holds handle, body rises → tip ejected
 
-Between cycles the head sits at (X=0, Y=220, Z=115); cycle N+1's
+Between cycles the head sits at (X=5, Y=190, Z=115); cycle N+1's
 first move (`G1 Z90 X171 Y...`) is a single diagonal back to the next
 tip-box row.
 
@@ -110,9 +110,12 @@ Each SBS well starts empty, so the B3 BLOW piston-return suction
 draws no extra liquid (per `.claude/rules/motion-safety.md` tip-above-
 liquid rule — boundary case).
 
-**Side effect**: raises Marlin's Z max feedrate (M203 Z20), Z accel
-(M201 Z200), and disables soft endstops (M211 S0). All last until
-power cycle unless saved with M500.
+**Side effect**: installs the liquid-handling motion profile via
+`pipettebot.motion_profile.select_profile(MOTION_PROFILE)`. Defaults
+to MID when env unset; set `MOTION_PROFILE=slow|fast` to dial, or
+`MOTION_PROFILE=off` to skip. Also disables soft endstops (`M211 S0`).
+All installed settings last until power cycle unless saved with `M500`.
+See `src/pipettebot/motion_profile.py` for the bundled profile values.
 """
 
 from __future__ import annotations
@@ -125,6 +128,7 @@ from typing import TYPE_CHECKING
 from dpette import DPetteDriver, SerialConfig
 
 from pipettebot.gantry import open_marlin_port
+from pipettebot.motion_profile import select_profile
 
 if TYPE_CHECKING:
     from typing import TextIO
@@ -165,11 +169,15 @@ RESERVOIR_Y = 100.0  # aspirate position
 WELL_X = 51.0
 WELL_Y_ROW1 = 79.0  # cycle 1; cycle N at WELL_Y_ROW1 + (N-1)*SBS_ROW_PITCH
 
-# Release bar: approach diagonally to (X=10, Y=220) above the slide,
-# slide laterally to X=0, then engage from above.
+# Release bar: a horizontal rod oriented along the Y axis at physical
+# location X≈5, Z≈190 (above the deck). The dPette approaches at
+# carriage Y=190, slides X=10→5 to engage the hook over the bar from
+# above, then lifts to eject. (X=5 not X=0 — X=0 is too close to the
+# X-min endstop, was a stale value. Y=190 not 220 — 220 is the bed
+# Y-max, not the bar's physical location; measured per user fixture.)
 RELEASE_APPROACH_X = 10.0
-RELEASE_BAR_X = 0.0
-RELEASE_BAR_Y = 220.0  # shared Y for both approach and engagement
+RELEASE_BAR_X = 5.0
+RELEASE_BAR_Y = 190.0  # shared Y for both approach and engagement
 
 # --- Motion altitudes ---------------------------------------------------
 POST_HOME_LIFT_Z = 45.0  # initial lift after G28 before any XY
@@ -191,6 +199,15 @@ PARK_FINAL_Y = 10.0  # final park Y — towards home corner
 # --- Feedrates (under M203 X500 Y500 / Z20 caps after bootstrap bump) ---
 XY_FEED = 12000  # 200 mm/s — well under the X/Y caps
 Z_FEED = 1200  # 20 mm/s — at the M203 Z20 cap
+
+# Per-dive Z feedrates — slower than Z_FEED for damage / liquid protection.
+# Applied only on the DESCENT into critical contact points; lifts always
+# use the full Z_FEED (no damage risk on the way up, save cycle time).
+TIP_BOX_ENGAGE_FEED = 300  # 5 mm/s — mechanical engagement on tip tops; slow to avoid bending tips or shearing posts
+BAR_ENGAGE_FEED = (
+    300  # 5 mm/s — mechanical hook engagement on release bar; slow to avoid impact
+)
+LIQUID_DIVE_FEED = 600  # 10 mm/s — meniscus contact (reservoir + wells); slightly slowed for clean entry
 
 
 def gsend(
@@ -266,7 +283,9 @@ def _pickup(
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{TIP_PICKUP_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    # Engage descent: slow (damage protection — bend tips/shear posts)
+    gsend(link, f"G1 Z{TIP_PICKUP_Z:.3f} F{TIP_BOX_ENGAGE_FEED}", gcode_out=gcode_out)
+    # Lift: full Z_FEED — no damage risk on the way up
     gsend(link, f"G1 Z{TIP_BOX_CLEAR_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
@@ -282,10 +301,10 @@ def _aspirate(
     _phase_comment(gcode_out, "\n; --- aspirate @ reservoir (B3 SUCK) ---\n")
     # Intermediate Y to clear tip-box footprint at TIP_BOX_CLEAR_Z
     gsend(link, f"G1 Y{RESERVOIR_TRANSIT_Y:.3f} F{XY_FEED}", gcode_out=gcode_out)
-    # Diagonal descend + slide to aspirate position
+    # Diagonal descend + slide to aspirate position — slowed (meniscus contact)
     gsend(
         link,
-        f"G1 Z{RESERVOIR_DIVE_Z:.3f} Y{RESERVOIR_Y:.3f} F{Z_FEED}",
+        f"G1 Z{RESERVOIR_DIVE_Z:.3f} Y{RESERVOIR_Y:.3f} F{LIQUID_DIVE_FEED}",
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
@@ -314,7 +333,8 @@ def _dispense(
         f"G1 X{WELL_X:.3f} Y{y:.3f} F{XY_FEED}",
         gcode_out=gcode_out,
     )
-    gsend(link, f"G1 Z{WELL_DISPENSE_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    # Well dive: slowed (meniscus contact)
+    gsend(link, f"G1 Z{WELL_DISPENSE_Z:.3f} F{LIQUID_DIVE_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
     op_dt = _fire_dpette(pipette, "dispense", WELL_DISPENSE_Z, gcode_out=gcode_out)
     # Lift to bar-clearance altitude (sets up the cross-deck transit to eject)
@@ -367,7 +387,9 @@ def _eject(
     )
     gsend(link, f"G1 X{RELEASE_BAR_X:.3f} F{XY_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{RELEASE_ENGAGE_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    # Hook engagement descent: slow (damage protection — avoid impact on bar)
+    gsend(link, f"G1 Z{RELEASE_ENGAGE_Z:.3f} F{BAR_ENGAGE_FEED}", gcode_out=gcode_out)
+    # Lift: full Z_FEED — the lift IS the ejection action; speed is fine here
     gsend(link, f"G1 Z{RELEASE_CLEAR_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
@@ -412,12 +434,24 @@ def _run(
     _phase_comment(
         gcode_out,
         _gcode_header(num_cycles, volume_ul)
-        + "; raise Z max feedrate + accel for snappy moves\n"
         + "; disable software endstops (Y axis positive 0-250; tip-box rows\n"
         + "; can reach Y=255 at cycle 12 — verify clearance before N>10)\n",
     )
-    gsend(link, "M203 Z20", gcode_out=gcode_out)
-    gsend(link, "M201 Z200", gcode_out=gcode_out)
+    profile = select_profile(os.environ.get("MOTION_PROFILE"))
+    if profile is None:
+        print("[host] motion profile: SKIPPED (MOTION_PROFILE opt-out)")
+        _phase_comment(
+            gcode_out, "; motion profile: SKIPPED (MOTION_PROFILE opt-out)\n"
+        )
+    else:
+        print(f"[host] motion profile: {profile.name}")
+        _phase_comment(
+            gcode_out,
+            f"; motion profile: {profile.name} "
+            "(via pipettebot.motion_profile.select_profile)\n",
+        )
+        for cmd in profile.as_marlin():
+            gsend(link, cmd, gcode_out=gcode_out)
     gsend(link, "M211 S0", gcode_out=gcode_out)
 
     _phase_comment(
@@ -475,7 +509,7 @@ def _run(
     _phase_comment(
         gcode_out,
         "\n; ===== phase 4: park towards home corner then G28 =====\n"
-        "; at end of last cycle head sits at (X=0, Y=220, Z=115).\n"
+        "; at end of last cycle head sits at (X=5, Y=190, Z=115).\n"
         "; max safe Z near home is the bar's bottom edge — clear X first,\n"
         "; then diagonal descent below bar towards the home corner,\n"
         "; then home.\n",

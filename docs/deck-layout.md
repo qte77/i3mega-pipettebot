@@ -148,8 +148,10 @@ The full-plate tour ([`examples/showcase_v0_full_plate.py`](../examples/showcase
 runs in four phases (each phase is delimited by a `; ===== phase N =====`
 comment in the tee'd G-code):
 
-1. **Bootstrap** — `M203/M201` bump, `M211 S0` (disable software
-   endstops so negative-Y reservoir/SBS targets aren't clamped),
+1. **Bootstrap** — install the liquid-handling motion profile via
+   `pipettebot.motion_profile.select_profile(MOTION_PROFILE)` (the four
+   M203/M201/M204/M205 lines below; default `mid`), then `M211 S0`
+   (disable software endstops so negative-Y reservoir/SBS targets aren't clamped),
    `G28 X Y Z` (explicit axes — plain `G28` skips Z on this firmware).
    **No separate `G1 Z=TRAVEL_Z` lift** — phase 2's step 1 handles
    the post-G28 Z ascent directly. **Precondition: tips MUST be removed
@@ -241,11 +243,14 @@ home(Y=0) → tip pickup(Y=217.5) →
 park(Y=0)
 ```
 
-Bootstrap snippet:
+Bootstrap snippet (what every `examples/*.py` gantry script emits with
+the default `MOTION_PROFILE=mid`):
 
 ```text
-M203 Z20                     ; bump Z max feedrate cap (leadscrew limit)
-M201 Z200                    ; bump Z max acceleration
+M203 X500 Y500 Z20           ; peak feedrate caps (Z at leadscrew limit, shared across profiles)
+M201 X600 Y800 Z200           ; MID per-axis accel — Z at leadscrew floor, X/Y careful for plate slosh + tip pendulum
+M204 P600 R600 T600           ; MID default print/retract/travel accel
+M205 X3 Y5 Z0.2 E0           ; MID classic jerk — tight X (tip pendulum + droplet), tight Z (meniscus)
 M211 S0                      ; disable soft endstops (defensive)
 G28 X Y Z                    ; home all axes — TIPS MUST BE REMOVED
 M400
@@ -253,8 +258,17 @@ G1 Z95 F1200                 ; raise to TRAVEL_Z before any XY motion
 M400
 ```
 
-XY caps stay at firmware defaults; only Z is bumped because it's the
-slow leadscrew axis and dominates per-cycle wall-clock.
+The four M-codes (M203/M201/M204/M205) are emitted via
+`pipettebot.motion_profile.select_profile(MOTION_PROFILE)`:
+
+- `MOTION_PROFILE=slow` / `mid` / `fast` — bundled named profile
+- unset → MID (default; what's shown above)
+- `MOTION_PROFILE=off` or empty — skip the install entirely (Marlin
+  keeps RAM/EEPROM motion settings)
+
+See `src/pipettebot/motion_profile.py` for the full SLOW/MID/FAST
+values + semantics, and [ADR 0003](adr/0003-motion-profile-bundled-constants.md)
+for the design decision.
 
 `G28 X Y Z` (explicit axes — plain `G28` skips Z on the AI3M Marlin
 variant) leaves the nozzle at the calibrated Z=0; the immediate Z

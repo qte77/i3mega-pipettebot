@@ -63,8 +63,8 @@ Optional:
     PIPETTE_VOLUME_UL     Per-channel volume in microlitres. Default 100.0.
                           Ignored when PIPETTE_PROFILE is set.
     PIPETTE_PROFILE       Path to a TOML experiment profile that specifies
-                          per-cycle volumes. See `examples/profiles/*.toml`
-                          and `src/pipettebot/profiles.py` for the schema.
+                          per-cycle volumes. See `examples/experiment_profiles/*.toml`
+                          and `src/pipettebot/experiment_profile.py` for the schema.
 """
 
 from __future__ import annotations
@@ -76,10 +76,10 @@ from typing import TYPE_CHECKING
 
 from dpette import DPetteDriver, SerialConfig
 
-from pipettebot.profiles import load_profile
+from pipettebot.experiment_profile import load_experiment_profile
 
 if TYPE_CHECKING:
-    from pipettebot.profiles import ExperimentProfile
+    from pipettebot.experiment_profile import ExperimentProfile
 
 DEFAULT_BAUD = 9600
 DEFAULT_VOLUME_UL = 100.0
@@ -90,7 +90,7 @@ def _resolve_profile() -> ExperimentProfile | None:
     path = os.environ.get("PIPETTE_PROFILE", "").strip()
     if not path:
         return None
-    return load_profile(path)
+    return load_experiment_profile(path)
 
 
 def _build_volumes() -> tuple[tuple[float, ...], str]:

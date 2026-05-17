@@ -21,7 +21,7 @@ Schema::
     [gradient]
     description = "<operator-facing; never enforced by the script>"
 
-See `examples/profiles/*.toml` for canonical examples.
+See `examples/experiment_profiles/*.toml` for canonical examples.
 """
 
 from __future__ import annotations
@@ -86,7 +86,7 @@ def _resolve_volumes(data: dict[str, Any], path: Path) -> tuple[float, ...]:
     return volumes
 
 
-def load_profile(path: str | Path) -> ExperimentProfile:
+def load_experiment_profile(path: str | Path) -> ExperimentProfile:
     """Read a TOML profile from `path`. Raises ValueError on bad schema."""
     p = Path(path)
     with p.open("rb") as f:

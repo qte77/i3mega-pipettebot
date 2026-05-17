@@ -118,14 +118,22 @@ uv run examples/showcase_v0_full_dpette_cycles.py
 
 # Either dpette script accepts a TOML experiment profile via
 # PIPETTE_PROFILE — drives the cycle count, per-cycle volumes, and any
-# pre-mixed reservoir gradient notes. See `examples/profiles/` for
-# samples (calibration_curve_demo.toml, gradient_reservoir_demo.toml).
-PIPETTE_PROFILE=examples/profiles/calibration_curve_demo.toml \
+# pre-mixed reservoir gradient notes. See `examples/experiment_profiles/`
+# for samples (calibration_curve_demo.toml, gradient_reservoir_demo.toml).
+PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
   uv run examples/showcase_v0_full_dpette_cycles.py
 
-# Home — full `G28` to (X=0, Y=0, Z=0). M203/M201 caps are pre-set so
-# any post-home G1 motion in a follow-up script runs at the bumped
-# feedrate/accel. No partial-axis shortcuts.
+# Every gantry-using example also accepts MOTION_PROFILE to dial gantry
+# accel/jerk between slow / mid / fast (or off to skip the install).
+# Default is mid (liquid-handling friendly). See
+# `src/pipettebot/motion_profile.py` for the bundled values + semantics.
+MOTION_PROFILE=fast NUM_CYCLES=1 \
+  uv run examples/showcase_v0_full_pipettebot_rows.py
+
+# Home — full `G28` to (X=0, Y=0, Z=0). Bootstrap installs the same
+# liquid-handling motion profile (M203/M201/M204/M205) that every
+# showcase_v0_*.py installs, so chaining a home before a tour leaves a
+# known motion state. No partial-axis shortcuts.
 uv run examples/home_G28_fast.py
 ```
 
@@ -169,11 +177,13 @@ simulated via Z) for bring-up without the pipette. Firmware-side
 M820 pass-through is still in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md)
 but no longer required for end-to-end pipetting.
 
-Four modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
-`profiles.py` (TOML experiment-profile loader; see
-[`examples/profiles/`](examples/profiles/)), and `__init__.py`
-(re-exports). No deck library, no safety limits, no calibration in v0
-— the caller passes raw `(x, y, z)`.
+Five modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
+`experiment_profile.py` (TOML experiment-profile loader; see
+[`examples/experiment_profiles/`](examples/experiment_profiles/)),
+`motion_profile.py` (bundled SLOW/MID/FAST gantry-tuning factors;
+`MOTION_PROFILE` env selects), and `__init__.py` (re-exports). No
+deck library, no safety limits, no calibration in v0 — the caller
+passes raw `(x, y, z)`.
 
 ## Development
 

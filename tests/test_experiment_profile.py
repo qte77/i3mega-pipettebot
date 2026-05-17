@@ -1,4 +1,4 @@
-"""Tests for pipettebot.profiles.load_profile."""
+"""Tests for pipettebot.experiment_profile.load_experiment_profile."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pipettebot.profiles import load_profile
+from pipettebot.experiment_profile import load_experiment_profile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,7 +30,7 @@ def test_per_cycle_list(tmp_path: Path) -> None:
         per_cycle_ul = [10.0, 20.0, 30.0]
         """,
     )
-    profile = load_profile(p)
+    profile = load_experiment_profile(p)
     assert profile.name == "calib"
     assert profile.description == "linear ramp"
     assert profile.volumes_ul == (10.0, 20.0, 30.0)
@@ -47,7 +47,7 @@ def test_constant_plus_count(tmp_path: Path) -> None:
         num_cycles = 4
         """,
     )
-    profile = load_profile(p)
+    profile = load_experiment_profile(p)
     assert profile.volumes_ul == (100.0, 100.0, 100.0, 100.0)
 
 
@@ -57,7 +57,7 @@ def test_name_defaults_to_stem(tmp_path: Path) -> None:
         "[volumes]\nconstant_ul = 50.0\nnum_cycles = 1\n",
         name="my_profile.toml",
     )
-    profile = load_profile(p)
+    profile = load_experiment_profile(p)
     assert profile.name == "my_profile"
 
 
@@ -73,7 +73,7 @@ def test_gradient_description(tmp_path: Path) -> None:
         description = "1:8 dilution along Y"
         """,
     )
-    profile = load_profile(p)
+    profile = load_experiment_profile(p)
     assert profile.gradient_description == "1:8 dilution along Y"
 
 
@@ -88,25 +88,25 @@ def test_error_both_specified(tmp_path: Path) -> None:
         """,
     )
     with pytest.raises(ValueError, match="EITHER"):
-        load_profile(p)
+        load_experiment_profile(p)
 
 
 def test_error_neither_specified(tmp_path: Path) -> None:
     p = _write(tmp_path, "[volumes]\n")
     with pytest.raises(ValueError, match="must set one of"):
-        load_profile(p)
+        load_experiment_profile(p)
 
 
 def test_error_empty_per_cycle(tmp_path: Path) -> None:
     p = _write(tmp_path, "[volumes]\nper_cycle_ul = []\n")
     with pytest.raises(ValueError, match="non-empty list"):
-        load_profile(p)
+        load_experiment_profile(p)
 
 
 def test_error_negative_volume(tmp_path: Path) -> None:
     p = _write(tmp_path, "[volumes]\nper_cycle_ul = [10.0, -5.0]\n")
     with pytest.raises(ValueError, match="> 0"):
-        load_profile(p)
+        load_experiment_profile(p)
 
 
 def test_error_bad_num_cycles(tmp_path: Path) -> None:
@@ -119,7 +119,7 @@ def test_error_bad_num_cycles(tmp_path: Path) -> None:
         """,
     )
     with pytest.raises(ValueError, match="positive int"):
-        load_profile(p)
+        load_experiment_profile(p)
 
 
 def test_sample_profiles_load() -> None:
@@ -127,9 +127,9 @@ def test_sample_profiles_load() -> None:
     from pathlib import Path as _Path
 
     repo_root = _Path(__file__).resolve().parents[1]
-    samples = repo_root / "examples" / "profiles"
-    calib = load_profile(samples / "calibration_curve_demo.toml")
-    gradient = load_profile(samples / "gradient_reservoir_demo.toml")
+    samples = repo_root / "examples" / "experiment_profiles"
+    calib = load_experiment_profile(samples / "calibration_curve_demo.toml")
+    gradient = load_experiment_profile(samples / "gradient_reservoir_demo.toml")
 
     assert calib.num_cycles == 11
     assert calib.volumes_ul[0] == 20.0
