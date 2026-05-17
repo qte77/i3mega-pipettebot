@@ -68,7 +68,7 @@ cover both layers without hardware.
 ## Quality Thresholds
 
 - `make validate` must be green before any commit:
-  - `ruff format --check`, `ruff check` (rule sets E,F,I,UP,C90,W,N,B,A,SIM,TCH)
+  - `ruff format --check`, `ruff check` (rule sets E,F,I,UP,C90,W,N,B,A,SIM,TCH,S; mccabe max-complexity=10)
   - `mypy --strict src/`
   - `pytest -v -m "not hardware"`
 - `make check_complexity` — complexipy max 15
