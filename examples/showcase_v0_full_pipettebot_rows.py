@@ -26,25 +26,25 @@ Sibling of `showcase_v0_full_pipettebot.py`, but with two structural changes:
      is gone — `_cycle()` now contains pickup → aspirate → dispense →
      eject.
   2. **Row-major fill, configurable count.** Cycles traverse 96-well
-     rows (Y axis, +9 mm pitch from Y=75) rather than columns. Count
+     rows (Y axis, +9 mm pitch from Y=79) rather than columns. Count
      is `NUM_CYCLES` env var, clamped 1..12. Tip-box rows step in
-     lockstep at the same pitch from Y=154.
+     lockstep at the same pitch from Y=156.
 
 Per-cycle gantry shape (mirrors the hand-traced G-code calibration):
 
     --- TIP PICKUP @ tip-box row N ---
-    G1 Z90 X170 Y(154+9*(N-1))   ; approach row N from above (no tips on body)
+    G1 Z90 X171 Y(156+9*(N-1))   ; approach row N from above (no tips on body)
     G1 Z60                       ; press body onto tip tops
     G1 Z130                      ; lift with tips loaded (extra clearance)
 
     --- ASPIRATE @ reservoir ---
     G1 Y130                      ; intermediate Y — clear tip box footprint
-    G1 Z70 Y95                   ; diagonal descend + slide into reservoir
+    G1 Z70 Y100                  ; diagonal descend + slide into reservoir
     ; dpette.aspirate()          ; B3 SUCK at the bottom of the dive
     G1 Z100                      ; lift to reservoir clearance
 
     --- DISPENSE @ 96-well row N ---
-    G1 X50 Y(75+9*(N-1))         ; XY to plate row N at travel altitude
+    G1 X51 Y(79+9*(N-1))         ; XY to plate row N at travel altitude
     G1 Z70                       ; dive into well
     ; dpette.dispense()          ; B3 BLOW at the bottom of the dive
     G1 Z115                      ; lift to bar-clearance altitude
@@ -52,21 +52,23 @@ Per-cycle gantry shape (mirrors the hand-traced G-code calibration):
     --- EJECT @ release bar ---
     G1 X10 Y220                  ; cross-deck transit to release area
     G1 X0                        ; slide onto bar engagement column
-    G1 Z95                       ; descend — hook engages bar from above
+    G1 Z98                       ; descend — hook engages bar from above
     G1 Z115                      ; lift — bar holds handle, body rises → tip ejected
 
 Between cycles the head sits at (X=0, Y=220, Z=115); cycle N+1's
-first move (`G1 Z90 X170 Y...`) is a single diagonal back to the next
+first move (`G1 Z90 X171 Y...`) is a single diagonal back to the next
 tip-box row.
 
 After the last cycle, the park sequence:
 
     G1 X30                       ; lateral clear from the bar
-    G1 Z70 X0                    ; diagonal — descend below bar AND return X=0
+    G1 Z50 X10 Y10               ; diagonal — descend below bar towards home corner
     G28                          ; home
 
-  The Z=70 descent BEFORE X=0 is mandatory — at X=0 Y near 0, anything
-  above Z=70 fouls the release-bar hook on the homing sweep.
+  The descent below bar height BEFORE the XY move towards the home
+  corner is mandatory — above bar height, the X<10 / Y<10 corner is
+  inside the release-bar hook footprint and the homing sweep would
+  foul.
 
 Environment variables (all optional — modes chosen from env presence):
 
@@ -96,8 +98,8 @@ Run modes (auto-selected from env presence):
     DRY RUN       neither set — no serial; G-code tee only (useful for
                   inspecting the generated tour before plugging in).
 
-**Bed-range warning**: tip-box row Y = 154 + 9·(N−1). At N=12 that's
-Y=253 — outside the i3 Mega Y=0–250 envelope. Cycles 11 and 12 will
+**Bed-range warning**: tip-box row Y = 156 + 9·(N−1). At N=12 that's
+Y=255 — outside the i3 Mega Y=0–250 envelope. Cycles 11 and 12 will
 drive the head past the front frame. `M211 S0` (bootstrap) disables
 soft endstops so Marlin will obey; verify your tip-box position
 allows N>10 before running.
@@ -146,19 +148,21 @@ MIN_NUM_CYCLES = 1
 SBS_ROW_PITCH = 9.0  # standard SBS row pitch (mm)
 
 # Tip box: 8-channel grabs one row per cycle, stepping +Y between cycles.
-TIP_BOX_X = 170.0
-TIP_BOX_Y_ROW1 = 154.0  # cycle 1; cycle N at TIP_BOX_Y_ROW1 + (N-1)*SBS_ROW_PITCH
+TIP_BOX_X = 171.0
+TIP_BOX_Y_ROW1 = 156.0  # cycle 1; cycle N at TIP_BOX_Y_ROW1 + (N-1)*SBS_ROW_PITCH
 
 # Reservoir: same X column as tip box; Y=130 is an intermediate transit
 # stop to clear the tip-box footprint before diving to the aspirate
-# position at Y=95.
-RESERVOIR_X = 170.0
+# position at Y=100.
+RESERVOIR_X = (
+    171.0  # documentation only — _aspirate omits X (carries over from tip box)
+)
 RESERVOIR_TRANSIT_Y = 130.0  # intermediate Y, clear of tip-box edge
-RESERVOIR_Y = 95.0  # aspirate position
+RESERVOIR_Y = 100.0  # aspirate position
 
-# 96-well plate: row 1 at Y=75, +9 mm pitch per cycle.
-WELL_X = 50.0
-WELL_Y_ROW1 = 75.0  # cycle 1; cycle N at WELL_Y_ROW1 + (N-1)*SBS_ROW_PITCH
+# 96-well plate: row 1 at Y=79, +9 mm pitch per cycle.
+WELL_X = 51.0
+WELL_Y_ROW1 = 79.0  # cycle 1; cycle N at WELL_Y_ROW1 + (N-1)*SBS_ROW_PITCH
 
 # Release bar: approach diagonally to (X=10, Y=220) above the slide,
 # slide laterally to X=0, then engage from above.
@@ -175,10 +179,12 @@ RESERVOIR_DIVE_Z = 70.0  # aspirate dive
 RESERVOIR_CLEAR_Z = 100.0  # post-aspirate lift
 WELL_DISPENSE_Z = 70.0  # dispense dive (= aspirate Z; each well empty)
 WELL_CLEAR_Z = 115.0  # post-dispense lift; also clears the release bar
-RELEASE_ENGAGE_Z = 95.0  # hook drops into engagement from above the bar
+RELEASE_ENGAGE_Z = 98.0  # hook drops into engagement from above the bar
 RELEASE_CLEAR_Z = 115.0  # post-eject lift (= cross-deck transit altitude)
-PARK_BELOW_BAR_Z = 70.0  # safe Z at X=0 below the bar's bottom edge
+PARK_BELOW_BAR_Z = 50.0  # safe Z near home corner below the bar's bottom edge
 PARK_CLEARANCE_X = 30.0  # X clear of bar before the final descent
+PARK_FINAL_X = 10.0  # final park X — towards home corner, clear of bar footprint
+PARK_FINAL_Y = 10.0  # final park Y — towards home corner
 
 # --- Feedrates (under M203 X500 Y500 / Z20 caps after bootstrap bump) ---
 XY_FEED = 12000  # 200 mm/s — well under the X/Y caps
@@ -406,7 +412,7 @@ def _run(
         _gcode_header(num_cycles, volume_ul)
         + "; raise Z max feedrate + accel for snappy moves\n"
         + "; disable software endstops (Y axis positive 0-250; tip-box rows\n"
-        + "; can reach Y=253 at cycle 12 — verify clearance before N>10)\n",
+        + "; can reach Y=255 at cycle 12 — verify clearance before N>10)\n",
     )
     gsend(link, "M203 Z20", gcode_out=gcode_out)
     gsend(link, "M201 Z200", gcode_out=gcode_out)
@@ -466,15 +472,16 @@ def _run(
 
     _phase_comment(
         gcode_out,
-        "\n; ===== phase 4: park below bar then G28 =====\n"
+        "\n; ===== phase 4: park towards home corner then G28 =====\n"
         "; at end of last cycle head sits at (X=0, Y=220, Z=115).\n"
-        "; max safe Z at X=0 near home is 70 (release-bar hook clearance):\n"
-        "; clear X first, then descend below bar, then home.\n",
+        "; max safe Z near home is the bar's bottom edge — clear X first,\n"
+        "; then diagonal descent below bar towards the home corner,\n"
+        "; then home.\n",
     )
     gsend(link, f"G1 X{PARK_CLEARANCE_X:.3f} F{XY_FEED}", gcode_out=gcode_out)
     gsend(
         link,
-        f"G1 Z{PARK_BELOW_BAR_Z:.3f} X{RELEASE_BAR_X:.3f} F{Z_FEED}",
+        f"G1 Z{PARK_BELOW_BAR_Z:.3f} X{PARK_FINAL_X:.3f} Y{PARK_FINAL_Y:.3f} F{Z_FEED}",
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
