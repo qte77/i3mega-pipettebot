@@ -43,10 +43,16 @@ and (X=105, Y=20). Bed must be clear of objects at those XY locations
 or the gantry will collide. v0 has no software soft-limit enforcement
 (see `.claude/rules/motion-safety.md`).
 
-**Side effect**: this script raises Marlin's Z max feedrate (`M203 Z20`)
-and Z acceleration (`M201 Z200`) for snappier strokes. These changes
-last until power-cycle unless saved with `M500`. Originals on this
-hardware were `Z6` / `Z60` per AI3M defaults.
+**Side effect**: this script installs the liquid-handling motion
+profile — `M203 X500 Y500 Z20` (peak feedrate caps, Z at leadscrew
+limit), `M201 X1200 Y1500 Z80` (per-axis max accel; Z softened from
+the AI3M default ~200 to protect the leadscrew and the cantilevered
+pipette), `M204 P1200 R1200 T1200` (default print/retract/travel
+accel), `M205 X3 Y5 Z0.2 E0` (classic jerk — tight X for tip-pendulum
++ droplet-shed control; tight Z for clean meniscus contact). These
+changes last until power-cycle unless saved with `M500`. AI3M defaults
+were `Z6 / Z60` for Z feedrate/accel; the new Z cap (`Z20 / Z80`) is
+softer on accel but still raised on feedrate.
 """
 
 from __future__ import annotations
@@ -152,9 +158,14 @@ def _run(link: serial.Serial, gcode_out: TextIO | None) -> None:
     """The full motion sequence — single entry point for both hardware and tee paths."""
     if gcode_out is not None:
         gcode_out.write(_gcode_header())
-        gcode_out.write("; raise Z max feedrate + accel for snappy strokes\n")
-    gsend(link, "M203 Z20", gcode_out=gcode_out)
-    gsend(link, "M201 Z200", gcode_out=gcode_out)
+        gcode_out.write(
+            "; liquid-handling motion profile — soft Z (leadscrew + cantilever),\n"
+            "; tight jerk (tip-pendulum + droplet-shed control on X, meniscus on Z)\n"
+        )
+    gsend(link, "M203 X500 Y500 Z20", gcode_out=gcode_out)
+    gsend(link, "M201 X1200 Y1500 Z80", gcode_out=gcode_out)
+    gsend(link, "M204 P1200 R1200 T1200", gcode_out=gcode_out)
+    gsend(link, "M205 X3 Y5 Z0.2 E0", gcode_out=gcode_out)
 
     if gcode_out is not None:
         gcode_out.write("\n; ===== initial home =====\n")

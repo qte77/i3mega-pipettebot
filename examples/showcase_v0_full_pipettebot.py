@@ -87,9 +87,15 @@ dispense Z need not be above any liquid line (first-and-only fill per
 well). The B3 BLOW piston return creates suction; submerged dispense
 would draw extra liquid, but with empty target wells this is moot.
 
-**Side effect**: raises Marlin's Z max feedrate (M203 Z20) and Z accel
-(M201 Z200), disables soft endstops (M211 S0). All last until power
-cycle unless saved with M500.
+**Side effect**: installs the liquid-handling motion profile —
+`M203 X500 Y500 Z20` (peak feedrate caps, Z at leadscrew limit),
+`M201 X1200 Y1500 Z80` (per-axis max accel; Z softened from the AI3M
+default ~200 to protect the leadscrew and cantilevered pipette),
+`M204 P1200 R1200 T1200` (default print/retract/travel accel),
+`M205 X3 Y5 Z0.2 E0` (classic jerk — tight X for tip-pendulum +
+droplet-shed control; tight Z for clean meniscus contact). Also
+disables soft endstops (`M211 S0`). All last until power cycle unless
+saved with `M500`.
 """
 
 from __future__ import annotations
@@ -391,11 +397,14 @@ def _run(
     _phase_comment(
         gcode_out,
         _gcode_header(volumes_ul)
-        + "; raise Z max feedrate + accel for snappy moves\n"
+        + "; liquid-handling motion profile — soft Z (leadscrew + cantilever),\n"
+        + "; tight jerk (tip-pendulum + droplet-shed control on X, meniscus on Z)\n"
         + "; disable software endstops defensively (Y axis positive 0-250)\n",
     )
-    gsend(link, "M203 Z20", gcode_out=gcode_out)
-    gsend(link, "M201 Z200", gcode_out=gcode_out)
+    gsend(link, "M203 X500 Y500 Z20", gcode_out=gcode_out)
+    gsend(link, "M201 X1200 Y1500 Z80", gcode_out=gcode_out)
+    gsend(link, "M204 P1200 R1200 T1200", gcode_out=gcode_out)
+    gsend(link, "M205 X3 Y5 Z0.2 E0", gcode_out=gcode_out)
     gsend(link, "M211 S0", gcode_out=gcode_out)
 
     _phase_comment(

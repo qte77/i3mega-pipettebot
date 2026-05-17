@@ -160,9 +160,14 @@ def _release(link: serial.Serial, gcode_out: TextIO | None) -> None:
 def _run(link: serial.Serial, gcode_out: TextIO | None) -> None:
     if gcode_out is not None:
         gcode_out.write(_gcode_header())
-        gcode_out.write("; raise Z max feedrate + accel for snappy strokes\n")
-    gsend(link, "M203 Z20", gcode_out=gcode_out)
-    gsend(link, "M201 Z200", gcode_out=gcode_out)
+        gcode_out.write(
+            "; liquid-handling motion profile — soft Z (leadscrew + cantilever),\n"
+            "; tight jerk (tip-pendulum + droplet-shed control on X, meniscus on Z)\n"
+        )
+    gsend(link, "M203 X500 Y500 Z20", gcode_out=gcode_out)
+    gsend(link, "M201 X1200 Y1500 Z80", gcode_out=gcode_out)
+    gsend(link, "M204 P1200 R1200 T1200", gcode_out=gcode_out)
+    gsend(link, "M205 X3 Y5 Z0.2 E0", gcode_out=gcode_out)
 
     if gcode_out is not None:
         gcode_out.write("\n; ===== initial home =====\n")
