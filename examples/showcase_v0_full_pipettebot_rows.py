@@ -200,6 +200,15 @@ PARK_FINAL_Y = 10.0  # final park Y — towards home corner
 XY_FEED = 12000  # 200 mm/s — well under the X/Y caps
 Z_FEED = 1200  # 20 mm/s — at the M203 Z20 cap
 
+# Per-dive Z feedrates — slower than Z_FEED for damage / liquid protection.
+# Applied only on the DESCENT into critical contact points; lifts always
+# use the full Z_FEED (no damage risk on the way up, save cycle time).
+TIP_BOX_ENGAGE_FEED = 300  # 5 mm/s — mechanical engagement on tip tops; slow to avoid bending tips or shearing posts
+BAR_ENGAGE_FEED = (
+    300  # 5 mm/s — mechanical hook engagement on release bar; slow to avoid impact
+)
+LIQUID_DIVE_FEED = 600  # 10 mm/s — meniscus contact (reservoir + wells); slightly slowed for clean entry
+
 
 def gsend(
     link: serial.Serial | None,
@@ -274,7 +283,9 @@ def _pickup(
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{TIP_PICKUP_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    # Engage descent: slow (damage protection — bend tips/shear posts)
+    gsend(link, f"G1 Z{TIP_PICKUP_Z:.3f} F{TIP_BOX_ENGAGE_FEED}", gcode_out=gcode_out)
+    # Lift: full Z_FEED — no damage risk on the way up
     gsend(link, f"G1 Z{TIP_BOX_CLEAR_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
@@ -290,10 +301,10 @@ def _aspirate(
     _phase_comment(gcode_out, "\n; --- aspirate @ reservoir (B3 SUCK) ---\n")
     # Intermediate Y to clear tip-box footprint at TIP_BOX_CLEAR_Z
     gsend(link, f"G1 Y{RESERVOIR_TRANSIT_Y:.3f} F{XY_FEED}", gcode_out=gcode_out)
-    # Diagonal descend + slide to aspirate position
+    # Diagonal descend + slide to aspirate position — slowed (meniscus contact)
     gsend(
         link,
-        f"G1 Z{RESERVOIR_DIVE_Z:.3f} Y{RESERVOIR_Y:.3f} F{Z_FEED}",
+        f"G1 Z{RESERVOIR_DIVE_Z:.3f} Y{RESERVOIR_Y:.3f} F{LIQUID_DIVE_FEED}",
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
@@ -322,7 +333,8 @@ def _dispense(
         f"G1 X{WELL_X:.3f} Y{y:.3f} F{XY_FEED}",
         gcode_out=gcode_out,
     )
-    gsend(link, f"G1 Z{WELL_DISPENSE_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    # Well dive: slowed (meniscus contact)
+    gsend(link, f"G1 Z{WELL_DISPENSE_Z:.3f} F{LIQUID_DIVE_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
     op_dt = _fire_dpette(pipette, "dispense", WELL_DISPENSE_Z, gcode_out=gcode_out)
     # Lift to bar-clearance altitude (sets up the cross-deck transit to eject)
@@ -375,7 +387,9 @@ def _eject(
     )
     gsend(link, f"G1 X{RELEASE_BAR_X:.3f} F{XY_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
-    gsend(link, f"G1 Z{RELEASE_ENGAGE_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
+    # Hook engagement descent: slow (damage protection — avoid impact on bar)
+    gsend(link, f"G1 Z{RELEASE_ENGAGE_Z:.3f} F{BAR_ENGAGE_FEED}", gcode_out=gcode_out)
+    # Lift: full Z_FEED — the lift IS the ejection action; speed is fine here
     gsend(link, f"G1 Z{RELEASE_CLEAR_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
@@ -495,7 +509,7 @@ def _run(
     _phase_comment(
         gcode_out,
         "\n; ===== phase 4: park towards home corner then G28 =====\n"
-        "; at end of last cycle head sits at (X=0, Y=220, Z=115).\n"
+        "; at end of last cycle head sits at (X=5, Y=190, Z=115).\n"
         "; max safe Z near home is the bar's bottom edge — clear X first,\n"
         "; then diagonal descent below bar towards the home corner,\n"
         "; then home.\n",
