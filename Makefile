@@ -46,6 +46,14 @@ PY_CAD := $(shell test -x .venv/bin/python && echo .venv/bin/python || echo "uv 
 # MARK: SETUP
 
 
+# All setup_{prod,dev,cad} recipes pass `--inexact` to `uv sync`. By
+# default `uv sync` is exact — it uninstalls everything not in the
+# requested extras — so without this flag `make setup_dev` would wipe
+# out `build123d` from a prior `make setup_cad`, and vice versa. With
+# `--inexact` the recipes are additive: any chain ends with the union
+# of installed extras, matching the `setup_all` recipe's intent.
+# See https://docs.astral.sh/uv/reference/cli/#uv-sync for details.
+
 setup_uv:  ## Install uv (Python package manager) if missing
 	if command -v uv > /dev/null 2>&1; then
 		echo "uv already installed: $$(uv --version)"
