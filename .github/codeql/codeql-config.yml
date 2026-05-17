@@ -1,0 +1,11 @@
+name: i3mega-pipettebot CodeQL config
+
+queries:
+  - uses: security-and-quality
+
+query-filters:
+  # `...` Ellipsis bodies in `typing.Protocol` method stubs are the PEP 544
+  # idiom (mypy + pyright recognise them as abstract markers). CodeQL's
+  # `py/ineffectual-statement` query flags them as no-op expressions.
+  - exclude:
+      id: py/ineffectual-statement
