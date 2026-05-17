@@ -68,14 +68,14 @@ After the last cycle, the park sequence:
   The Z=70 descent BEFORE X=0 is mandatory — at X=0 Y near 0, anything
   above Z=70 fouls the release-bar hook on the homing sweep.
 
-Required environment variables:
+Environment variables (all optional — modes chosen from env presence):
 
-    I3MEGA_PORT          Marlin USB-serial path.
-    PIPETTE_PORT         dPette USB-serial path. Run `tools/preflight.py`
-                         to discover both.
-
-Optional:
-
+    I3MEGA_PORT          Marlin USB-serial path. If unset, gantry G-code
+                         is written to the tee file only — no Marlin
+                         motion. Discover with `uv run tools/preflight.py`.
+    PIPETTE_PORT         dPette USB-serial path. If unset, aspirate /
+                         dispense ops are skipped and logged as
+                         `; skipped` in the tee.
     NUM_CYCLES           Number of rows to fill. Default 12, range 1..12.
                          12 is the natural 96-well max (8 channels × 12
                          rows = 96 wells). See bed-range warning below.
@@ -85,6 +85,16 @@ Optional:
     OUTPUT_GCODE         Path to tee Marlin commands to disk. Default
                          `showcase_v0_full_pipettebot_rows.gcode` in cwd.
                          Set to empty (`OUTPUT_GCODE=`) to disable.
+
+Run modes (auto-selected from env presence):
+
+    FULL          I3MEGA_PORT + PIPETTE_PORT — real gantry + real dPette.
+    GANTRY ONLY   I3MEGA_PORT only — gantry moves; dPette ops skipped
+                  (useful for path testing without consuming reagent).
+    DPETTE ONLY   PIPETTE_PORT only — dPette ops fire with no spatial
+                  context; primarily for dPette timing tests.
+    DRY RUN       neither set — no serial; G-code tee only (useful for
+                  inspecting the generated tour before plugging in).
 
 **Bed-range warning**: tip-box row Y = 154 + 9·(N−1). At N=12 that's
 Y=253 — outside the i3 Mega Y=0–250 envelope. Cycles 11 and 12 will
@@ -176,13 +186,16 @@ Z_FEED = 1200  # 20 mm/s — at the M203 Z20 cap
 
 
 def gsend(
-    link: serial.Serial,
+    link: serial.Serial | None,
     cmd: str,
     *,
     gcode_out: TextIO | None = None,
     max_secs: float = 180.0,
 ) -> None:
     """Send `cmd` to Marlin and (optionally) tee it into `gcode_out`.
+
+    When `link is None` (DRY RUN / DPETTE ONLY mode), the command is
+    written to `gcode_out` only — no serial write, no `ok` wait.
 
     Tolerates `echo:busy: processing` chatter on long G28/M400 and the
     SD-init noise Marlin emits when the card is unreadable. Raises on
@@ -191,7 +204,14 @@ def gsend(
     print(f"  >>> {cmd}")
     if gcode_out is not None:
         gcode_out.write(cmd + "\n")
+    if link is None:
+        return
     link.write((cmd + "\n").encode("ascii"))
+    _await_ok(link, cmd, max_secs)
+
+
+def _await_ok(link: serial.Serial, cmd: str, max_secs: float) -> None:
+    """Read from Marlin until `ok`, tolerating busy chatter and SD-init noise."""
     deadline = time.time() + max_secs
     while time.time() < deadline:
         raw = link.readline()
@@ -223,7 +243,7 @@ def _well_y(cycle: int) -> float:
 
 
 def _pickup(
-    link: serial.Serial,
+    link: serial.Serial | None,
     cycle: int,
     *,
     gcode_out: TextIO | None = None,
@@ -244,8 +264,8 @@ def _pickup(
 
 
 def _aspirate(
-    link: serial.Serial,
-    pipette: DPetteDriver,
+    link: serial.Serial | None,
+    pipette: DPetteDriver | None,
     *,
     gcode_out: TextIO | None = None,
 ) -> float:
@@ -261,20 +281,15 @@ def _aspirate(
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
-    _phase_comment(gcode_out, f"; >>> dpette.aspirate() @ Z{RESERVOIR_DIVE_Z:.1f}\n")
-    t0 = time.perf_counter()
-    pipette.aspirate()
-    op_dt = time.perf_counter() - t0
-    print(f"[host]   dpette aspirate: {op_dt:.2f} s")
-    _phase_comment(gcode_out, f"; <<< returned in {op_dt:.2f} s\n")
+    op_dt = _fire_dpette(pipette, "aspirate", RESERVOIR_DIVE_Z, gcode_out=gcode_out)
     gsend(link, f"G1 Z{RESERVOIR_CLEAR_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
     return op_dt
 
 
 def _dispense(
-    link: serial.Serial,
-    pipette: DPetteDriver,
+    link: serial.Serial | None,
+    pipette: DPetteDriver | None,
     cycle: int,
     *,
     gcode_out: TextIO | None = None,
@@ -293,20 +308,38 @@ def _dispense(
     )
     gsend(link, f"G1 Z{WELL_DISPENSE_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
-    _phase_comment(gcode_out, f"; >>> dpette.dispense() @ Z{WELL_DISPENSE_Z:.1f}\n")
-    t0 = time.perf_counter()
-    pipette.dispense()
-    op_dt = time.perf_counter() - t0
-    print(f"[host]   dpette dispense: {op_dt:.2f} s")
-    _phase_comment(gcode_out, f"; <<< returned in {op_dt:.2f} s\n")
+    op_dt = _fire_dpette(pipette, "dispense", WELL_DISPENSE_Z, gcode_out=gcode_out)
     # Lift to bar-clearance altitude (sets up the cross-deck transit to eject)
     gsend(link, f"G1 Z{WELL_CLEAR_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
     return op_dt
 
 
+def _fire_dpette(
+    pipette: DPetteDriver | None,
+    op: str,
+    z: float,
+    *,
+    gcode_out: TextIO | None = None,
+) -> float:
+    """Fire `aspirate` or `dispense` on the dPette and return wall-clock s.
+
+    When `pipette is None`, the op is skipped and logged as `; skipped`.
+    """
+    if pipette is None:
+        _phase_comment(gcode_out, f"; >>> dpette.{op}() skipped (no PIPETTE_PORT)\n")
+        return 0.0
+    _phase_comment(gcode_out, f"; >>> dpette.{op}() @ Z{z:.1f}\n")
+    t0 = time.perf_counter()
+    getattr(pipette, op)()
+    op_dt = time.perf_counter() - t0
+    print(f"[host]   dpette {op}: {op_dt:.2f} s")
+    _phase_comment(gcode_out, f"; <<< returned in {op_dt:.2f} s\n")
+    return op_dt
+
+
 def _eject(
-    link: serial.Serial,
+    link: serial.Serial | None,
     *,
     gcode_out: TextIO | None = None,
 ) -> None:
@@ -332,8 +365,8 @@ def _eject(
 
 
 def _cycle(
-    link: serial.Serial,
-    pipette: DPetteDriver,
+    link: serial.Serial | None,
+    pipette: DPetteDriver | None,
     cycle: int,
     num_cycles: int,
     *,
@@ -362,8 +395,8 @@ def _gcode_header(num_cycles: int, volume_ul: float) -> str:
 
 
 def _run(
-    link: serial.Serial,
-    pipette: DPetteDriver,
+    link: serial.Serial | None,
+    pipette: DPetteDriver | None,
     num_cycles: int,
     volume_ul: float,
     gcode_out: TextIO | None,
@@ -389,12 +422,18 @@ def _run(
     gsend(link, f"G1 Z{POST_HOME_LIFT_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
 
-    _phase_comment(
-        gcode_out,
-        "\n; ===== phase 2: set per-channel volume (once) =====\n"
-        f"; >>> dpette.set_volume({volume_ul:.1f} uL)\n",
-    )
-    pipette.set_volume(volume_ul)  # B2 PI_VOLUM
+    if pipette is None:
+        _phase_comment(
+            gcode_out,
+            "\n; ===== phase 2: set per-channel volume (skipped — no PIPETTE_PORT) =====\n",
+        )
+    else:
+        _phase_comment(
+            gcode_out,
+            "\n; ===== phase 2: set per-channel volume (once) =====\n"
+            f"; >>> dpette.set_volume({volume_ul:.1f} uL)\n",
+        )
+        pipette.set_volume(volume_ul)  # B2 PI_VOLUM
 
     _phase_comment(
         gcode_out,
@@ -456,63 +495,88 @@ def _resolve_num_cycles() -> int:
     return n
 
 
+def _describe_mode(have_gantry: bool, have_pipette: bool) -> str:
+    if have_gantry and have_pipette:
+        return "FULL — real gantry + real dPette"
+    if have_gantry:
+        return "GANTRY ONLY — dPette ops skipped (PIPETTE_PORT unset)"
+    if have_pipette:
+        return "DPETTE ONLY — gantry moves skipped (I3MEGA_PORT unset)"
+    return "DRY RUN — both serial skipped; G-code tee only"
+
+
 def main() -> int:
     if "--help" in sys.argv or "-h" in sys.argv:
         print(__doc__)
         return 0
-    port = os.environ.get("I3MEGA_PORT")
-    pipette_port = os.environ.get("PIPETTE_PORT")
-    if not port or not pipette_port:
-        sys.stderr.write(
-            "ERROR: set both I3MEGA_PORT and PIPETTE_PORT.\n"
-            "       Run `uv run tools/preflight.py` to discover both.\n"
-        )
-        return 1
+    port = os.environ.get("I3MEGA_PORT", "").strip()
+    pipette_port = os.environ.get("PIPETTE_PORT", "").strip()
     baud = int(os.environ.get("I3MEGA_BAUD", str(DEFAULT_BAUD)))
     pipette_baud = int(os.environ.get("PIPETTE_BAUD", str(DEFAULT_PIPETTE_BAUD)))
     num_cycles = _resolve_num_cycles()
     volume_ul = float(os.environ.get("PIPETTE_VOLUME_UL", str(DEFAULT_VOLUME_UL)))
     gcode_path = os.environ.get("OUTPUT_GCODE", DEFAULT_GCODE_OUT)
 
-    link = open_marlin_port(port, baudrate=baud, timeout=2.0)
-    if link is None:
-        sys.stderr.write(
-            f"ERROR: could not open Marlin port {port} @ {baud}.\n"
-            "       Run `uv run tools/preflight.py` to verify.\n"
-        )
-        return 1
-
-    print(f"[host] connecting dPette on {pipette_port} @ {pipette_baud}")
+    print(f"[host] mode: {_describe_mode(bool(port), bool(pipette_port))}")
     print(
         f"[host] row tour: {num_cycles} cycles "
         f"× 8 channels × {volume_ul:.1f} uL = "
         f"{num_cycles * 8 * volume_ul:.0f} uL total"
     )
-    pipette = DPetteDriver(SerialConfig(port=pipette_port, baudrate=pipette_baud))
-    pipette.connect()  # A0 HELLO → B0 WOL (PI mode) → motor homes
-    if pipette.stub_mode:
-        sys.stderr.write(
-            f"ERROR: dPette on {pipette_port} fell back to stub mode.\n"
-            "       Wake it (press its button), replug, and retry.\n"
-        )
-        link.close()
-        return 1
+
+    link: serial.Serial | None = None
+    if port:
+        link = open_marlin_port(port, baudrate=baud, timeout=2.0)
+        if link is None:
+            sys.stderr.write(
+                f"ERROR: could not open Marlin port {port} @ {baud}.\n"
+                "       Run `uv run tools/preflight.py` to verify.\n"
+            )
+            return 1
+
+    pipette: DPetteDriver | None = None
+    if pipette_port:
+        print(f"[host] connecting dPette on {pipette_port} @ {pipette_baud}")
+        pipette = DPetteDriver(SerialConfig(port=pipette_port, baudrate=pipette_baud))
+        pipette.connect()  # A0 HELLO → B0 WOL (PI mode) → motor homes
+        if pipette.stub_mode:
+            sys.stderr.write(
+                f"ERROR: dPette on {pipette_port} fell back to stub mode.\n"
+                "       Wake it (press its button), replug, and retry.\n"
+            )
+            if link is not None:
+                link.close()
+            return 1
 
     try:
-        with link:
-            print(f"[host] open {port} @ {baud}; waiting 3s for Marlin boot")
-            time.sleep(3)
-            link.reset_input_buffer()
-            if gcode_path:
-                print(f"[host] tee G-code stream to {gcode_path}")
-                with open(gcode_path, "w") as gf:
-                    _run(link, pipette, num_cycles, volume_ul, gf)
-            else:
-                _run(link, pipette, num_cycles, volume_ul, None)
-            print("[host] done — homed; gantry parked at G28 origin")
+        if link is not None:
+            with link:
+                print(f"[host] open {port} @ {baud}; waiting 3s for Marlin boot")
+                time.sleep(3)
+                link.reset_input_buffer()
+                _execute(link, pipette, num_cycles, volume_ul, gcode_path)
+        else:
+            _execute(None, pipette, num_cycles, volume_ul, gcode_path)
+        print("[host] done")
     finally:
-        pipette.disconnect()
+        if pipette is not None:
+            pipette.disconnect()
     return 0
+
+
+def _execute(
+    link: serial.Serial | None,
+    pipette: DPetteDriver | None,
+    num_cycles: int,
+    volume_ul: float,
+    gcode_path: str,
+) -> None:
+    if gcode_path:
+        print(f"[host] tee G-code stream to {gcode_path}")
+        with open(gcode_path, "w") as gf:
+            _run(link, pipette, num_cycles, volume_ul, gf)
+    else:
+        _run(link, pipette, num_cycles, volume_ul, None)
 
 
 if __name__ == "__main__":
