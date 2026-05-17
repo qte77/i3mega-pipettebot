@@ -215,6 +215,13 @@ BAR_ENGAGE_FEED = (
 )
 LIQUID_DIVE_FEED = 600  # 10 mm/s — meniscus contact (reservoir + wells); slightly slowed for clean entry
 
+# Touchdown split — descend at full Z_FEED until this distance above the
+# target Z, then drop to the slow contact feedrate for the last leg.
+# Protects the contact point (tips/posts, bar, meniscus) without paying
+# the slow feedrate for the whole dive. All four dive distances exceed
+# this approach distance, so the split is always valid.
+TOUCHDOWN_APPROACH_MM = 10.0
+
 
 def gsend(
     link: serial.Serial | None,
@@ -289,7 +296,13 @@ def _pickup(
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
-    # Engage descent: slow (damage protection — bend tips/shear posts)
+    # Engage descent — touchdown split: fast until 10mm above the tip tops,
+    # then slow (damage protection — bend tips / shear posts).
+    gsend(
+        link,
+        f"G1 Z{TIP_PICKUP_Z + TOUCHDOWN_APPROACH_MM:.3f} F{Z_FEED}",
+        gcode_out=gcode_out,
+    )
     gsend(link, f"G1 Z{TIP_PICKUP_Z:.3f} F{TIP_BOX_ENGAGE_FEED}", gcode_out=gcode_out)
     # Lift: full Z_FEED — no damage risk on the way up
     gsend(link, f"G1 Z{TIP_BOX_CLEAR_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
@@ -307,10 +320,17 @@ def _aspirate(
     _phase_comment(gcode_out, "\n; --- aspirate @ reservoir (B3 SUCK) ---\n")
     # Intermediate Y to clear tip-box footprint at TIP_BOX_CLEAR_Z
     gsend(link, f"G1 Y{RESERVOIR_TRANSIT_Y:.3f} F{XY_FEED}", gcode_out=gcode_out)
-    # Diagonal descend + slide to aspirate position — slowed (meniscus contact)
+    # Diagonal descend + slide to aspirate position — touchdown split:
+    # fast Z+Y leg reaches the final Y while Z is still 10mm above the
+    # meniscus; slow pure-Z leg handles the last 10mm into the liquid.
     gsend(
         link,
-        f"G1 Z{RESERVOIR_DIVE_Z:.3f} Y{RESERVOIR_Y:.3f} F{LIQUID_DIVE_FEED}",
+        f"G1 Z{RESERVOIR_DIVE_Z + TOUCHDOWN_APPROACH_MM:.3f} Y{RESERVOIR_Y:.3f} F{Z_FEED}",
+        gcode_out=gcode_out,
+    )
+    gsend(
+        link,
+        f"G1 Z{RESERVOIR_DIVE_Z:.3f} F{LIQUID_DIVE_FEED}",
         gcode_out=gcode_out,
     )
     gsend(link, "M400", gcode_out=gcode_out)
@@ -339,7 +359,13 @@ def _dispense(
         f"G1 X{WELL_X:.3f} Y{y:.3f} F{XY_FEED}",
         gcode_out=gcode_out,
     )
-    # Well dive: slowed (meniscus contact)
+    # Well dive — touchdown split: fast until 10mm above the meniscus,
+    # then slow (clean entry — avoids splashing / suction-side artefacts).
+    gsend(
+        link,
+        f"G1 Z{WELL_DISPENSE_Z + TOUCHDOWN_APPROACH_MM:.3f} F{Z_FEED}",
+        gcode_out=gcode_out,
+    )
     gsend(link, f"G1 Z{WELL_DISPENSE_Z:.3f} F{LIQUID_DIVE_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
     op_dt = _fire_dpette(pipette, "dispense", WELL_DISPENSE_Z, gcode_out=gcode_out)
@@ -393,7 +419,15 @@ def _eject(
     )
     gsend(link, f"G1 X{RELEASE_BAR_X:.3f} F{XY_FEED}", gcode_out=gcode_out)
     gsend(link, "M400", gcode_out=gcode_out)
-    # Hook engagement descent: slow (damage protection — avoid impact on bar)
+    # Hook engagement descent — touchdown split: fast until 10mm above
+    # the bar (Z=108), then slow (damage protection — avoid impact).
+    # Total descent is 17mm, so the fast leg is only 7mm — most of the
+    # dive is still slow, but the initial drop is no longer at F300.
+    gsend(
+        link,
+        f"G1 Z{RELEASE_ENGAGE_Z + TOUCHDOWN_APPROACH_MM:.3f} F{Z_FEED}",
+        gcode_out=gcode_out,
+    )
     gsend(link, f"G1 Z{RELEASE_ENGAGE_Z:.3f} F{BAR_ENGAGE_FEED}", gcode_out=gcode_out)
     # Lift: full Z_FEED — the lift IS the ejection action; speed is fine here
     gsend(link, f"G1 Z{RELEASE_CLEAR_Z:.3f} F{Z_FEED}", gcode_out=gcode_out)
