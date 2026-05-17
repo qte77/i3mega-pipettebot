@@ -80,10 +80,11 @@ Environment variables (all optional — modes chosen from env presence):
                          dispense ops are skipped and logged as
                          `; skipped` in the tee.
     NUM_CYCLES           Number of rows to fill. Default 8, range 1..8.
-                         FIXME: cap lowered 12 → 8 for safety — the
-                         current bed/plate part layout is not yet
-                         safety-compliant for the full 12-row tour.
-                         See bed-range warning below.
+                         Cap lowered 12 → 8 for safety until the
+                         bed/plate part layout is re-arranged
+                         (tip-box and well-plate footprints clash with
+                         fixtures past N=8). See `# FIXME` on
+                         `MAX_NUM_CYCLES` and the bed-range warning below.
     I3MEGA_BAUD          Default 250000 (Anycubic stock + MARLIN-AI3M).
     PIPETTE_BAUD         Default 9600 (DLAB dPette CP2102 stock).
     PIPETTE_VOLUME_UL    Per-channel volume in microlitres. Default 100.0.
@@ -110,9 +111,9 @@ Run modes (auto-selected from env presence):
 **Bed-range warning**: tip-box row Y = 156 + 9·(N−1). At N=8 that's
 Y=219 — within the Y=0–250 envelope but close to the front of bed
 travel. The hard cap is `MAX_NUM_CYCLES=8` for safety until the bed
-part layout is re-arranged (see FIXME on the constant). `M211 S0`
-(bootstrap) disables soft endstops so Marlin will obey; verify your
-tip-box position before running.
+part layout is re-arranged (see the `# FIXME` on the constant).
+`M211 S0` (bootstrap) disables soft endstops so Marlin will obey;
+verify your tip-box position before running.
 
 **Safety**: dPette dispense at WELL_DISPENSE_Z = aspirate Z = 70 mm.
 Each SBS well starts empty, so the B3 BLOW piston-return suction
@@ -507,7 +508,7 @@ def _run(
         gcode_out,
         _gcode_header(num_cycles, volume_desc)
         + "; disable software endstops (Y axis positive 0-250; tip-box rows\n"
-        + "; FIXME cap at MAX_NUM_CYCLES=8 — restore to 12 after bed re-layout)\n",
+        + "; safety cap at MAX_NUM_CYCLES=8 — restore to 12 after bed re-layout)\n",
     )
     profile = select_profile(os.environ.get("MOTION_PROFILE"))
     if profile is None:
@@ -601,7 +602,7 @@ def _resolve_num_cycles() -> int:
     if not MIN_NUM_CYCLES <= n <= MAX_NUM_CYCLES:
         raise SystemExit(
             f"ERROR: NUM_CYCLES must be in {MIN_NUM_CYCLES}..{MAX_NUM_CYCLES}, got {n}.\n"
-            f"       Cap is temporarily {MAX_NUM_CYCLES} (FIXME) — the current\n"
+            f"       Cap is temporarily {MAX_NUM_CYCLES} — the current\n"
             f"       bed/plate part layout is not safety-compliant for N>{MAX_NUM_CYCLES}:\n"
             f"       tip-box and well-plate footprints clash with fixtures on\n"
             f"       the bed past that point. Restore to 12 only after the bed\n"
