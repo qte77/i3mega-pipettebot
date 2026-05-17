@@ -72,41 +72,13 @@ from __future__ import annotations
 import os
 import sys
 import time
-from typing import TYPE_CHECKING
 
 from dpette import DPetteDriver, SerialConfig
 
-from pipettebot.experiment_profile import load_experiment_profile
-
-if TYPE_CHECKING:
-    from pipettebot.experiment_profile import ExperimentProfile
+from pipettebot.cli_profile import build_volumes
 
 DEFAULT_BAUD = 9600
-DEFAULT_VOLUME_UL = 100.0
 NUM_CYCLES = 12
-
-
-def _resolve_profile() -> ExperimentProfile | None:
-    path = os.environ.get("PIPETTE_PROFILE", "").strip()
-    if not path:
-        return None
-    return load_experiment_profile(path)
-
-
-def _build_volumes() -> tuple[tuple[float, ...], str]:
-    """Return (volumes_ul, banner). Banner describes the schedule for stdout."""
-    profile = _resolve_profile()
-    if profile is not None:
-        banner = f"profile {profile.name!r}: {profile.num_cycles} cycles"
-        if profile.description:
-            banner += f"\n  {profile.description}"
-        if profile.gradient_description:
-            banner += f"\n  gradient: {profile.gradient_description}"
-        return profile.volumes_ul, banner
-    volume_ul = float(os.environ.get("PIPETTE_VOLUME_UL", str(DEFAULT_VOLUME_UL)))
-    return (volume_ul,) * NUM_CYCLES, (
-        f"constant volume {volume_ul:.1f} uL x {NUM_CYCLES} cycles"
-    )
 
 
 def _run_tour(pipette: DPetteDriver, volumes_ul: tuple[float, ...]) -> None:
@@ -163,7 +135,7 @@ def main() -> int:
         )
         return 1
     baud = int(os.environ.get("PIPETTE_BAUD", str(DEFAULT_BAUD)))
-    volumes_ul, banner = _build_volumes()
+    volumes_ul, banner = build_volumes(NUM_CYCLES, "cycles")
 
     print(f"[dpette] connecting on {port} @ {baud}")
     print(f"[dpette] {banner}")

@@ -104,7 +104,7 @@ from typing import TYPE_CHECKING
 
 from dpette import DPetteDriver, SerialConfig
 
-from pipettebot.experiment_profile import load_experiment_profile
+from pipettebot.cli_profile import build_volumes
 from pipettebot.gantry import open_marlin_port
 from pipettebot.motion_profile import select_profile
 
@@ -114,12 +114,9 @@ if TYPE_CHECKING:
 
     import serial  # type: ignore[import-untyped]
 
-    from pipettebot.experiment_profile import ExperimentProfile
-
 DEFAULT_BAUD = 250000
 DEFAULT_PIPETTE_BAUD = 9600
 DEFAULT_GCODE_OUT = "showcase_v0_full_pipettebot.gcode"
-DEFAULT_VOLUME_UL = 100.0
 
 # --- Deck geometry ------------------------------------------------------
 # Canonical source: docs/deck-layout.md "Slot extents" + "Motion constants".
@@ -480,29 +477,6 @@ def _run(
     gsend(link, "M400", gcode_out=gcode_out)
 
 
-def _resolve_profile() -> ExperimentProfile | None:
-    path = os.environ.get("PIPETTE_PROFILE", "").strip()
-    if not path:
-        return None
-    return load_experiment_profile(path)
-
-
-def _build_volumes() -> tuple[tuple[float, ...], str]:
-    """Return (volumes_ul, banner). Banner describes the schedule for stdout."""
-    profile = _resolve_profile()
-    if profile is not None:
-        banner = f"profile {profile.name!r}: {profile.num_cycles} columns"
-        if profile.description:
-            banner += f"\n  {profile.description}"
-        if profile.gradient_description:
-            banner += f"\n  gradient: {profile.gradient_description}"
-        return profile.volumes_ul, banner
-    volume_ul = float(os.environ.get("PIPETTE_VOLUME_UL", str(DEFAULT_VOLUME_UL)))
-    return (volume_ul,) * NUM_COLUMNS, (
-        f"constant volume {volume_ul:.1f} uL x {NUM_COLUMNS} columns"
-    )
-
-
 def main() -> int:
     port = os.environ.get("I3MEGA_PORT")
     pipette_port = os.environ.get("PIPETTE_PORT")
@@ -514,7 +488,7 @@ def main() -> int:
         return 1
     baud = int(os.environ.get("I3MEGA_BAUD", str(DEFAULT_BAUD)))
     pipette_baud = int(os.environ.get("PIPETTE_BAUD", str(DEFAULT_PIPETTE_BAUD)))
-    volumes_ul, banner = _build_volumes()
+    volumes_ul, banner = build_volumes(NUM_COLUMNS, "columns")
     gcode_path = os.environ.get("OUTPUT_GCODE", DEFAULT_GCODE_OUT)
 
     link = open_marlin_port(port, baudrate=baud, timeout=2.0)
