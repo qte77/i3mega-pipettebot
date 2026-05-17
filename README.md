@@ -177,11 +177,13 @@ simulated via Z) for bring-up without the pipette. Firmware-side
 M820 pass-through is still in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md)
 but no longer required for end-to-end pipetting.
 
-Four modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
+Five modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
 `experiment_profile.py` (TOML experiment-profile loader; see
-[`examples/experiment_profiles/`](examples/experiment_profiles/)), and `__init__.py`
-(re-exports). No deck library, no safety limits, no calibration in v0
-— the caller passes raw `(x, y, z)`.
+[`examples/experiment_profiles/`](examples/experiment_profiles/)),
+`motion_profile.py` (bundled SLOW/MID/FAST gantry-tuning factors;
+`MOTION_PROFILE` env selects), and `__init__.py` (re-exports). No
+deck library, no safety limits, no calibration in v0 — the caller
+passes raw `(x, y, z)`.
 
 ## Development
 

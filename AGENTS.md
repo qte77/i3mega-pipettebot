@@ -31,7 +31,7 @@ Single source of truth for agents working in this repo. `CLAUDE.md` and
 
 | Question                                        | Answer for v0                                                    |
 |-------------------------------------------------|------------------------------------------------------------------|
-| Where does new code go?                         | `src/pipettebot/`. Four modules: `gantry`, `bot`, `experiment_profile`, `__init__`. |
+| Where does new code go?                         | `src/pipettebot/`. Five modules: `gantry`, `bot`, `experiment_profile`, `motion_profile`, `__init__`. |
 | Where do experiment profiles live?              | `examples/experiment_profiles/*.toml`; loader in `src/pipettebot/experiment_profile.py`. See issue #79. |
 | Where do motion profiles live?                  | Bundled Python constants in `src/pipettebot/motion_profile.py` (slow/mid/fast). `MOTION_PROFILE` env selects; default `mid`; `''` or `off` opts out. See [ADR 0003](docs/adr/0003-motion-profile-bundled-constants.md). |
 | Where does deck geometry live?                  | Deferred. Caller passes raw `(x, y, z)` in v0.                   |
@@ -55,8 +55,11 @@ src/pipettebot/                        (library, used by examples & tests)
     │                                     (note: GcodeGantry._send is one-line-per-ack;
     │                                      the showcase example uses raw serial to
     │                                      sidestep that until the lib is fixed)
-    └── ExperimentProfile             ──► load_experiment_profile(path) → typed dataclass with
-                                          per-cycle volumes + optional gradient note
+    ├── ExperimentProfile             ──► load_experiment_profile(path) → typed dataclass with
+    │                                     per-cycle volumes + optional gradient note
+    └── MotionProfile                 ──► select_profile(MOTION_PROFILE) → SLOW/MID/FAST
+                                          bundled accel/jerk factor; as_marlin() emits the four
+                                          bootstrap M-codes (M203/M201/M204/M205)
 
 dpette.DPetteDriver               ──► /dev/cu.usbserial-* (different device) @ 9600
                                        used by `preflight.py`; not exercised in the
