@@ -19,8 +19,8 @@ mounted on the bare carriage (see [`docs/3d-parts.md`](docs/3d-parts.md)).
 
 > **Status: v0 prototype.** A working aspirate-then-dispense demo over
 > hardcoded coordinates. Deck calibration, dPette mount real geometry,
-> and firmware modifications are on the [backlog](AGENT_REQUESTS.md)
-> and [open issues](https://github.com/qte77/i3mega-pipettebot/issues).
+> and firmware modifications are tracked in [open issues](https://github.com/qte77/i3mega-pipettebot/issues);
+> short-term agent-to-human handoffs live in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md).
 
 ## Why this matters
 
