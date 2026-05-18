@@ -4,6 +4,19 @@ Gotchas and non-obvious lessons we hit. Keep entries short, dated, and
 actionable. Add a new entry every time you'd say "I wish someone had told me
 that earlier."
 
+## 2026-05-17 — Marlin Y vs CAD top-view Y point opposite directions
+
+Hit in `tools/cad/labware/deck_plate.py::build_deck_plate_assembly`.
+Marlin frame is `+Y` FRONT (toward operator), standard CAD top-down is
+`+Y` BACK (away from viewer) — an assembly built from raw Marlin coords
+looks mirrored front-to-back in FreeCAD / PrusaSlicer / draw.io.
+
+Promoted to `.claude/rules/cad-script-conventions.md` ("Assembly STLs:
+mirror Y after Marlin-frame translation"). Rule: any `build_*_assembly()`
+applies `mirror(translated, about=Plane.XZ)` after the Marlin-frame
+translation. Per-half / printable parts stay in Marlin frame.
+
+
 ## 2026-05-09 — pyserial 3.5 cannot open 250000 baud on Linux Python builds without `termios.B250000`
 
 Symptom: `serial.Serial(port, 250000, timeout=...)` raises

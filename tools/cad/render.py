@@ -1,8 +1,8 @@
 """Render all parts from tools/cad/parts.json manifest.
 
 Loads each `cad` script via importlib, calls its `build_func()`, exports
-STL + SVG to top-level `hardware/{stl,svg}/`. Build123d only — no
-OpenSCAD fallback in this repo (we don't ship `.scad` files).
+STL + STEP + SVG to top-level `hardware/{stl,step,svg}/`. Build123d only —
+no OpenSCAD fallback in this repo (we don't ship `.scad` files).
 
 Usage:
     uv run --extra cad python tools/cad/render.py
@@ -27,6 +27,7 @@ MANIFEST = CAD_DIR / "parts.json"
 ASSETS_DIR = CAD_DIR.parents[1] / "hardware"  # top-level hardware/
 STL_DIR = ASSETS_DIR / "stl"
 SVG_DIR = ASSETS_DIR / "svg"
+STEP_DIR = ASSETS_DIR / "step"
 
 DEFERRED_STATUSES = frozenset({"deferred", "planned"})
 
@@ -102,7 +103,7 @@ def _render_one(
     *,
     solid: bool,
 ) -> None:
-    from build123d import export_stl
+    from build123d import export_step, export_stl
 
     cad_rel = part["cad"]
     func_name = part["build_func"]
@@ -115,16 +116,20 @@ def _render_one(
 
     shape = shapes[cache_key]
     stl_out = STL_DIR / part["stl"]
+    step_rel = part["stl"].replace(".stl", ".step")
+    step_out = STEP_DIR / step_rel
     svg_out = SVG_DIR / part["svg"]
     stl_out.parent.mkdir(parents=True, exist_ok=True)
+    step_out.parent.mkdir(parents=True, exist_ok=True)
     svg_out.parent.mkdir(parents=True, exist_ok=True)
 
     export_stl(shape, str(stl_out))
+    export_step(shape, str(step_out))
     try:
         _export_svg(shape, svg_out, solid=solid)
-        print(f"  {part['stl']} + {part['svg']}")
+        print(f"  {part['stl']} + {step_rel} + {part['svg']}")
     except Exception as exc:
-        print(f"  {part['stl']} (SVG failed: {exc})")
+        print(f"  {part['stl']} + {step_rel} (SVG failed: {exc})")
 
 
 def render_cad(parts: list[dict[str, Any]], *, solid: bool = False) -> None:

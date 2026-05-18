@@ -1,21 +1,30 @@
 [
   {
-    "name": "tip_rack_holder",
-    "cad": "labware/tip_rack_holder.py",
-    "build_func": "build_tip_rack_holder",
-    "stl": "labware/tip_rack_holder.stl",
-    "svg": "labware/tip_rack_holder.svg",
+    "name": "deck_plate_left",
+    "cad": "labware/deck_plate.py",
+    "build_func": "build_deck_plate_left",
+    "stl": "labware/deck_plate_left.stl",
+    "svg": "labware/deck_plate_left.svg",
     "status": "active",
-    "notes": "Universal SBS-footprint 96-tip rack holder."
+    "notes": "i3 Mega deck plate, left half (X=0-100 mm). 2 mm base + 2 mm lip fences around used-tips bin (X=-55..72, Y=20-107, left lip auto-cropped at X=0 — bin overhangs LEFT by 55 mm) and 96-well plate (X=10-95.5, Y=65-192). Bin and well-plate lips overlap at Y=65-107 (intentional — physical parts swap, deck just holds positions). Mates with deck_plate_right at X=100."
   },
   {
-    "name": "plate_holder",
-    "cad": "labware/plate_holder.py",
-    "build_func": "build_plate_holder",
-    "stl": "labware/plate_holder.stl",
-    "svg": "labware/plate_holder.svg",
+    "name": "deck_plate_right",
+    "cad": "labware/deck_plate.py",
+    "build_func": "build_deck_plate_right",
+    "stl": "labware/deck_plate_right.stl",
+    "svg": "labware/deck_plate_right.svg",
     "status": "active",
-    "notes": "SBS 96-well plate holder with alignment pins."
+    "notes": "i3 Mega deck plate, right half (X=100-219.8 mm). 2 mm base + 2 mm lip fences around tip box (X=129-212, Y=25-147) and reservoir (X=80-220, Y=165-210, 0.2 mm right overhang auto-cropped). Reservoir lip overlaps 96-well plate lip at X=80-95.5, Y=165-192 — acceptable, parts swap physically."
+  },
+  {
+    "name": "deck_plate_assembly",
+    "cad": "labware/deck_plate.py",
+    "build_func": "build_deck_plate_assembly",
+    "stl": "labware/deck_plate_assembly.stl",
+    "svg": "labware/deck_plate_assembly.svg",
+    "status": "active",
+    "notes": "Both deck plate halves combined for visualisation. Origin (0,0,0) at the 96-well plate slot's left-front corner. NOT printable as one piece on MK4 (219.8 mm Y exceeds 210 mm bed) — use deck_plate_left + deck_plate_right for printing."
   },
   {
     "name": "tip_ejection_bar",
