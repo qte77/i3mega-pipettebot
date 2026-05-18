@@ -221,7 +221,64 @@ prusa-slicer --binary-gcode --export-gcode \
 
 Could be packaged as `make setup_prusa_presets` (TODO).
 
-### Quirk 6 — speeds get overridden by cooling logic
+### Quirk 6 — `start_gcode` empty by default → printer doesn't auto-heat
+
+Without a loaded preset, PrusaSlicer's `start_gcode` field is empty.
+A bgcode sliced via `--load <minimal.ini>` will not contain `M140`
+/ `M190` / `M104` / `M109` / `G28` commands, so when the printer
+starts the file it does **not** heat the bed or nozzle automatically
+— the operator has to set temps and home manually on the printer
+screen before the print proceeds.
+
+PrusaSlicer auto-emits a single `M104 S<default>` if it detects no
+M104 in the start gcode, but uses the DEFAULT first-layer
+temperature (200 °C), not the one you passed via `--temperature`.
+There's no auto-emit of M140/M190/G28.
+
+**Workaround**: pass an explicit `--start-gcode` (and `--end-gcode`)
+with proper sequencing. Use ANSI-C shell quoting (`$'...\n...'`) so
+newlines reach PrusaSlicer literally — `"...\n..."` in plain double
+quotes ends up as a single comment line containing literal `\n`
+characters, and PrusaSlicer auto-emits its own `M104 S200` *before*
+the would-be custom block (which now looks like a comment to it).
+
+Working invocation:
+
+```bash
+prusa-slicer --binary-gcode --export-gcode \
+  --bed-shape 0x0,250x0,250x220,0x220 \
+  --gcode-flavor marlinfirmware --printer-model MK4 \
+  --nozzle-diameter 0.4 --layer-height 0.3 --first-layer-height 0.2 \
+  --perimeters 2 --fill-density 10% --brim-width 5 \
+  --temperature 230 --first-layer-temperature 230 \
+  --bed-temperature 55 --first-layer-bed-temperature 55 \
+  --filament-type PLA --extrusion-multiplier 0.7 \
+  --start-gcode $'M140 S[first_layer_bed_temperature]\nM104 S[first_layer_temperature]\nG28\nM190 S[first_layer_bed_temperature]\nM109 S[first_layer_temperature]\nG1 Z5 F600' \
+  --end-gcode   $'G1 Z+10 F300\nG28 X0 Y0\nM104 S0\nM140 S0\nM84' \
+  --output OUT.bgcode INPUT.stl
+```
+
+The sequence inside the start gcode matters:
+
+1. `M140` (no-wait set bed temp) — bed starts heating
+2. `M104` (no-wait set nozzle temp) — nozzle starts heating in parallel
+3. `G28` — home while both heat up
+4. `M190` (wait for bed) — block until bed is hot
+5. `M109` (wait for nozzle) — block until nozzle is hot
+6. `G1 Z5 F600` — lift nozzle before extruding so the heated nozzle
+   doesn't drag on the bed
+
+PrusaSlicer's placeholder substitution (`[first_layer_temperature]`
+etc.) only works if the line is parsed as G-code, which requires
+real newlines.
+
+**Related**: `--first-layer-temperature` / `--first-layer-bed-temperature`
+are SEPARATE from `--temperature` / `--bed-temperature`. The
+auto-emit and the `[first_layer_temperature]` placeholder both use
+the first-layer values. Set both pairs to the same value unless you
+deliberately want first-layer to differ.
+
+### Quirk 7 — speeds get overridden by cooling logic
 
 Even when `--perimeter-speed 30` is accepted, PrusaSlicer's cooling
 logic adjusts per-layer speed based on `cooling`,
