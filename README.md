@@ -124,7 +124,8 @@ uv run examples/showcase_v0_full_dpette_cycles.py
 # (calibration_curve_demo.toml, gradient_reservoir_demo.toml).
 PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
   uv run examples/showcase_v0_full_dpette_cycles.py
-PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
+PIPETTE_PORT=/dev/ttyUSB1 \
+  PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
   uv run examples/showcase_v0_full_pipettebot_rows.py
 
 # Every gantry-using example also accepts MOTION_PROFILE to dial gantry
