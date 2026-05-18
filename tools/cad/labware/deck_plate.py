@@ -35,13 +35,32 @@ from util.export import export_part
 sys.path.pop()
 
 # --- Plate / fence parameters (all in mm) ---
-DECK_WIDTH = 219.8   # X span — 0.1 mm shrink from 220 per side for clip clearance
-DECK_DEPTH = 219.8   # Y span
-BASE_T = 2.0         # base thickness; i3 bed-clip max grip
-LIP_H = 2.0          # lip fence height
-LIP_T = 1.5          # lip wall thickness
-CLEARANCE = 0.5      # labware-to-lip slip fit
-SPLIT_X = 100.0      # X split line (left / right halves)
+DECK_WIDTH = 219.8       # X span — 0.1 mm shrink from 220 per side for clip clearance
+DECK_DEPTH = 219.8       # Y span
+BASE_T = 4.0             # base thickness — rigid main body
+CLAMP_ZONE_T = 2.0       # base thickness at clamp pockets — i3 bed-clip max grip
+LIP_H = 2.0              # lip fence height (sits on top of the base)
+LIP_T = 1.5              # lip wall thickness
+CLEARANCE = 0.5          # labware-to-lip slip fit
+SPLIT_X = 100.0          # X split line (left / right halves)
+
+# --- Clamp pockets (8 perimeter notches where bed clips engage) ---
+# Each pocket: 20 mm along the edge x 10 mm into the deck. Cuts away
+# the top (BASE_T - CLAMP_ZONE_T) = 3 mm so the clip grips a 2 mm
+# tall top face at Z = CLAMP_ZONE_T.
+CLAMP_W = 20.0           # along edge direction
+CLAMP_D = 10.0           # into the deck (perpendicular to edge)
+# (centre_x_mm, centre_y_mm, edge): edge in {top, bottom, left, right}
+CLAMP_POSITIONS = (
+    (30.0, 0.0, "top"),
+    (190.0, 0.0, "top"),
+    (DECK_WIDTH, 80.0, "right"),
+    (DECK_WIDTH, 160.0, "right"),
+    (190.0, DECK_DEPTH, "bottom"),
+    (80.0, DECK_DEPTH, "bottom"),
+    (0.0, 170.0, "left"),
+    (0.0, 80.0, "left"),
+)
 
 # --- Labware footprints (Marlin frame, mm) ---
 # Source: docs/deck-plate.drawio (v1, user-annotated layout).
@@ -110,11 +129,28 @@ def _slot_lip(cx_mm, cy_mm, long_y_mm, short_x_mm):
 
 def _slot_hole(cx_mm, cy_mm, long_y_mm, short_x_mm):
     """Through-hole matching the labware footprint. The labware drops
-    into the hole and rests on the i3 bed; the lip ring around the hole
+    completely through the deck and rests on the i3 bed; the lip ring
     constrains XY. Z is oversized so the Boolean cut is clean."""
     return Pos(cx_mm, cy_mm, BASE_T / 2) * Box(
         short_x_mm, long_y_mm, BASE_T * 2
     )
+
+
+def _clamp_pocket(cx_mm, cy_mm, edge):
+    """Step-down at a perimeter clamp zone. Cuts away the top
+    (BASE_T - CLAMP_ZONE_T) mm over a CLAMP_W (along edge) x CLAMP_D
+    (into deck) footprint, so the bed clip can grip a CLAMP_ZONE_T mm
+    top face at this position."""
+    cut_h = BASE_T - CLAMP_ZONE_T
+    z_center = CLAMP_ZONE_T + cut_h / 2
+    if edge in ("top", "bottom"):
+        w_x, w_y = CLAMP_W, CLAMP_D
+        cy_off = CLAMP_D / 2 if edge == "top" else -CLAMP_D / 2
+        return Pos(cx_mm, cy_mm + cy_off, z_center) * Box(w_x, w_y, cut_h)
+    # left / right
+    w_x, w_y = CLAMP_D, CLAMP_W
+    cx_off = CLAMP_D / 2 if edge == "left" else -CLAMP_D / 2
+    return Pos(cx_mm + cx_off, cy_mm, z_center) * Box(w_x, w_y, cut_h)
 
 
 def _base(x_min_mm, x_max_mm):
@@ -126,7 +162,7 @@ def _base(x_min_mm, x_max_mm):
 def _envelope(x_min_mm, x_max_mm):
     width = x_max_mm - x_min_mm
     cx = (x_min_mm + x_max_mm) / 2
-    h = BASE_T + LIP_H + 1
+    h = BASE_T + LIP_H + 1   # tall enough for 5 mm base + 2 mm lip
     return Pos(cx, DECK_DEPTH / 2, h / 2) * Box(width, DECK_DEPTH, h)
 
 
@@ -136,6 +172,9 @@ def _half(x_min_mm, x_max_mm):
         if x_min_mm <= cx <= x_max_mm:
             body = body + _slot_lip(cx, cy, ly, sx)
             body = body - _slot_hole(cx, cy, ly, sx)
+    for cx, cy, edge in CLAMP_POSITIONS:
+        if x_min_mm <= cx <= x_max_mm:
+            body = body - _clamp_pocket(cx, cy, edge)
     return body & _envelope(x_min_mm, x_max_mm)
 
 
