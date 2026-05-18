@@ -629,7 +629,16 @@ def main() -> int:
     pipette_port = os.environ.get("PIPETTE_PORT", "").strip()
     baud = int(os.environ.get("I3MEGA_BAUD", str(DEFAULT_BAUD)))
     pipette_baud = int(os.environ.get("PIPETTE_BAUD", str(DEFAULT_PIPETTE_BAUD)))
-    volumes_ul, banner = build_volumes(_resolve_num_cycles(), "cycles")
+    num_cycles_env = _resolve_num_cycles()
+    volumes_ul, banner = build_volumes(num_cycles_env, "cycles")
+    if len(volumes_ul) > num_cycles_env:
+        sys.stderr.write(
+            f"ERROR: PIPETTE_PROFILE has {len(volumes_ul)} cycles but NUM_CYCLES\n"
+            f"       is {num_cycles_env} (safety cap {MAX_NUM_CYCLES}). The profile\n"
+            f"       must not exceed the env-supplied cycle count — trim the\n"
+            f"       profile, raise NUM_CYCLES, or both.\n"
+        )
+        return 1
     num_cycles = len(volumes_ul)
     total_ul = sum(volumes_ul) * 8
     gcode_path = os.environ.get("OUTPUT_GCODE", DEFAULT_GCODE_OUT)

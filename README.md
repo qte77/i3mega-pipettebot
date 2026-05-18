@@ -8,7 +8,9 @@ removed from the carriage and the chassis is repurposed as a 3-axis motion
 platform with the dPette mounted on the bare carriage
 (see [`docs/3d-parts.md`](docs/3d-parts.md)). The pipette is driven over a
 separate USB-serial link via
-[`dpette-usb-driver`](https://github.com/Lambda-Biolab/dpette-usb-driver).
+[`dpette-usb-driver`](https://github.com/Lambda-Biolab/dpette-usb-driver),
+and used-tips bin pickup is delegated to an optional companion SO-101 arm
+via [`so101-biolab-automation`](https://github.com/qte77/so101-biolab-automation).
 
 <p align="center">
   <img src="assets/images/pipetting-robot.gif" alt="i3 Mega pipetting robot in action" width="80%" />
@@ -124,7 +126,8 @@ uv run examples/showcase_v0_full_dpette_cycles.py
 # (calibration_curve_demo.toml, gradient_reservoir_demo.toml).
 PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
   uv run examples/showcase_v0_full_dpette_cycles.py
-PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
+PIPETTE_PORT=/dev/ttyUSB1 \
+  PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
   uv run examples/showcase_v0_full_pipettebot_rows.py
 
 # Every gantry-using example also accepts MOTION_PROFILE to dial gantry
