@@ -37,6 +37,7 @@ Single source of truth for agents working in this repo. `CLAUDE.md` and
 | Where does deck geometry live?                  | Deferred. Caller passes raw `(x, y, z)` in v0.                   |
 | How is dpette imported?                         | Git dep, pinned to a commit SHA before v0.0.1 tag.               |
 | Where do hardware experiments go?               | `tools/` — diagnostics (`preflight.py`, `diagnose_axis.py`, `marlin_repl.py`), CAD (`tools/cad/`), slicer (`tools/slicer/`). Logs to `captures/`. |
+| Where does SO-101 orchestration live?           | `src/pipettebot/so101/` — `orchestrator.py` (named-position playback after the i3 homes) + `capture_position.py` (teaching CLI). Composition over `so101.DualArmController`; opt-in via `SO101_CONFIG` env. Optional `[orchestrator]` extra; sequence constant hardcoded for v0. See issue #120 and the `_ArmController` Protocol refactor in #133. |
 | What goes in AGENT_REQUESTS.md?                 | Anything deferred — features, ADRs, hardware photos, firmware tracks. |
 
 ## Architecture Overview

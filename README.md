@@ -130,6 +130,20 @@ PIPETTE_PORT=/dev/ttyUSB1 \
   PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
   uv run examples/showcase_v0_full_pipettebot_rows.py
 
+# After the i3 homes, optionally hand off to an SO-101 follower for the
+# used-tips bin pickup (issue #120). Needs the [orchestrator] extra
+# (`uv sync --extra orchestrator`) and named positions taught into
+# `configs/so101_arms.yaml` via leader teleop. Teaching workflow:
+#   Terminal A (in ../so101-biolab-automation):  make start_teleop
+#   Terminal B (per waypoint):
+#     uv run pipettebot-capture-position --name=demo_pickup_approach
+#     # ... paste each printed line into configs/so101_arms.yaml ...
+# Once values are taught, run the orchestrator-enabled tour:
+SO101_CONFIG=configs/so101_arms.yaml \
+  PIPETTE_PORT=/dev/ttyUSB1 I3MEGA_PORT=/dev/ttyUSB0 \
+  PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
+  NUM_CYCLES=8 uv run examples/showcase_v0_full_pipettebot_rows.py
+
 # Every gantry-using example also accepts MOTION_PROFILE to dial gantry
 # accel/jerk between slow / mid / fast (or off to skip the install).
 # Default is mid (liquid-handling friendly). See
