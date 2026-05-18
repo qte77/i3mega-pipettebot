@@ -55,7 +55,10 @@ cad = [
     "build123d>=0.10",
 ]
 orchestrator = [
-    "so101 @ git+https://github.com/qte77/so101-biolab-automation.git@main",
+    # so101 requires Python 3.12+; gate the marker so `uv sync --extra
+    # orchestrator` is a no-op on 3.11. Distribution name in so101's
+    # pyproject is `so101-biolab-automation`; the import root is `so101`.
+    "so101-biolab-automation @ git+https://github.com/qte77/so101-biolab-automation.git@main ; python_version >= '3.12'",
 ]
 
 [tool.hatch.metadata]
