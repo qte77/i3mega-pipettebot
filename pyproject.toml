@@ -36,6 +36,10 @@ dependencies = [
 Homepage = "https://github.com/qte77/i3mega-pipettebot"
 Issues = "https://github.com/qte77/i3mega-pipettebot/issues"
 "Companion driver" = "https://github.com/Lambda-Biolab/dpette-usb-driver"
+"Orchestrator companion" = "https://github.com/qte77/so101-biolab-automation"
+
+[project.scripts]
+pipettebot-capture-position = "pipettebot.so101.capture_position:main"
 
 [project.optional-dependencies]
 dev = [
@@ -49,6 +53,9 @@ dev = [
 ]
 cad = [
     "build123d>=0.10",
+]
+orchestrator = [
+    "so101 @ git+https://github.com/qte77/so101-biolab-automation.git@main",
 ]
 
 [tool.hatch.metadata]
@@ -89,6 +96,10 @@ exclude = [
 # Note: `[[tool.mypy.overrides]]` for dpette and build123d were removed
 # because `src/` (the only path mypy checks) imports neither. Re-add them
 # alongside any future src import of those packages.
+
+[[tool.mypy.overrides]]
+module = "so101.*"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

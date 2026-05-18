@@ -1,0 +1,41 @@
+# SO-101 arms config consumed by `pipettebot.orchestrator` when SO101_CONFIG
+# is set on examples/showcase_v0_full_pipettebot_rows.py. Schema is so101's
+# `DualArmConfig` — see qte77/so101-biolab-automation/src/so101/arms.py.
+#
+# Ports are placeholders. Update after `lerobot-find-port` in the so101 repo.
+
+arm_a:
+  arm_id: arm_a
+  port: /dev/ttyACM1
+  role: follower
+  cameras: {}
+
+arm_b:
+  arm_id: arm_b
+  port: /dev/ttyACM2
+  role: follower
+  cameras: {}
+
+leader:
+  arm_id: leader
+  port: /dev/ttyACM0
+  role: leader
+  cameras: {}
+
+# Named joint positions [shoulder, elbow, wrist_pitch, wrist_roll, gripper_roll, gripper]
+positions:
+  park: [0.0, -45.0, -90.0, 0.0, 0.0, 0.0]
+  # TEACH: demo_pickup_* are placeholders for the simple pickup-rotate
+  # bootstrap. Capture real values via leader teleop on the workstation:
+  #   Terminal A (in ../so101-biolab-automation):
+  #     make start_teleop
+  #   Terminal B (here), per waypoint:
+  #     uv run pipettebot-capture-position --name=demo_pickup_approach
+  #     uv run pipettebot-capture-position --name=demo_pickup_grip
+  #     uv run pipettebot-capture-position --name=demo_pickup_lift
+  #     uv run pipettebot-capture-position --name=demo_pickup_rotate
+  # Paste each printed line over the corresponding placeholder below.
+  demo_pickup_approach: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  demo_pickup_grip:     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  demo_pickup_lift:     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  demo_pickup_rotate:   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
