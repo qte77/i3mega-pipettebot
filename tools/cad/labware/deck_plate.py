@@ -36,7 +36,9 @@ sys.path.pop()
 
 # --- Plate / fence parameters (all in mm) ---
 DECK_WIDTH = 219.8       # X span — 0.1 mm shrink from 220 per side for clip clearance
-DECK_DEPTH = 219.8       # Y span
+DECK_DEPTH = 229.8       # Y span — extended 10 mm beyond the bed's 219.8
+                         # so each half prints to ~Y=219 after the MK4's
+                         # ~209 mm Y truncation
 BASE_T = 4.0             # base thickness — rigid main body
 CLAMP_ZONE_T = 2.0       # base thickness at clamp pockets — i3 bed-clip max grip
 LIP_H = 2.0              # lip fence height (sits on top of the base)
@@ -100,8 +102,8 @@ WELL_SHORT = 85.5   # along X
 # cropped by the envelope intersection). Slight overlap with the 96-
 # well plate at X=80..95.5, Y=165..192 — acceptable (parts swap).
 RESERVOIR_X = 150.0
-RESERVOIR_Y = 187.5
-RESERVOIR_LONG = 45.0    # along Y
+RESERVOIR_Y = 186.0      # was 187.5; back edge -3 mm to Y=162
+RESERVOIR_LONG = 48.0    # along Y (was 45; +3 mm at the back)
 RESERVOIR_SHORT = 140.0  # along X
 
 _SLOTS = (
