@@ -4,6 +4,7 @@
 	setup_dev \
 	setup_cad \
 	setup_slicer \
+	setup_freecad \
 	setup_diagramforge \
 	setup_all \
 	lint \
@@ -97,6 +98,25 @@ setup_slicer:  ## Probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)
 		exit 1
 	fi
 
+setup_freecad:  ## Probe for FreeCAD (optional — inspect generated STEP files)
+	if command -v freecad > /dev/null 2>&1; then
+		echo "freecad already installed: $$(freecad --version 2>&1 | head -1)"
+	elif command -v FreeCAD > /dev/null 2>&1; then
+		echo "FreeCAD already installed: $$(FreeCAD --version 2>&1 | head -1)"
+	else
+		echo "FreeCAD not found. Optional — used to inspect STEP files in hardware/step/."
+		echo ""
+		echo "Official downloads (per https://www.freecad.org/downloads.php):"
+		echo "  Linux  AppImage:  github.com/FreeCAD/FreeCAD/releases  (x86_64 / aarch64)"
+		echo "  macOS  DMG:       github.com/FreeCAD/FreeCAD/releases  (arm64 / x86_64)"
+		echo ""
+		echo "Distro packages (typically available, not endorsed by FreeCAD upstream):"
+		echo "  Fedora:   sudo dnf install freecad"
+		echo "  Debian:   sudo apt install freecad"
+		echo "  Flatpak:  flatpak install flathub org.freecad.FreeCAD"
+		exit 1
+	fi
+
 setup_diagramforge:  ## Clone diagramforge at $(DIAGRAMFORGE_SHA) if .gitmodules registers a URL
 	if [ -e diagramforge/.git ]; then
 		echo "diagramforge already present (HEAD: $$(git -C diagramforge rev-parse --short HEAD))"
@@ -113,9 +133,10 @@ setup_diagramforge:  ## Clone diagramforge at $(DIAGRAMFORGE_SHA) if .gitmodules
 		fi
 	fi
 
-setup_all: setup_dev setup_cad  ## setup_dev + setup_cad + best-effort slicer/diagramforge
+setup_all: setup_dev setup_cad  ## setup_dev + setup_cad + best-effort slicer/freecad/diagramforge
 	# -s on sub-make suppresses both recipe echo and the auto "Entering directory" chatter
 	-$(MAKE) -s setup_slicer
+	-$(MAKE) -s setup_freecad
 	-$(MAKE) -s setup_diagramforge
 
 
@@ -170,7 +191,7 @@ check_docs:  ## markdownlint-cli2 over all *.md (excludes node_modules/.venv/.gi
 # MARK: CAD
 
 
-render_parts:  ## build123d → STL/SVG (manifest in tools/cad/parts.json)
+render_parts:  ## build123d → STL/STEP/SVG (manifest in tools/cad/parts.json)
 	$(PY_CAD) tools/cad/render.py
 
 check_prints:  ## Headless slice via tools/slicer/validate.py --all
