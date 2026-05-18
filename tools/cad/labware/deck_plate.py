@@ -36,7 +36,9 @@ sys.path.pop()
 
 # --- Plate / fence parameters (all in mm) ---
 DECK_WIDTH = 219.8       # X span — 0.1 mm shrink from 220 per side for clip clearance
-DECK_DEPTH = 219.8       # Y span
+DECK_DEPTH = 229.8       # Y span — extended 10 mm beyond the bed's 219.8
+                         # so each half prints to ~Y=219 after the MK4's
+                         # ~209 mm Y truncation
 BASE_T = 4.0             # base thickness — rigid main body
 CLAMP_ZONE_T = 2.0       # base thickness at clamp pockets — i3 bed-clip max grip
 LIP_H = 2.0              # lip fence height (sits on top of the base)
@@ -51,15 +53,18 @@ SPLIT_X = 100.0          # X split line (left / right halves)
 CLAMP_W = 20.0           # along edge direction
 CLAMP_D = 10.0           # into the deck (perpendicular to edge)
 # (centre_x_mm, centre_y_mm, edge): edge in {top, bottom, left, right}
+# Positions chosen to avoid the labware through-holes — pockets at
+# the perimeter that overlap a labware cutout get eaten by the
+# subtract and become invisible.
 CLAMP_POSITIONS = (
-    (30.0, 0.0, "top"),
-    (190.0, 0.0, "top"),
-    (DECK_WIDTH, 80.0, "right"),
-    (DECK_WIDTH, 160.0, "right"),
-    (190.0, DECK_DEPTH, "bottom"),
-    (80.0, DECK_DEPTH, "bottom"),
-    (0.0, 170.0, "left"),
-    (0.0, 80.0, "left"),
+    (30.0, 0.0, "top"),               # c1 — clear (above bin Y top=15)
+    (190.0, 0.0, "top"),              # c2 — clear (above tip box Y top=25)
+    (DECK_WIDTH, 10.0, "right"),      # c3 — above tip box (was Y=80, inside tip box)
+    (DECK_WIDTH, 225.0, "right"),     # c4 — below reservoir (was Y=160, inside reservoir)
+    (190.0, DECK_DEPTH, "bottom"),    # c5 — clear (reservoir front=210 < deck bottom=229.8)
+    (120.0, DECK_DEPTH, "bottom"),    # c6 — between well plate X and reservoir Y (was X=80, inside well plate)
+    (0.0, 170.0, "left"),             # c7 — between bin and well plate left edges (X<10 = clear)
+    (0.0, 110.0, "left"),             # c8 — between bin (Y bottom=102) and well plate (Y top=104.5) (was Y=80, inside bin)
 )
 
 # --- Labware footprints (Marlin frame, mm) ---
@@ -100,8 +105,8 @@ WELL_SHORT = 85.5   # along X
 # cropped by the envelope intersection). Slight overlap with the 96-
 # well plate at X=80..95.5, Y=165..192 — acceptable (parts swap).
 RESERVOIR_X = 150.0
-RESERVOIR_Y = 187.5
-RESERVOIR_LONG = 45.0    # along Y
+RESERVOIR_Y = 186.0      # was 187.5; back edge -3 mm to Y=162
+RESERVOIR_LONG = 48.0    # along Y (was 45; +3 mm at the back)
 RESERVOIR_SHORT = 140.0  # along X
 
 _SLOTS = (
