@@ -36,6 +36,10 @@ dependencies = [
 Homepage = "https://github.com/qte77/i3mega-pipettebot"
 Issues = "https://github.com/qte77/i3mega-pipettebot/issues"
 "Companion driver" = "https://github.com/Lambda-Biolab/dpette-usb-driver"
+"Orchestrator companion" = "https://github.com/qte77/so101-biolab-automation"
+
+[project.scripts]
+pipettebot-capture-position = "pipettebot.so101.capture_position:main"
 
 [project.optional-dependencies]
 dev = [
@@ -49,6 +53,20 @@ dev = [
 ]
 cad = [
     "build123d>=0.10",
+]
+orchestrator = [
+    # so101 requires Python 3.12+; gate the marker so `uv sync --extra
+    # orchestrator` is a no-op on 3.11. Distribution name in so101's
+    # pyproject is `so101-biolab-automation`; the import root is `so101`.
+    "so101-biolab-automation @ git+https://github.com/qte77/so101-biolab-automation.git@main ; python_version >= '3.12'",
+]
+teaching = [
+    # feetech-servo-sdk: STS3215 SDK (provides the `scservo_sdk` Python
+    # module) for the lean leader-follower teleop in
+    # `tools/teleop_lean.py`. No torch, no lerobot. PyPI name is
+    # `feetech-servo-sdk`; lerobot's `[feetech]` extra pulls the same
+    # package. See issue qte77/so101-biolab-automation#160.
+    "feetech-servo-sdk>=1.0.0,<2.0.0",
 ]
 
 [tool.hatch.metadata]
@@ -89,6 +107,10 @@ exclude = [
 # Note: `[[tool.mypy.overrides]]` for dpette and build123d were removed
 # because `src/` (the only path mypy checks) imports neither. Re-add them
 # alongside any future src import of those packages.
+
+[[tool.mypy.overrides]]
+module = "so101.*"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
