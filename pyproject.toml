@@ -60,6 +60,14 @@ orchestrator = [
     # pyproject is `so101-biolab-automation`; the import root is `so101`.
     "so101-biolab-automation @ git+https://github.com/qte77/so101-biolab-automation.git@main ; python_version >= '3.12'",
 ]
+teaching = [
+    # feetech-servo-sdk: STS3215 SDK (provides the `scservo_sdk` Python
+    # module) for the lean leader-follower teleop in
+    # `tools/teleop_lean.py`. No torch, no lerobot. PyPI name is
+    # `feetech-servo-sdk`; lerobot's `[feetech]` extra pulls the same
+    # package. See issue qte77/so101-biolab-automation#160.
+    "feetech-servo-sdk>=1.0.0,<2.0.0",
+]
 
 [tool.hatch.metadata]
 allow-direct-references = true
