@@ -1,5 +1,23 @@
 [
   {
+    "name": "plate_holder",
+    "cad": "labware/plate_holder.py",
+    "build_func": "build_plate_holder",
+    "stl": "labware/plate_holder.stl",
+    "svg": "labware/plate_holder.svg",
+    "status": "active",
+    "notes": "96-well SBS plate holder (127.76 x 85.48 mm footprint) with 4 alignment pins. Walls at 60% plate height, 2 mm thick; 0.5 mm clearance on the inner pocket."
+  },
+  {
+    "name": "tip_rack_holder",
+    "cad": "labware/tip_rack_holder.py",
+    "build_func": "build_tip_rack_holder",
+    "stl": "labware/tip_rack_holder.stl",
+    "svg": "labware/tip_rack_holder.svg",
+    "status": "active",
+    "notes": "Pipette tip rack holder tray (122 x 80 mm SBS variant footprint). 10 mm walls, 3 mm base, 0.5 mm clearance. Pipette-agnostic deck geometry shared across SO-101, XZ-gantry, and i3 Mega contexts."
+  },
+  {
     "name": "deck_plate_assembly",
     "cad": "labware/deck_plate.py",
     "build_func": "build_deck_plate_assembly",
