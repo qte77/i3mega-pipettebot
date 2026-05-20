@@ -23,11 +23,6 @@ via [`so101-biolab-automation`](https://github.com/qte77/so101-biolab-automation
 [![CodeFactor](https://www.codefactor.io/repository/github/qte77/i3mega-pipettebot/badge)](https://www.codefactor.io/repository/github/qte77/i3mega-pipettebot)
 [![Dependabot](https://github.com/qte77/i3mega-pipettebot/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/qte77/i3mega-pipettebot/actions/workflows/dependabot/dependabot-updates)
 
-> **Status: v0 prototype.** A working aspirate-then-dispense demo over
-> hardcoded coordinates. Deck calibration, dPette mount real geometry,
-> and firmware modifications are tracked in [open issues](https://github.com/qte77/i3mega-pipettebot/issues);
-> short-term agent-to-human handoffs live in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md).
-
 ## Why this matters
 
 A pipetting robot you can build for the price of a 3D printer, with a
@@ -37,7 +32,7 @@ end-to-end workflows, and what is explicitly out of scope for v0.
 
 | Solution                                | Cost          | Tips        | API control |
 |-----------------------------------------|---------------|-------------|-------------|
-| **i3 Mega + dPette + this repo**        | **~$200**     | Disposable  | Python      |
+| **i3 Mega (used) + dPette (new) + this repo**        | **~$150**     | Disposable  | Python      |
 | [Science Jubilee][sj] + OT-2 pipette    | ~$900+ build  | Disposable  | Python      |
 | [Opentrons OT-2][ot2]                   | from $15,950  | Disposable  | Python      |
 

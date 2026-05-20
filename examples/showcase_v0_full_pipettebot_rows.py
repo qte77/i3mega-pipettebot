@@ -97,6 +97,14 @@ Environment variables (all optional — modes chosen from env presence):
     OUTPUT_GCODE         Path to tee Marlin commands to disk. Default
                          `showcase_v0_full_pipettebot_rows.gcode` in cwd.
                          Set to empty (`OUTPUT_GCODE=`) to disable.
+    SO101_CONFIG         Path to a so101 arms.yaml (e.g.
+                         `configs/so101_arms.yaml`). When set, the
+                         orchestrator runs the demo_pickup_* sequence on
+                         the SO-101 follower AFTER the final `G28 + M400`.
+                         Preflight validates the named positions exist
+                         BEFORE any i3 motion. Needs the `[orchestrator]`
+                         extra: `uv sync --extra orchestrator`.
+    SO101_ARM_ID         Arm id for the bin pickup (default: arm_a).
 
 Run modes (auto-selected from env presence):
 
@@ -621,6 +629,81 @@ def _describe_mode(have_gantry: bool, have_pipette: bool) -> str:
     return "DRY RUN — both serial skipped; G-code tee only"
 
 
+def _setup_so101_or_exit(config_path: str, arm_id: str):  # type: ignore[no-untyped-def]
+    """Load + connect + preflight the SO-101 controller. sys.exit(1) on missing key."""
+    from pipettebot.so101.orchestrator import (
+        DEMO_PICKUP_SEQUENCE,
+        load_so101_controller,
+        validate_sequence_positions,
+    )
+
+    print(f"[host] SO-101 orchestrator: config={config_path}, arm={arm_id}")
+    controller = load_so101_controller(config_path)
+    try:
+        validate_sequence_positions(controller.config, DEMO_PICKUP_SEQUENCE)
+    except KeyError as missing:
+        sys.stderr.write(
+            f"ERROR: SO101_CONFIG missing position {missing}.\n"
+            f"       Required: {list(DEMO_PICKUP_SEQUENCE)}\n"
+        )
+        controller.disconnect()
+        raise SystemExit(1) from missing
+    return controller
+
+
+def _run_so101_bin_pickup(controller, arm_id: str) -> None:  # type: ignore[no-untyped-def]
+    """Hand off to the SO-101 demo pickup-rotate sequence after the i3 homes."""
+    from pipettebot.so101.orchestrator import DEMO_PICKUP_SEQUENCE, run_sequence
+
+    print(f"[host] SO-101 bin pickup: {arm_id} <- demo_pickup_*")
+    run_sequence(controller, arm_id, DEMO_PICKUP_SEQUENCE)
+
+
+def _setup_marlin_or_exit(
+    port: str,
+    baud: int,
+    so101_controller,  # type: ignore[no-untyped-def]
+) -> serial.Serial | None:
+    """Open Marlin USB-serial. sys.exit(1) on failure, after disconnecting so101."""
+    if not port:
+        return None
+    link = open_marlin_port(port, baudrate=baud, timeout=2.0)
+    if link is None:
+        sys.stderr.write(
+            f"ERROR: could not open Marlin port {port} @ {baud}.\n"
+            "       Run `uv run tools/preflight.py` to verify.\n"
+        )
+        if so101_controller is not None:
+            so101_controller.disconnect()
+        raise SystemExit(1)
+    return link
+
+
+def _setup_pipette_or_exit(
+    pipette_port: str,
+    pipette_baud: int,
+    link: serial.Serial | None,
+    so101_controller,  # type: ignore[no-untyped-def]
+) -> DPetteDriver | None:
+    """Connect the dPette. sys.exit(1) on stub fall-back, after closing link + so101."""
+    if not pipette_port:
+        return None
+    print(f"[host] connecting dPette on {pipette_port} @ {pipette_baud}")
+    pipette = DPetteDriver(SerialConfig(port=pipette_port, baudrate=pipette_baud))
+    pipette.connect()  # A0 HELLO → B0 WOL (PI mode) → motor homes
+    if pipette.stub_mode:
+        sys.stderr.write(
+            f"ERROR: dPette on {pipette_port} fell back to stub mode.\n"
+            "       Wake it (press its button), replug, and retry.\n"
+        )
+        if link is not None:
+            link.close()
+        if so101_controller is not None:
+            so101_controller.disconnect()
+        raise SystemExit(1)
+    return pipette
+
+
 def main() -> int:
     if "--help" in sys.argv or "-h" in sys.argv:
         print(__doc__)
@@ -629,6 +712,8 @@ def main() -> int:
     pipette_port = os.environ.get("PIPETTE_PORT", "").strip()
     baud = int(os.environ.get("I3MEGA_BAUD", str(DEFAULT_BAUD)))
     pipette_baud = int(os.environ.get("PIPETTE_BAUD", str(DEFAULT_PIPETTE_BAUD)))
+    so101_config_path = os.environ.get("SO101_CONFIG", "").strip()
+    so101_arm_id = os.environ.get("SO101_ARM_ID", "arm_a").strip() or "arm_a"
     num_cycles_env = _resolve_num_cycles()
     volumes_ul, banner = build_volumes(num_cycles_env, "cycles")
     if len(volumes_ul) > num_cycles_env:
@@ -650,29 +735,16 @@ def main() -> int:
         f"× 8 channels = {num_cycles * 8} wells, {total_ul:.0f} uL total"
     )
 
-    link: serial.Serial | None = None
-    if port:
-        link = open_marlin_port(port, baudrate=baud, timeout=2.0)
-        if link is None:
-            sys.stderr.write(
-                f"ERROR: could not open Marlin port {port} @ {baud}.\n"
-                "       Run `uv run tools/preflight.py` to verify.\n"
-            )
-            return 1
+    # SO-101 preflight runs BEFORE any i3/dPette motion so a missing
+    # named-position yaml key fails fast (not mid-run).
+    so101_controller = (
+        _setup_so101_or_exit(so101_config_path, so101_arm_id)
+        if so101_config_path
+        else None
+    )
 
-    pipette: DPetteDriver | None = None
-    if pipette_port:
-        print(f"[host] connecting dPette on {pipette_port} @ {pipette_baud}")
-        pipette = DPetteDriver(SerialConfig(port=pipette_port, baudrate=pipette_baud))
-        pipette.connect()  # A0 HELLO → B0 WOL (PI mode) → motor homes
-        if pipette.stub_mode:
-            sys.stderr.write(
-                f"ERROR: dPette on {pipette_port} fell back to stub mode.\n"
-                "       Wake it (press its button), replug, and retry.\n"
-            )
-            if link is not None:
-                link.close()
-            return 1
+    link = _setup_marlin_or_exit(port, baud, so101_controller)
+    pipette = _setup_pipette_or_exit(pipette_port, pipette_baud, link, so101_controller)
 
     try:
         if link is not None:
@@ -683,8 +755,12 @@ def main() -> int:
                 _execute(link, pipette, volumes_ul, gcode_path)
         else:
             _execute(None, pipette, volumes_ul, gcode_path)
+        if so101_controller is not None:
+            _run_so101_bin_pickup(so101_controller, so101_arm_id)
         print("[host] done")
     finally:
+        if so101_controller is not None:
+            so101_controller.disconnect()
         if pipette is not None:
             pipette.disconnect()
     return 0
