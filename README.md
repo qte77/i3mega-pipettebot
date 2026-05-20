@@ -13,7 +13,7 @@ and used-tips bin pickup is delegated to an optional companion SO-101 arm
 via [`so101-biolab-automation`](https://github.com/qte77/so101-biolab-automation).
 
 <p align="center">
-  <img src="assets/images/pipetting-robot.gif" alt="i3 Mega pipetting robot in action" width="80%" />
+  <img src="assets/images/dpette+i3_full_cycle.gif" alt="dpette+i3 (i3 Mega) pipetting robot in action" width="80%" />
 </p>
 
 ![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)
