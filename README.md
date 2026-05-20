@@ -243,6 +243,11 @@ inconsequential. Firmware integration (Stage 1 config patch, Stage 2
 UART tap to dPette) is deliberately **out of scope** for the current
 PC-as-host architecture.
 
+## Related repositories
+
+- [Lambda-Biolab/dpette-usb-driver](https://github.com/Lambda-Biolab/dpette-usb-driver) — pipette serial driver (imported as `dpette`); reference pipette for the **dpette+i3** build.
+- [qte77/so101-biolab-automation](https://github.com/qte77/so101-biolab-automation) — dual SO-101 arm controller; optional companion that retrieves the used-tips bin after the i3 homes (issue #120).
+
 ## Documentation
 
 - [docs/UserStory.md](docs/UserStory.md) — user personas, target workflows, scope and acceptance criteria
