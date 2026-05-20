@@ -37,17 +37,15 @@ end-to-end workflows, and what is explicitly out of scope for v0.
 
 | Solution                                | Cost          | Tips        | API control |
 |-----------------------------------------|---------------|-------------|-------------|
-| **i3 Mega + dPette + this repo**        | **~$200**     | Disposable  | Python      |
+| **i3 Mega (used) + dPette (new) + this repo**        | **~$150**     | Disposable  | Python      |
 | [Science Jubilee][sj] + OT-2 pipette    | ~$900+ build  | Disposable  | Python      |
 | [Opentrons OT-2][ot2]                   | from $15,950  | Disposable  | Python      |
 
 [sj]: https://science-jubilee.readthedocs.io/en/latest/
 [ot2]: https://opentrons.com/products/ot-2-robot
 
-The Opentrons price is the vendor's published list price (see link).
-The Jubilee + OT-2-pipette figure is a community build-cost estimate
-anchored at the [Science Jubilee project][sj]; the toolhead family includes
-[OT-2 pipettes with disposable tips][sj-pipette].
+Prices: Opentrons is the vendor list; Jubilee is a community build estimate
+anchored at the [Science Jubilee project][sj] ([OT-2 pipette toolhead][sj-pipette]).
 
 [sj-pipette]: https://science-jubilee.readthedocs.io/en/latest/building/pipette_tool.html
 
