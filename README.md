@@ -1,6 +1,6 @@
 # i3mega-pipettebot
 
-> Turn an **Anycubic i3 Mega** into a sub-$200 disposable-tip pipetting robot
+> Turn an **Anycubic i3 Mega** into a sub-$150 disposable-tip pipetting robot
 > driven by a **DLAB dPette** electronic pipette and Python.
 
 Marlin / Trigorilla stays unmodified; the print head and PCB are physically
@@ -11,10 +11,15 @@ separate USB-serial link via
 [`dpette-usb-driver`](https://github.com/Lambda-Biolab/dpette-usb-driver),
 and used-tips bin pickup is delegated to an optional companion SO-101 arm
 via [`so101-biolab-automation`](https://github.com/qte77/so101-biolab-automation).
+The concrete reference build is **dpette+i3** (i3 Mega + DLAB dPette+);
+the library itself is pipette-agnostic via the `_Pipette` Protocol.
 
+<details>
+<summary>dpette+i3 in action (animated GIF)</summary>
 <p align="center">
   <img src="assets/images/dpette+i3_full_cycle.gif" alt="dpette+i3 (i3 Mega) pipetting robot in action" width="80%" />
 </p>
+</details>
 
 ![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
@@ -28,7 +33,7 @@ via [`so101-biolab-automation`](https://github.com/qte77/so101-biolab-automation
 A pipetting robot you can build for the price of a 3D printer, with a
 disposable-tip workflow and Python control. See
 [docs/UserStory.md](docs/UserStory.md) for the target personas,
-end-to-end workflows, and what is explicitly out of scope for v0.
+end-to-end workflows, and what is explicitly out of scope.
 
 | Solution                                | Cost          | Tips        | API control |
 |-----------------------------------------|---------------|-------------|-------------|
@@ -39,10 +44,8 @@ end-to-end workflows, and what is explicitly out of scope for v0.
 [sj]: https://science-jubilee.readthedocs.io/en/latest/
 [ot2]: https://opentrons.com/products/ot-2-robot
 
-The Opentrons price is the vendor's published list price (see link).
-The Jubilee + OT-2-pipette figure is a community build-cost estimate
-anchored at the [Science Jubilee project][sj]; the toolhead family includes
-[OT-2 pipettes with disposable tips][sj-pipette].
+Prices: Opentrons is the vendor list; Jubilee is a community build estimate
+anchored at the [Science Jubilee project][sj] ([OT-2 pipette toolhead][sj-pipette]).
 
 [sj-pipette]: https://science-jubilee.readthedocs.io/en/latest/building/pipette_tool.html
 
@@ -64,7 +67,7 @@ make test
 mocked-serial test suite (no hardware required). `make help` lists every
 recipe grouped by section.
 
-### Run the v0 demo (requires hardware)
+## Run the demo (requires hardware)
 
 Two separate guides cover the physical/electrical setup and the
 well-origin calibration before you run the demo:
@@ -80,7 +83,7 @@ uv run tools/preflight.py
 
 This reads `M115` from Marlin and the EEPROM packet from the dPette;
 no motion is sent. Preflight passes when **either** device is found —
-the gantry and the pipette are exercised independently in v0.
+the gantry and the pipette are exercised independently.
 
 To chain discovery directly into the next command, use `--export`:
 
@@ -89,12 +92,12 @@ eval "$(uv run python tools/preflight.py --export)" \
   && uv run python examples/showcase_v0_pipette_sim.py
 ```
 
-Then the demo. v0 ships hardware examples that drive the gantry
-(and, for the canonical end-to-end demo, also the dPette) and tee the
-Marlin stream to disk for replay/SD use. **Precondition for all
-full-plate demos: REMOVE TIPS from the dPette before running.** Phase
-1 issues `G28 X Y Z` — Z homes to its calibrated tip-on-deck zero,
-which would drag any mounted tip into the deck.
+Then the demo. Hardware examples drive the gantry (and, for the
+canonical end-to-end demo, also the dPette) and tee the Marlin stream
+to disk for replay/SD use. **Precondition for all full-plate demos:
+REMOVE TIPS from the dPette before running.** Phase 1 issues
+`G28 X Y Z` — Z homes to its calibrated tip-on-deck zero, which would
+drag any mounted tip into the deck.
 
 ```bash
 # back-well ↔ front-well pipetting cycle (older two-well demo, simulated)
@@ -113,7 +116,7 @@ uv run examples/showcase_v0_full_pipettebot.py
 # to measure real B3 motor timing. Run with tip in air or over waste.
 uv run examples/showcase_v0_full_dpette_cycles.py
 
-# Every v0 showcase (column/dpette-cycles/rows) accepts a TOML experiment
+# Every showcase (column/dpette-cycles/rows) accepts a TOML experiment
 # profile via PIPETTE_PROFILE — drives the cycle count, per-cycle volumes,
 # and any pre-mixed reservoir gradient notes. Profile length overrides the
 # script's default (NUM_COLUMNS / NUM_CYCLES). See
@@ -152,15 +155,24 @@ For headless-gantry bring-up, debugging, and post-removal sanity checks:
 | `tools/preflight.py`        | Port discovery + Marlin/dPette firmware probe.           |
 | `tools/diagnose_axis.py`    | Per-axis (`AXIS=X\|Y\|Z`) stepped motion under operator confirmation. Reports `M119` first, never homes. |
 | `tools/marlin_repl.py`      | Interactive G-code REPL with built-in command cheat-sheet (`?`). For ad-hoc `M119`, `M999`, `M114`, `M503`, etc. |
-| `tools/cad/`                | build123d CAD scripts for printable parts (tip rack, plate holder, dPette cradles, tip ejector, **i3 carriage dPette+ mount**). `make render_parts` generates STL+SVG; `make check_prints` slices via OrcaSlicer (or PrusaSlicer fallback). All hardware measurements consolidated in `tools/cad/measurements.py`. |
 
 See [`docs/marlin-commands.md`](docs/marlin-commands.md) for the full
 G/M-code reference and i3 Mega coordinate orientation.
 
+### CAD + slicer pipeline (`tools/cad/`, `tools/slicer/`)
+
+build123d CAD scripts for printable parts — tip rack, plate holder, dPette
+cradles, tip ejector, **i3 carriage dPette+ mount**. `make render_parts`
+generates STL+SVG from `tools/cad/parts.json`; `make check_prints` slices
+via OrcaSlicer (preferred) or PrusaSlicer (fallback). Hardware measurements
+are consolidated in `tools/cad/measurements.py`. See
+[`docs/3d-parts.md`](docs/3d-parts.md) for the CAD pipeline design
+rationale and payload / Z-envelope math.
+
 Expected behavior: home → bed sweeps to back well → 5 cm Z plunger
 stroke → bed sweeps to front well → another stroke → home.
 
-## Architecture (v0)
+## Architecture
 
 ```text
 examples/showcase_v0_pipette_sim.py
@@ -171,20 +183,18 @@ raw serial @ 250000 baud  ──► /dev/cu.usbserial-*  (Marlin, G-code)
         └─ tee G-code stream ──► OUTPUT_GCODE file (replay / SD)
 ```
 
-In v0 the dPette is wired in via `dpette.DPetteDriver`.
+The dPette is wired in via `dpette.DPetteDriver`.
 `showcase_v0_full_pipettebot.py` runs the full plate fill end-to-end —
 gantry transit + real B3 SUCK/BLOW at the bottom of each dive.
 `showcase_v0_full_plate.py` keeps the gantry-only path (plunger
-simulated via Z) for bring-up without the pipette. Firmware-side
-M820 pass-through is still in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md)
-but no longer required for end-to-end pipetting.
+simulated via Z) for bring-up without the pipette.
 
 Five modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
 `experiment_profile.py` (TOML experiment-profile loader; see
 [`examples/experiment_profiles/`](examples/experiment_profiles/)),
 `motion_profile.py` (bundled SLOW/MID/FAST gantry-tuning factors;
 `MOTION_PROFILE` env selects), and `__init__.py` (re-exports). No
-deck library, no safety limits, no calibration in v0 — the caller
+deck library, no safety limits, no calibration yet — the caller
 passes raw `(x, y, z)`.
 
 ## Development
@@ -230,8 +240,13 @@ uv run pytest -m hardware
 Marlin runs unmodified. Pipetting cycles are slow (seconds per move,
 seconds per aspirate); USB-serial round-trip latency (~20–50 ms) is
 inconsequential. Firmware integration (Stage 1 config patch, Stage 2
-UART tap to dPette) is documented in [AGENT_REQUESTS.md](AGENT_REQUESTS.md)
-but deliberately **not** part of v0.
+UART tap to dPette) is deliberately **out of scope** for the current
+PC-as-host architecture.
+
+## Related repositories
+
+- [Lambda-Biolab/dpette-usb-driver](https://github.com/Lambda-Biolab/dpette-usb-driver) — pipette serial driver (imported as `dpette`); reference pipette for the **dpette+i3** build.
+- [qte77/so101-biolab-automation](https://github.com/qte77/so101-biolab-automation) — dual SO-101 arm controller; optional companion that retrieves the used-tips bin after the i3 homes (issue #120).
 
 ## Documentation
 
@@ -245,7 +260,6 @@ but deliberately **not** part of v0.
 - [docs/adr/](docs/adr/) — architectural decision records
 - [AGENTS.md](AGENTS.md) — agent rules, decision framework, architecture
 - [AGENT_LEARNINGS.md](AGENT_LEARNINGS.md) — gotchas as we discover them
-- [AGENT_REQUESTS.md](AGENT_REQUESTS.md) — short-term agent-to-human handoffs
 - [CONTRIBUTING.md](CONTRIBUTING.md) — dev workflow
 - [CHANGELOG.md](CHANGELOG.md) — version history
 
