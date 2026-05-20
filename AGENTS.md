@@ -5,7 +5,7 @@ Single source of truth for agents working in this repo. `CLAUDE.md` and
 
 ## Claude Code Infrastructure
 
-- Doc hierarchy: AGENTS.md → AGENT_LEARNINGS.md, AGENT_REQUESTS.md, CONTRIBUTING.md, CHANGELOG.md, `docs/adr/NNNN-*.md` (architecture decisions)
+- Doc hierarchy: AGENTS.md → AGENT_LEARNINGS.md, AGENT_REQUESTS.md, CONTRIBUTING.md, CHANGELOG.md, `docs/adr/NNNN-*.md` (architecture decisions), `docs/research/*.md` (research log; append-only)
 - Skills are loaded from the user-level marketplace `qte77-claude-code-plugins`. No repo-local `.claude/skills/`.
 - Repo-local rules live in `.claude/rules/` and apply to every session in this directory.
 
