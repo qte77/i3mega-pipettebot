@@ -1,6 +1,6 @@
 # i3mega-pipettebot
 
-> Turn an **Anycubic i3 Mega** into a sub-$200 disposable-tip pipetting robot
+> Turn an **Anycubic i3 Mega** into a sub-$150 disposable-tip pipetting robot
 > driven by a **DLAB dPette** electronic pipette and Python.
 
 Marlin / Trigorilla stays unmodified; the print head and PCB are physically
@@ -11,10 +11,15 @@ separate USB-serial link via
 [`dpette-usb-driver`](https://github.com/Lambda-Biolab/dpette-usb-driver),
 and used-tips bin pickup is delegated to an optional companion SO-101 arm
 via [`so101-biolab-automation`](https://github.com/qte77/so101-biolab-automation).
+The concrete reference build is **dpette+i3** (i3 Mega + DLAB dPette+);
+the library itself is pipette-agnostic via the `_Pipette` Protocol.
 
+<details>
+<summary>dpette+i3 in action (animated GIF)</summary>
 <p align="center">
   <img src="assets/images/dpette+i3_full_cycle.gif" alt="dpette+i3 (i3 Mega) pipetting robot in action" width="80%" />
 </p>
+</details>
 
 ![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
@@ -22,11 +27,6 @@ via [`so101-biolab-automation`](https://github.com/qte77/so101-biolab-automation
 [![CodeQL](https://github.com/qte77/i3mega-pipettebot/actions/workflows/codeql.yml/badge.svg)](https://github.com/qte77/i3mega-pipettebot/actions/workflows/codeql.yml)
 [![CodeFactor](https://www.codefactor.io/repository/github/qte77/i3mega-pipettebot/badge)](https://www.codefactor.io/repository/github/qte77/i3mega-pipettebot)
 [![Dependabot](https://github.com/qte77/i3mega-pipettebot/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/qte77/i3mega-pipettebot/actions/workflows/dependabot/dependabot-updates)
-
-> **Status: v0 prototype.** A working aspirate-then-dispense demo over
-> hardcoded coordinates. Deck calibration, dPette mount real geometry,
-> and firmware modifications are tracked in [open issues](https://github.com/qte77/i3mega-pipettebot/issues);
-> short-term agent-to-human handoffs live in [`AGENT_REQUESTS.md`](AGENT_REQUESTS.md).
 
 ## Why this matters
 
