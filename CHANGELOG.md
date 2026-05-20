@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `docs/research/cad-alternatives.md` — append-only research log for CAD tooling and labware-model alternatives evaluated against the build123d pipeline. First entry (2026-05-20) scores three AI-assisted CAD generators: GenCAD (skip — no license, wrong engine), EvoCAD paper (arxiv 2510.11631; track — no shipping code), evo-cad (skip — no license, CadQuery instead of build123d). One reusable pattern identified (VLM-as-fitness over rendered views) is tracked separately in #139 (#140).
 - `src/pipettebot/cli_profile.py` — shared env-var resolution (`build_volumes()`, `resolve_profile()`) used by every v0 showcase. Centralises `PIPETTE_PROFILE` / `PIPETTE_VOLUME_UL` handling and returns `(volumes_ul, banner)` so each script logs the schedule consistently. Re-exported from `pipettebot.__init__`. 16 unit tests in `tests/test_cli_profile.py` cover both resolution paths and `unit_label` parameterisation (`"columns"` / `"cycles"`).
 - `.github/workflows/codeql.yml` — GitHub CodeQL static analysis (Python, `security-and-quality` query suite).
 - `.github/dependabot.yml` — weekly dependency-update PRs for GitHub Actions and pip.
