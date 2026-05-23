@@ -80,16 +80,36 @@ target-version = "py311"
 src = ["src"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH", "C90", "S"]
+# Baseline + quality + strictness per py-harden-ruff.md section 1.
+# Migrated TCH -> TC (rule rename).
+select = [
+    "E", "F", "I", "N", "W", "UP",        # baseline
+    "B", "S", "SIM", "RUF", "PT", "A",    # quality
+    "ANN", "TC", "PGH", "C90", "D",       # strictness
+    "TRY",                                 # try/except discipline
+]
+ignore = [
+    "TRY003",  # long error messages outside exception classes — noisy on one-off defensive raises
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
-"examples/*" = ["E501"]
-"tests/*" = ["E501", "TC001", "TC002", "TC003", "S101"]   # assert is the pytest mechanism
-"tools/cad/**" = ["E501", "ANN", "S603"]   # CAD scripts: dynamic build123d imports, subprocess calls
-"tools/slicer/**" = ["S603"]               # subprocess calls run trusted slicer binaries
+# Examples are operator-facing scripts with intentional unicode (× for
+# multiplication, – for en-dashes) in documentation; over-annotating is noise.
+"examples/*" = ["E501", "D", "ANN", "RUF001", "RUF002", "RUF003"]
+# Tests use pytest's assert mechanism; annotation discipline is not enforced
+# (tests are write-once, expressiveness over types). RUF unicode ignores
+# match the examples/ convention (math notation in technical comments).
+"tests/**" = ["E501", "TC001", "TC002", "TC003", "S101", "D", "ANN", "PT", "RUF001", "RUF002", "RUF003"]
+# Bring-up scripts: operator-facing, not library code.
+"tools/**" = ["D", "ANN", "RUF001", "RUF002", "RUF003"]
+"tools/cad/**" = ["E501", "S603"]      # CAD: dynamic build123d imports, subprocess calls
+"tools/slicer/**" = ["S603"]           # subprocess calls run trusted slicer binaries
 
 [tool.ruff.lint.isort]
 known-first-party = ["pipettebot", "tests"]

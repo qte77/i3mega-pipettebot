@@ -11,9 +11,9 @@ import pytest
 
 pytest.importorskip("so101")
 
-import yaml  # noqa: E402
+import yaml
 
-from pipettebot.so101.capture_position import (  # noqa: E402
+from pipettebot.so101.capture_position import (
     _format_joints_as_yaml_line,
     capture,
 )

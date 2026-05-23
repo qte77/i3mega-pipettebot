@@ -35,36 +35,48 @@ from util.export import export_part
 sys.path.pop()
 
 # --- Plate / fence parameters (all in mm) ---
-DECK_WIDTH = 219.8       # X span — 0.1 mm shrink from 220 per side for clip clearance
-DECK_DEPTH = 229.8       # Y span — extended 10 mm beyond the bed's 219.8
-                         # so each half prints to ~Y=219 after the MK4's
-                         # ~209 mm Y truncation
-BASE_T = 4.0             # base thickness — rigid main body
-CLAMP_ZONE_T = 2.0       # base thickness at clamp pockets — i3 bed-clip max grip
-LIP_H = 2.0              # lip fence height (sits on top of the base)
-LIP_T = 1.5              # lip wall thickness
-CLEARANCE = 0.5          # labware-to-lip slip fit
-SPLIT_X = 100.0          # X split line (left / right halves)
+DECK_WIDTH = 219.8  # X span — 0.1 mm shrink from 220 per side for clip clearance
+DECK_DEPTH = 229.8  # Y span — extended 10 mm beyond the bed's 219.8
+# so each half prints to ~Y=219 after the MK4's
+# ~209 mm Y truncation
+BASE_T = 4.0  # base thickness — rigid main body
+CLAMP_ZONE_T = 2.0  # base thickness at clamp pockets — i3 bed-clip max grip
+LIP_H = 2.0  # lip fence height (sits on top of the base)
+LIP_T = 1.5  # lip wall thickness
+CLEARANCE = 0.5  # labware-to-lip slip fit
+SPLIT_X = 100.0  # X split line (left / right halves)
 
 # --- Clamp pockets (8 perimeter notches where bed clips engage) ---
 # Each pocket: 20 mm along the edge x 10 mm into the deck. Cuts away
 # the top (BASE_T - CLAMP_ZONE_T) = 3 mm so the clip grips a 2 mm
 # tall top face at Z = CLAMP_ZONE_T.
-CLAMP_W = 20.0           # along edge direction
-CLAMP_D = 10.0           # into the deck (perpendicular to edge)
+CLAMP_W = 20.0  # along edge direction
+CLAMP_D = 10.0  # into the deck (perpendicular to edge)
 # (centre_x_mm, centre_y_mm, edge): edge in {top, bottom, left, right}
 # Positions chosen to avoid the labware through-holes — pockets at
 # the perimeter that overlap a labware cutout get eaten by the
 # subtract and become invisible.
 CLAMP_POSITIONS = (
-    (30.0, 0.0, "top"),               # c1 — clear (above bin Y top=15)
-    (190.0, 0.0, "top"),              # c2 — clear (above tip box Y top=25)
-    (DECK_WIDTH, 10.0, "right"),      # c3 — above tip box (was Y=80, inside tip box)
-    (DECK_WIDTH, 225.0, "right"),     # c4 — below reservoir (was Y=160, inside reservoir)
-    (190.0, DECK_DEPTH, "bottom"),    # c5 — clear (reservoir front=210 < deck bottom=229.8)
-    (120.0, DECK_DEPTH, "bottom"),    # c6 — between well plate X and reservoir Y (was X=80, inside well plate)
-    (0.0, 170.0, "left"),             # c7 — between bin and well plate left edges (X<10 = clear)
-    (0.0, 110.0, "left"),             # c8 — between bin (Y bottom=102) and well plate (Y top=104.5) (was Y=80, inside bin)
+    (30.0, 0.0, "top"),  # c1 — clear (above bin Y top=15)
+    (190.0, 0.0, "top"),  # c2 — clear (above tip box Y top=25)
+    (DECK_WIDTH, 10.0, "right"),  # c3 — above tip box (was Y=80, inside tip box)
+    (DECK_WIDTH, 225.0, "right"),  # c4 — below reservoir (was Y=160, inside reservoir)
+    (
+        190.0,
+        DECK_DEPTH,
+        "bottom",
+    ),  # c5 — clear (reservoir front=210 < deck bottom=229.8)
+    (
+        120.0,
+        DECK_DEPTH,
+        "bottom",
+    ),  # c6 — between well plate X and reservoir Y (was X=80, inside well plate)
+    (0.0, 170.0, "left"),  # c7 — between bin and well plate left edges (X<10 = clear)
+    (
+        0.0,
+        110.0,
+        "left",
+    ),  # c8 — between bin (Y bottom=102) and well plate (Y top=104.5) (was Y=80, inside bin)
 )
 
 # --- Labware footprints (Marlin frame, mm) ---
@@ -77,8 +89,8 @@ CLAMP_POSITIONS = (
 # the tip box (X=127) holds. Left lip auto-cropped at X=0.
 # 1.5 cm back margin (Y top = 15).
 BIN_X = 8.5
-BIN_Y = 58.5    # centre Y; span = 15..102
-BIN_LONG = 87.0    # along Y
+BIN_Y = 58.5  # centre Y; span = 15..102
+BIN_LONG = 87.0  # along Y
 BIN_SHORT = 127.0  # along X
 
 # Tip box: 83 x 122 mm (user-supplied; smaller than SBS standard).
@@ -87,8 +99,8 @@ BIN_SHORT = 127.0  # along X
 # box left at X=127. Centre X=168.5.
 TIP_BOX_X = 168.5
 TIP_BOX_Y = 86.0
-TIP_BOX_LONG = 122.0   # along Y
-TIP_BOX_SHORT = 83.0   # along X
+TIP_BOX_LONG = 122.0  # along Y
+TIP_BOX_SHORT = 83.0  # along X
 
 # 96-well plate: SBS standard 85.5 x 127.8 mm. Front-left, no overlap
 # with bin: 0.25 cm gap below bin bottom (bin Y=15..102; well-plate
@@ -96,17 +108,17 @@ TIP_BOX_SHORT = 83.0   # along X
 # 12.5 mm. Front lip auto-cropped at the deck envelope (U-shape open
 # toward front).
 WELL_X = 52.75
-WELL_Y = 168.4   # centre Y; span = 104.5..232.3
-WELL_LONG = 127.8   # along Y
-WELL_SHORT = 85.5   # along X
+WELL_Y = 168.4  # centre Y; span = 104.5..232.3
+WELL_LONG = 127.8  # along Y
+WELL_SHORT = 85.5  # along X
 
 # Reservoir: 140 x 45 mm trough at the front. Touches right deck edge
 # (right edge at X=220, deck right at X=219.8 — 0.2 mm overhang auto-
 # cropped by the envelope intersection). Slight overlap with the 96-
 # well plate at X=80..95.5, Y=165..192 — acceptable (parts swap).
 RESERVOIR_X = 150.0
-RESERVOIR_Y = 186.0      # was 187.5; back edge -3 mm to Y=162
-RESERVOIR_LONG = 48.0    # along Y (was 45; +3 mm at the back)
+RESERVOIR_Y = 186.0  # was 187.5; back edge -3 mm to Y=162
+RESERVOIR_LONG = 48.0  # along Y (was 45; +3 mm at the back)
 RESERVOIR_SHORT = 140.0  # along X
 
 _SLOTS = (
@@ -136,9 +148,7 @@ def _slot_hole(cx_mm, cy_mm, long_y_mm, short_x_mm):
     """Through-hole matching the labware footprint. The labware drops
     completely through the deck and rests on the i3 bed; the lip ring
     constrains XY. Z is oversized so the Boolean cut is clean."""
-    return Pos(cx_mm, cy_mm, BASE_T / 2) * Box(
-        short_x_mm, long_y_mm, BASE_T * 2
-    )
+    return Pos(cx_mm, cy_mm, BASE_T / 2) * Box(short_x_mm, long_y_mm, BASE_T * 2)
 
 
 def _clamp_pocket(cx_mm, cy_mm, edge):
@@ -167,7 +177,7 @@ def _base(x_min_mm, x_max_mm):
 def _envelope(x_min_mm, x_max_mm):
     width = x_max_mm - x_min_mm
     cx = (x_min_mm + x_max_mm) / 2
-    h = BASE_T + LIP_H + 1   # tall enough for 5 mm base + 2 mm lip
+    h = BASE_T + LIP_H + 1  # tall enough for 5 mm base + 2 mm lip
     return Pos(cx, DECK_DEPTH / 2, h / 2) * Box(width, DECK_DEPTH, h)
 
 
@@ -208,8 +218,8 @@ def build_deck_plate_assembly():
       - Reservoir           front-RIGHT (low +Y, high +X)
     """
     combined = build_deck_plate_left() + build_deck_plate_right()
-    home_x = WELL_X - WELL_SHORT / 2   # = 10, well-plate left edge (Marlin frame)
-    home_y = WELL_Y + WELL_LONG / 2    # = 232.3, well-plate front edge
+    home_x = WELL_X - WELL_SHORT / 2  # = 10, well-plate left edge (Marlin frame)
+    home_y = WELL_Y + WELL_LONG / 2  # = 232.3, well-plate front edge
     translated = Pos(-home_x, -home_y, 0) * combined
     return mirror(translated, about=Plane.XZ)
 

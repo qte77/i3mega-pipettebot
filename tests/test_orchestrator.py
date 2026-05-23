@@ -9,9 +9,9 @@ import pytest
 
 pytest.importorskip("so101")
 
-from so101.arms import ArmConfig, DualArmConfig, DualArmController  # noqa: E402
+from so101.arms import ArmConfig, DualArmConfig, DualArmController
 
-from pipettebot.so101.orchestrator import (  # noqa: E402
+from pipettebot.so101.orchestrator import (
     DEMO_PICKUP_SEQUENCE,
     load_so101_controller,
     run_sequence,

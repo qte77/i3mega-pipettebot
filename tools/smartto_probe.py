@@ -101,9 +101,7 @@ def _drain(link: serial.Serial, secs: float) -> list[str]:
     return lines
 
 
-def _send(
-    link: serial.Serial, cmd: str, secs: float = READ_WINDOW_S
-) -> list[str]:
+def _send(link: serial.Serial, cmd: str, secs: float = READ_WINDOW_S) -> list[str]:
     """Send `cmd`; refuse motion commands; print and return reply lines."""
     upper = cmd.upper()
     if any(upper.startswith(p) for p in BANNED_PREFIXES):

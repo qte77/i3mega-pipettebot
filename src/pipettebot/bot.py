@@ -23,19 +23,23 @@ class PipetteBot:
     """
 
     def __init__(self, gantry: GcodeGantry, pipette: _Pipette) -> None:
+        """Compose `gantry` and `pipette` into a single move-then-pipette unit."""
         self._gantry = gantry
         self._pipette = pipette
 
     def aspirate_at(self, x: float, y: float, z: float, volume_ul: float) -> None:
+        """Move to `(x, y, z)`, wait for the move, then aspirate `volume_ul`."""
         self._gantry.move_to(x, y, z)
         self._gantry.wait_for_moves()
         self._pipette.aspirate(volume_ul)
 
     def dispense_at(self, x: float, y: float, z: float) -> None:
+        """Move to `(x, y, z)`, wait for the move, then dispense."""
         self._gantry.move_to(x, y, z)
         self._gantry.wait_for_moves()
         self._pipette.dispense()
 
     def home(self) -> None:
+        """Home all gantry axes and wait for the move to complete."""
         self._gantry.home()
         self._gantry.wait_for_moves()

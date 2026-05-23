@@ -51,6 +51,7 @@ class ExperimentProfile:
 
     @property
     def num_cycles(self) -> int:
+        """Number of cycles in the volume schedule."""
         return len(self.volumes_ul)
 
 
