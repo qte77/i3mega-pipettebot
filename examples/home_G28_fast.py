@@ -45,7 +45,7 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
-from pipettebot.gantry import open_marlin_port
+from pipettebot.gantry import open_marlin_port, send_and_wait_for_ok
 from pipettebot.motion_profile import select_profile
 
 if TYPE_CHECKING:
@@ -54,28 +54,20 @@ if TYPE_CHECKING:
 DEFAULT_BAUD = 250000
 
 
-def gsend(link: serial.Serial, cmd: str, *, max_secs: float = 120.0) -> None:
-    """Send `cmd` to Marlin and read until `ok`.
+_MARLIN_ERROR_PREFIXES = ("Resend:", "!! ", "Error:Printer halted", "Error:Thermal")
 
-    Mirrors the `gsend` in `showcase_v0_full_plate.py`.
-    """
+
+def gsend(link: serial.Serial, cmd: str, *, max_secs: float = 120.0) -> None:
+    """Send `cmd` to Marlin and read until `ok`. Mirrors showcase_v0_full_plate.py."""
     print(f"  >>> {cmd}")
-    link.write((cmd + "\n").encode("ascii"))
-    deadline = time.time() + max_secs
-    while time.time() < deadline:
-        raw = link.readline()
-        if not raw:
-            continue
-        s = raw.decode("ascii", errors="replace").rstrip()
-        if not s:
-            continue
-        if s == "ok" or s.startswith("ok "):
-            return
+
+    def _check(s: str) -> None:
         if "volume.init" in s or "SD init" in s:
-            continue
-        if s.startswith(("Resend:", "!! ", "Error:Printer halted", "Error:Thermal")):
+            return  # SD-card boot chatter; ignore
+        if s.startswith(_MARLIN_ERROR_PREFIXES):
             raise RuntimeError(f"Marlin error: {s} (after `{cmd}`)")
-    raise TimeoutError(f"no `ok` after {max_secs}s for `{cmd}`")
+
+    send_and_wait_for_ok(link, cmd, max_secs=max_secs, on_line=_check)
 
 
 def main() -> int:

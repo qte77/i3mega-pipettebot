@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pipettebot.gantry import GantryConfig, GcodeGantry
+import pytest
+
+from pipettebot.gantry import GantryConfig, GcodeGantry, send_and_wait_for_ok
 from tests.conftest import FakeSerial
 
 
@@ -38,3 +40,23 @@ def test_close_propagates(fake_serial: FakeSerial) -> None:
 def test_response_is_returned_stripped(fake_serial: FakeSerial) -> None:
     fake_serial.responses = [b"ok\r\n"]
     assert _gantry(fake_serial).home() == "ok"
+
+
+# send_and_wait_for_ok: lifted gsend helper (PR1).
+
+
+def test_send_and_wait_for_ok_returns_lines_until_ok(fake_serial: FakeSerial) -> None:
+    fake_serial.responses = [b"echo: foo\n", b"echo: bar\n", b"ok\n"]
+    assert send_and_wait_for_ok(fake_serial, "M115") == ["echo: foo", "echo: bar", "ok"]
+    assert fake_serial.written == [b"M115\n"]
+
+
+def test_send_and_wait_for_ok_raises_on_timeout() -> None:
+    silent = FakeSerial(default_response=b"")
+    with pytest.raises(TimeoutError, match=r"no `ok` after"):
+        send_and_wait_for_ok(silent, "G28", max_secs=0.05)
+
+
+def test_send_and_wait_for_ok_accepts_extras_after_ok(fake_serial: FakeSerial) -> None:
+    fake_serial.responses = [b"ok N:42 P:3\n"]
+    assert send_and_wait_for_ok(fake_serial, "M400") == ["ok N:42 P:3"]
