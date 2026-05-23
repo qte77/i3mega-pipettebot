@@ -7,6 +7,7 @@ import fcntl
 import sys
 import termios
 import time
+import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
@@ -34,7 +35,7 @@ def set_custom_baud_linux(fd: int, baudrate: int) -> None:
     fcntl.ioctl(fd, _TCSETS2, buf, True)
 
 
-def open_marlin_port(
+def open_gcode_port(
     port: str, baudrate: int = 250000, timeout: float = 2.0
 ) -> serial.Serial | None:
     """Open `port` at `baudrate` with a Linux termios2 fallback.
@@ -58,6 +59,24 @@ def open_marlin_port(
         link.close()
         return None
     return link
+
+
+def open_marlin_port(
+    port: str, baudrate: int = 250000, timeout: float = 2.0
+) -> serial.Serial | None:
+    """Deprecated alias for `open_gcode_port`.
+
+    The helper is firmware-agnostic (a Linux baud helper, not Marlin-specific);
+    the old name is preserved for one release cycle so operators with downstream
+    scripts can migrate without breakage.
+    """
+    warnings.warn(
+        "open_marlin_port() is deprecated; use open_gcode_port() instead "
+        "(the helper is firmware-agnostic, not Marlin-specific).",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return open_gcode_port(port, baudrate=baudrate, timeout=timeout)
 
 
 class _SerialPort(Protocol):
