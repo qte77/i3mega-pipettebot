@@ -13,7 +13,7 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pipettebot.gantry import open_marlin_port, send_and_wait_for_ok
+from pipettebot.gantry import open_gcode_port, send_and_wait_for_ok
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -205,7 +205,7 @@ def discover(
         DiscoveredDevice observation, or None if every baud opened silent.
     """
     for baud in bauds:
-        link = open_marlin_port(port, baudrate=baud, timeout=1.0)
+        link = open_gcode_port(port, baudrate=baud, timeout=1.0)
         if link is None:
             continue
         try:

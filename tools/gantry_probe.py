@@ -241,9 +241,9 @@ def main() -> int:
         f"@ {device.baud}"
     )
 
-    from pipettebot.gantry import open_marlin_port
+    from pipettebot.gantry import open_gcode_port
 
-    link = open_marlin_port(port, baudrate=device.baud, timeout=2.0)
+    link = open_gcode_port(port, baudrate=device.baud, timeout=2.0)
     if link is None:
         sys.stderr.write(f"ERROR: lost {port} @ {device.baud} after discover.\n")
         return 1
