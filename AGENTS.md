@@ -36,7 +36,7 @@ Single source of truth for agents working in this repo. `CLAUDE.md` and
 | Where do motion profiles live?                  | Bundled Python constants in `src/pipettebot/motion_profile.py` (slow/mid/fast). `MOTION_PROFILE` env selects; default `mid`; `''` or `off` opts out. See [ADR 0003](docs/adr/0003-motion-profile-bundled-constants.md). |
 | Where does deck geometry live?                  | Deferred. Caller passes raw `(x, y, z)` in v0.                   |
 | How is dpette imported?                         | Git dep, pinned to a commit SHA before v0.0.1 tag.               |
-| Where do hardware experiments go?               | `tools/` — diagnostics (`preflight.py`, `diagnose_axis.py`, `marlin_repl.py`), CAD (`tools/cad/`), slicer (`tools/slicer/`). Logs to `captures/`. |
+| Where do hardware experiments go?               | `tools/` — diagnostics (`preflight.py`, `diagnose_axis.py`, `gantry_repl.py`, `gantry_probe.py`), CAD (`tools/cad/`), slicer (`tools/slicer/`). Logs to `captures/`. `gantry_repl` and `gantry_probe` auto-detect firmware via `pipettebot.devices.discover`; replace the older `marlin_repl` / `smartto_repl` / `smartto_probe` trio. |
 | Where does SO-101 orchestration live?           | `src/pipettebot/so101/` — `orchestrator.py` (named-position playback after the i3 homes) + `capture_position.py` (teaching CLI). Composition over `so101.DualArmController`; opt-in via `SO101_CONFIG` env. Optional `[orchestrator]` extra; sequence constant hardcoded for v0. See issue #120 and the `_ArmController` Protocol refactor in #133. |
 | What goes in AGENT_REQUESTS.md?                 | Anything deferred — features, ADRs, hardware photos, firmware tracks. |
 
