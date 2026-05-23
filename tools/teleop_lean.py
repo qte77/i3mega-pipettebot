@@ -66,9 +66,7 @@ def main() -> int:
         ),
     )
     parser.add_argument("--leader", required=True, help="leader serial port path")
-    parser.add_argument(
-        "--follower", required=True, help="follower serial port path"
-    )
+    parser.add_argument("--follower", required=True, help="follower serial port path")
     parser.add_argument(
         "--rate",
         type=float,
@@ -109,9 +107,7 @@ def main() -> int:
     _set_torque(packet, follower, 1)
 
     period = 1.0 / args.rate
-    print(
-        f"[teleop] mirror leader -> follower @ {args.rate:.1f} Hz (Ctrl-C to stop)"
-    )
+    print(f"[teleop] mirror leader -> follower @ {args.rate:.1f} Hz (Ctrl-C to stop)")
     try:
         while True:
             tick = time.perf_counter()

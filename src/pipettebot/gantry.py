@@ -33,10 +33,11 @@ def set_custom_baud_linux(fd: int, baudrate: int) -> None:
 def open_marlin_port(
     port: str, baudrate: int = 250000, timeout: float = 2.0
 ) -> serial.Serial | None:
-    """Open `port` at `baudrate`, falling back to Linux termios2 when pyserial
-    can't set the rate (e.g. missing `termios.B250000`).
+    """Open `port` at `baudrate` with a Linux termios2 fallback.
 
-    Returns None if the port can't be opened at all (permission, ENOENT, etc.).
+    When pyserial can't set the rate (e.g. missing `termios.B250000`), retries
+    via the TCSETS2 + BOTHER ioctl. Returns None if the port can't be opened
+    at all (permission, ENOENT, etc.).
     """
     try:
         return serial.Serial(port, baudrate, timeout=timeout)
@@ -65,6 +66,8 @@ class _SerialPort(Protocol):
 
 @dataclass(frozen=True)
 class GantryConfig:
+    """Serial transport + default feedrate for a `GcodeGantry`."""
+
     port: str
     baudrate: int = 115200
     feedrate_mm_per_min: int = 3000
@@ -79,6 +82,7 @@ class GcodeGantry:
     """
 
     def __init__(self, cfg: GantryConfig, port: _SerialPort) -> None:
+        """Bind `cfg` to an already-open `port` (tests inject a fake)."""
         self._cfg = cfg
         self._port = port
 
@@ -87,14 +91,18 @@ class GcodeGantry:
         return self._port.readline().decode("ascii", errors="replace").strip()
 
     def home(self) -> str:
+        """Home all axes via `G28`. Returns the firmware reply line."""
         return self._send("G28")
 
     def move_to(self, x: float, y: float, z: float, feedrate: int | None = None) -> str:
+        """Move to `(x, y, z)` at `feedrate` mm/min (or the config default)."""
         f = feedrate if feedrate is not None else self._cfg.feedrate_mm_per_min
         return self._send(f"G1 X{x:.3f} Y{y:.3f} Z{z:.3f} F{f}")
 
     def wait_for_moves(self) -> str:
+        """Block until the planner queue drains (`M400`)."""
         return self._send("M400")
 
     def close(self) -> None:
+        """Close the underlying serial port."""
         self._port.close()
