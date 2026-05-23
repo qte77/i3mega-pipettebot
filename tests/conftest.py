@@ -10,11 +10,17 @@ import pytest
 
 @dataclass
 class FakeSerial:
-    """Records writes, replays canned readline responses (default: 'ok')."""
+    """Records writes, replays canned readline responses (default: 'ok').
+
+    `default_response` is what readline() returns once the responses queue is
+    drained. Defaults to b"ok\\n" so existing tests don't need to queue
+    anything. Pass b"" to simulate a silent / timed-out serial port.
+    """
 
     written: list[bytes] = field(default_factory=list)
     responses: list[bytes] = field(default_factory=list)
     closed: bool = False
+    default_response: bytes = b"ok\n"
 
     def write(self, data: bytes) -> int:
         self.written.append(data)
@@ -23,7 +29,7 @@ class FakeSerial:
     def readline(self) -> bytes:
         if self.responses:
             return self.responses.pop(0)
-        return b"ok\n"
+        return self.default_response
 
     def close(self) -> None:
         self.closed = True
