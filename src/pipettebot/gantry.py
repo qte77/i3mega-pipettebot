@@ -61,9 +61,14 @@ def open_marlin_port(
 
 
 class _SerialPort(Protocol):
-    """Subset of pyserial.Serial used by GcodeGantry; lets tests inject fakes."""
+    """Subset of pyserial.Serial used by GcodeGantry; lets tests inject fakes.
 
-    def write(self, data: bytes) -> int: ...
+    `write` is typed to match `serial.Serial.write` (positional-only, returns
+    `int | None`) so the helper accepts real pyserial ports without Pyright
+    protocol-mismatch noise.
+    """
+
+    def write(self, data: bytes, /) -> int | None: ...
     def readline(self) -> bytes: ...
     def close(self) -> None: ...
 

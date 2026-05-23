@@ -29,7 +29,7 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
-from pipettebot.gantry import open_marlin_port
+from pipettebot.gantry import open_marlin_port, send_and_wait_for_ok
 
 if TYPE_CHECKING:
     import serial  # type: ignore[import-untyped]
@@ -46,24 +46,19 @@ RISK_NOTES = {
 }
 
 
+_MARLIN_ERROR_PREFIXES = ("Resend:", "!! ", "Error:Printer halted", "Error:Thermal")
+
+
 def gsend(link: serial.Serial, cmd: str, max_secs: float = ACK_TIMEOUT_S) -> None:
     """Send `cmd`, print every reply line, return when Marlin says `ok`."""
     print(f"  >>> {cmd}")
-    link.write((cmd + "\n").encode("ascii"))
-    deadline = time.time() + max_secs
-    while time.time() < deadline:
-        raw = link.readline()
-        if not raw:
-            continue
-        s = raw.decode("ascii", errors="replace").rstrip()
-        if not s:
-            continue
+
+    def _check(s: str) -> None:
         print(f"      {s}")
-        if s == "ok" or s.startswith("ok "):
-            return
-        if s.startswith(("Resend:", "!! ", "Error:Printer halted", "Error:Thermal")):
+        if s.startswith(_MARLIN_ERROR_PREFIXES):
             raise RuntimeError(f"Marlin error: {s} (after `{cmd}`)")
-    raise TimeoutError(f"no `ok` after {max_secs}s for `{cmd}`")
+
+    send_and_wait_for_ok(link, cmd, max_secs=max_secs, on_line=_check)
 
 
 def confirm(prompt: str) -> bool:

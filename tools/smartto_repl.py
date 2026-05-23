@@ -46,6 +46,8 @@ import time
 
 import serial  # type: ignore[import-untyped]
 
+from pipettebot.gantry import send_and_wait_for_ok
+
 DEFAULT_BAUD = 115200
 BOOT_WAIT_S = 2.5
 ACK_TIMEOUT_S = 30.0
@@ -98,19 +100,9 @@ Tip: prefix with `;` to send firmware-side comments (logged, ignored).
 
 def gsend(link: serial.Serial, cmd: str, max_secs: float = ACK_TIMEOUT_S) -> None:
     """Send `cmd`, print every reply line, return when Smartto says `ok`."""
-    link.write((cmd + "\n").encode("ascii"))
-    deadline = time.time() + max_secs
-    while time.time() < deadline:
-        raw = link.readline()
-        if not raw:
-            continue
-        s = raw.decode("ascii", errors="replace").rstrip()
-        if not s:
-            continue
-        print(f"  {s}")
-        if s == "ok" or s.startswith("ok "):
-            return
-    raise TimeoutError(f"no `ok` after {max_secs}s for `{cmd}`")
+    send_and_wait_for_ok(
+        link, cmd, max_secs=max_secs, on_line=lambda s: print(f"  {s}")
+    )
 
 
 def _read_command() -> str | None:
