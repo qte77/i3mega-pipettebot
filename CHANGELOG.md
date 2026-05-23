@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `tools/gantry_repl.py` — interactive G-code REPL with per-firmware cheat-sheet dispatch. Auto-detects firmware via `pipettebot.devices.discover()`; `--device {marlin,smartto,unknown}` overrides the auto-detect. Reads `GANTRY_PORT` (or `SMARTTO_PORT` / `I3MEGA_PORT` for operator continuity). Replaces `tools/marlin_repl.py` + `tools/smartto_repl.py`.
+- `tools/gantry_probe.py` — read-only diagnostic + capability probe for any G-code firmware. Same auto-detect via `discover()`. Nine non-motion candidates (six original — `M503`/`M400`/`M203`/`M204`/`M205`/`M501` — plus `M220 S100` / `M211 S1` / `M85 S0` for feedrate scale, soft endstops, idle timeout). Per-family `QUIRKS` footer surfaces operator notes (e.g. Smartto's `M503` no-op, `G1 X Y` silent acceptance, `G28 Z` dive). Replaces `tools/smartto_probe.py`.
+- `tests/tools/test_gantry_repl_cli.py` and `tests/tools/test_gantry_probe_cli.py` — 12 in-process CLI tests covering port-missing exit codes, cheat-sheet dispatch by family, `--device` override skipping `discover()`, banned-motion-command refusal, `PROBE_CANDIDATES` count + content, and `QUIRKS` content per family.
+
+### Removed
+
+- `tools/marlin_repl.py` — superseded by `tools/gantry_repl.py`.
+- `tools/smartto_repl.py` — superseded by `tools/gantry_repl.py`.
+- `tools/smartto_probe.py` — superseded by `tools/gantry_probe.py`.
+
 ## [0.1.0] — 2026-05-23
 
 Second tagged release. Adds Geeetech A30 / Smartto firmware bring-up,
