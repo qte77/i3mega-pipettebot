@@ -1,4 +1,4 @@
-"""Preflight check: auto-discover the i3 Mega and/or dPette, no motion.
+"""Preflight check: auto-discover any G-code gantry and/or the dPette, no motion.
 
 Either device alone is enough to pass — the gantry and the pipette are
 exercised independently in v0, so requiring both to be present at the
@@ -6,19 +6,23 @@ same time was wrong.
 
 Scans candidate `/dev/tty*` / `/dev/cu.*` ports and probes each one:
 
-1. **Marlin probe**: open at 250000 baud, wait 3 s for boot, send `M115`,
-   look for `MACHINE_TYPE:` / `FIRMWARE_NAME:` in the reply.
-2. **dPette probe**: on every port that didn't answer as Marlin, open at
-   9600 baud via `dpette.DPetteDriver.connect()` (sends `A0` HELLO),
+1. **Gantry probe**: delegates to `pipettebot.devices.discover()`, which
+   baud-sweeps and sends `M115`. Returns a `DiscoveredDevice` whose
+   `firmware_family` ("marlin", "smartto", or "unknown") drives the
+   per-family export-var name via `FIRMWARE_POLICIES`.
+2. **dPette probe**: on every port that didn't answer as a gantry, open
+   at 9600 baud via `dpette.DPetteDriver.connect()` (sends `A0` HELLO),
    then read EEPROM byte 0 (firmware version). A `None` return means
    the driver fell back to stub mode → not a real dPette.
 
-Env vars `I3MEGA_PORT` and `PIPETTE_PORT` win over discovery — useful
-when discovery picks the wrong port or you want a stable mapping.
+Env vars `I3MEGA_PORT` / `SMARTTO_PORT` / `GANTRY_PORT` and `PIPETTE_PORT`
+win over discovery — useful when discovery picks the wrong port or you
+want a stable mapping. First-set wins for the gantry override (checked
+in that order).
 
 Pass `--export` to suppress probe chatter on stdout and print only
-`export I3MEGA_PORT=...` / `export PIPETTE_PORT=...` lines, suitable
-for shell `eval`:
+`export <I3MEGA|SMARTTO|GANTRY>_PORT=...` / `export PIPETTE_PORT=...`
+lines, suitable for shell `eval`:
 
     eval "$(uv run python tools/preflight.py --export)" \
       && uv run python examples/showcase_v0_pipette_sim.py
@@ -46,17 +50,14 @@ import os
 import sys
 import time
 
-import serial  # type: ignore[import-untyped]
 from dpette import DPetteDriver, SerialConfig
 
-from pipettebot.gantry import open_marlin_port
+from pipettebot.devices import DiscoveredDevice, discover, policy_for
 
-MARLIN_BAUD = 250000  # Anycubic stock & MARLIN-AI3M; see issue #17
-MARLIN_BOOT_WAIT_S = 3.0
-MARLIN_PROBE_READ_S = 4.0
 DPETTE_BAUD = 9600  # informational; the driver opens the port itself
 DPETTE_RETRY_ATTEMPTS_DEFAULT = 3
 DPETTE_RETRY_DELAY_S_DEFAULT = 5.0
+GANTRY_PORT_ENV_ORDER = ("I3MEGA_PORT", "SMARTTO_PORT", "GANTRY_PORT")
 
 PORT_GLOBS = (
     "/dev/cu.usbserial-*",
@@ -73,34 +74,6 @@ def discover_ports() -> list[str]:
     for g in PORT_GLOBS:
         found.update(glob.glob(g))
     return sorted(found)
-
-
-def probe_marlin(port: str) -> str | None:
-    """Try to identify `port` as Marlin. Returns firmware string or None."""
-    link = open_marlin_port(port, baudrate=MARLIN_BAUD, timeout=1.0)
-    if link is None:
-        return None
-    with link:
-        time.sleep(MARLIN_BOOT_WAIT_S)  # DTR-reset boot
-        link.reset_input_buffer()
-        try:
-            link.write(b"M115\n")
-        except serial.SerialException:
-            return None
-        firmware: str | None = None
-        deadline = time.time() + MARLIN_PROBE_READ_S
-        while time.time() < deadline:
-            raw = link.readline()
-            if not raw:
-                continue
-            s = raw.decode("ascii", errors="replace").strip()
-            if not s:
-                continue
-            if "FIRMWARE_NAME" in s or "MACHINE_TYPE" in s:
-                firmware = s
-            if (s == "ok" or s.startswith("ok ")) and firmware:
-                break
-        return firmware
 
 
 def probe_dpette(port: str) -> int | None:
@@ -127,26 +100,30 @@ def probe_dpette(port: str) -> int | None:
     return int(getattr(packet, "b2", 0))
 
 
-def _resolve_marlin(
+def _resolve_gantry(
     ports: list[str], override: str | None
-) -> tuple[str | None, str | None]:
-    """Find the Marlin port (or use override). Returns (port, firmware)."""
+) -> tuple[str | None, DiscoveredDevice | None]:
+    """Identify a gantry port (or use override). Returns (port, discovered)."""
     if override:
-        print(f"[probe] {override} for Marlin (env override) ... ", end="", flush=True)
-        fw = probe_marlin(override)
-        if fw:
-            print("ok")
-            print(f"  > {fw}")
-            return override, fw
+        print(f"[probe] {override} for gantry (env override) ... ", end="", flush=True)
+        device = discover(override)
+        if device is not None:
+            print(f"FOUND ({device.firmware_family} @ {device.baud})")
+            machine = device.machine_type or "?"
+            version = device.firmware_version or "?"
+            print(f"  > {machine} ({version})")
+            return override, device
         print("no reply")
         return None, None
     for p in ports:
-        print(f"[probe] {p} for Marlin (M115 @ {MARLIN_BAUD}) ... ", end="", flush=True)
-        fw = probe_marlin(p)
-        if fw:
-            print("FOUND")
-            print(f"  > {fw}")
-            return p, fw
+        print(f"[probe] {p} for gantry (baud sweep, M115) ... ", end="", flush=True)
+        device = discover(p)
+        if device is not None:
+            print(f"FOUND ({device.firmware_family} @ {device.baud})")
+            machine = device.machine_type or "?"
+            version = device.firmware_version or "?"
+            print(f"  > {machine} ({version})")
+            return p, device
         print("no")
     return None, None
 
@@ -211,12 +188,25 @@ def _resolve_dpette_with_retry(
     return None, None
 
 
+def _gantry_env_override() -> str | None:
+    """Return the first set gantry-port env var, in I3MEGA->SMARTTO->GANTRY order."""
+    for var in GANTRY_PORT_ENV_ORDER:
+        value = os.environ.get(var)
+        if value:
+            return value
+    return None
+
+
 def main() -> int:
     export_mode = "--export" in sys.argv
     original_stdout = sys.stdout
     if export_mode:
         # Route probe chatter to stderr; stdout stays clean for `eval` consumers.
         sys.stdout = sys.stderr
+
+    gantry_port: str | None = None
+    gantry_device: DiscoveredDevice | None = None
+    dpette_port: str | None = None
 
     try:
         ports = discover_ports()
@@ -225,29 +215,36 @@ def main() -> int:
             return 1
         print(f"Discovered ports: {ports}\n")
 
-        marlin_port, _ = _resolve_marlin(ports, os.environ.get("I3MEGA_PORT"))
+        gantry_port, gantry_device = _resolve_gantry(ports, _gantry_env_override())
 
         print()
         print("(press the dPette's button if it's asleep — handshake needs it awake)")
         dpette_port, _ = _resolve_dpette_with_retry(
-            ports, os.environ.get("PIPETTE_PORT"), skip=marlin_port or ""
+            ports, os.environ.get("PIPETTE_PORT"), skip=gantry_port or ""
         )
 
         print()
-        if not marlin_port and not dpette_port:
-            print("ERROR: no port answered as Marlin or dPette.")
+        if not gantry_port and not dpette_port:
+            print("ERROR: no port answered as a gantry or dPette.")
             return 1
     finally:
         sys.stdout = original_stdout
 
+    gantry_export_name: str | None = None
+    if gantry_device is not None:
+        # First alias in the policy is canonical (e.g. I3MEGA_PORT for marlin,
+        # SMARTTO_PORT for smartto, GANTRY_PORT for unknown).
+        gantry_export_name = policy_for(gantry_device).port_env_aliases[0]
+
     if export_mode:
-        if marlin_port:
-            print(f"export I3MEGA_PORT={marlin_port}")
+        if gantry_port and gantry_export_name:
+            print(f"export {gantry_export_name}={gantry_port}")
         if dpette_port:
             print(f"export PIPETTE_PORT={dpette_port}")
     else:
         print("===== preflight =====")
-        print(f"  I3MEGA_PORT  = {marlin_port or '(not found)'}")
+        label = gantry_export_name or "GANTRY_PORT"
+        print(f"  {label:12} = {gantry_port or '(not found)'}")
         print(f"  PIPETTE_PORT = {dpette_port or '(not found)'}")
     return 0
 
