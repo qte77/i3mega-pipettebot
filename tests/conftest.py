@@ -34,6 +34,10 @@ class FakeSerial:
     def close(self) -> None:
         self.closed = True
 
+    def reset_input_buffer(self) -> None:
+        # No-op; the responses queue is the only "input buffer" we model.
+        return
+
 
 @dataclass
 class FakePipette:
