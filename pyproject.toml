@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pipettebot"
-version = "0.0.1"
+version = "0.1.0"
 description = "Anycubic i3 Mega + DLAB dPette: a sub-$300 disposable-tip pipetting robot"
 readme = "README.md"
 license = "Apache-2.0"
