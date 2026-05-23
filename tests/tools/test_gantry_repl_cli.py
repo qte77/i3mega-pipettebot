@@ -79,7 +79,7 @@ def test_gantry_repl_device_flag_overrides_autodetect(
         raise AssertionError(msg)
 
     monkeypatch.setattr(gantry_repl, "discover", _discover_spy)
-    monkeypatch.setattr(gantry_repl, "open_marlin_port", lambda *_a, **_kw: None)
+    monkeypatch.setattr(gantry_repl, "open_gcode_port", lambda *_a, **_kw: None)
 
     rc = gantry_repl.main(argv=["--device", "smartto"])
     # open_marlin_port returns None -> exits 1 before any REPL loop; discover

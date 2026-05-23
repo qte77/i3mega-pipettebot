@@ -45,7 +45,7 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
-from pipettebot.gantry import open_marlin_port, send_and_wait_for_ok
+from pipettebot.gantry import open_gcode_port, send_and_wait_for_ok
 from pipettebot.motion_profile import select_profile
 
 if TYPE_CHECKING:
@@ -80,7 +80,7 @@ def main() -> int:
         return 1
     baud = int(os.environ.get("I3MEGA_BAUD", str(DEFAULT_BAUD)))
 
-    link = open_marlin_port(port, baudrate=baud, timeout=2.0)
+    link = open_gcode_port(port, baudrate=baud, timeout=2.0)
     if link is None:
         sys.stderr.write(
             f"ERROR: could not open {port} @ {baud} baud.\n"

@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import warnings
+
 import pytest
 
-from pipettebot.gantry import GantryConfig, GcodeGantry, send_and_wait_for_ok
+from pipettebot.gantry import (
+    GantryConfig,
+    GcodeGantry,
+    open_gcode_port,
+    open_marlin_port,
+    send_and_wait_for_ok,
+)
 from tests.conftest import FakeSerial
 
 
@@ -60,3 +68,25 @@ def test_send_and_wait_for_ok_raises_on_timeout() -> None:
 def test_send_and_wait_for_ok_accepts_extras_after_ok(fake_serial: FakeSerial) -> None:
     fake_serial.responses = [b"ok N:42 P:3\n"]
     assert send_and_wait_for_ok(fake_serial, "M400") == ["ok N:42 P:3"]
+
+
+# open_gcode_port: canonical name (PR5 rename); open_marlin_port stays as alias.
+
+
+def test_open_gcode_port_is_callable() -> None:
+    """The canonical post-rename name must exist and be callable."""
+    assert callable(open_gcode_port)
+
+
+def test_open_marlin_port_emits_deprecation_warning_and_delegates() -> None:
+    """The legacy name must still work, return the same result, but warn."""
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always")
+        # `/dev/nonexistent-path-pr5-test` does not exist on any sane host;
+        # both functions return None for an unopenable port. The point of
+        # the test is the DeprecationWarning, not the return value.
+        result = open_marlin_port("/dev/nonexistent-path-pr5-test")
+    assert result is None
+    deprecations = [w for w in captured if issubclass(w.category, DeprecationWarning)]
+    assert deprecations, "open_marlin_port() did not emit DeprecationWarning"
+    assert any("open_gcode_port" in str(w.message) for w in deprecations)

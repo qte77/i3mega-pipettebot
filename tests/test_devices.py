@@ -138,7 +138,7 @@ def test_discover_returns_none_when_port_silent(
 ) -> None:
     silent = FakeSerial(default_response=b"")
     monkeypatch.setattr(
-        "pipettebot.devices.open_marlin_port",
+        "pipettebot.devices.open_gcode_port",
         lambda *_a, **_kw: silent,
     )
     assert discover("/dev/null", bauds=(115200,), boot_wait_s=0.0) is None
@@ -149,7 +149,7 @@ def test_discover_returns_smartto_when_m115_matches_at_first_baud(
 ) -> None:
     link = _fake_with_m115(A30_M115_LIVE)
     monkeypatch.setattr(
-        "pipettebot.devices.open_marlin_port",
+        "pipettebot.devices.open_gcode_port",
         lambda *_a, **_kw: link,
     )
     device = discover("/dev/null", bauds=(115200,), boot_wait_s=0.0)
@@ -171,7 +171,7 @@ def test_discover_falls_through_bauds_until_one_answers(
         calls.append(baudrate)
         return silent if baudrate == 115200 else answering
 
-    monkeypatch.setattr("pipettebot.devices.open_marlin_port", _opener)
+    monkeypatch.setattr("pipettebot.devices.open_gcode_port", _opener)
     device = discover("/dev/null", bauds=(115200, 250000), boot_wait_s=0.0)
     assert device is not None
     assert device.firmware_family == "marlin"
@@ -184,7 +184,7 @@ def test_discover_returns_unknown_observation_when_firmware_unrecognised(
 ) -> None:
     link = _fake_with_m115(UNKNOWN_FIRMWARE_M115_SAMPLE)
     monkeypatch.setattr(
-        "pipettebot.devices.open_marlin_port",
+        "pipettebot.devices.open_gcode_port",
         lambda *_a, **_kw: link,
     )
     device = discover("/dev/null", bauds=(115200,), boot_wait_s=0.0)

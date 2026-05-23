@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- `pipettebot.gantry.open_marlin_port` renamed to `open_gcode_port` (the helper is firmware-agnostic — a Linux baud helper, not a Marlin-protocol thing). The old name is preserved for one release cycle as a one-line alias that emits `DeprecationWarning` on call, so downstream scripts keep working while operators migrate. All in-tree callers (`pipettebot.devices.discover`, `tools/gantry_repl.py`, `tools/gantry_probe.py`, `tools/diagnose_axis.py`, `examples/home_G28_fast.py`) updated to the new name. Both names re-exported from `pipettebot.__init__`.
+
 ### Added
 
 - `tools/gantry_repl.py` — interactive G-code REPL with per-firmware cheat-sheet dispatch. Auto-detects firmware via `pipettebot.devices.discover()`; `--device {marlin,smartto,unknown}` overrides the auto-detect. Reads `GANTRY_PORT` (or `SMARTTO_PORT` / `I3MEGA_PORT` for operator continuity). Replaces `tools/marlin_repl.py` + `tools/smartto_repl.py`.

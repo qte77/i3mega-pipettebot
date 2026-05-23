@@ -29,7 +29,7 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
-from pipettebot.gantry import open_marlin_port, send_and_wait_for_ok
+from pipettebot.gantry import open_gcode_port, send_and_wait_for_ok
 
 if TYPE_CHECKING:
     import serial  # type: ignore[import-untyped]
@@ -106,7 +106,7 @@ def main() -> int:
     feed = int(os.environ.get("FEED", "300"))
     steps = int(os.environ.get("STEPS", "5"))
 
-    link = open_marlin_port(port, baudrate=DEFAULT_BAUD, timeout=2.0)
+    link = open_gcode_port(port, baudrate=DEFAULT_BAUD, timeout=2.0)
     if link is None:
         sys.stderr.write(f"ERROR: could not open {port} @ {DEFAULT_BAUD}.\n")
         return 1
