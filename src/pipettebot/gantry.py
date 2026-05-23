@@ -134,8 +134,9 @@ class GcodeGantry:
         self._port = port
 
     def _send(self, line: str) -> str:
-        self._port.write((line + "\n").encode("ascii"))
-        return self._port.readline().decode("ascii", errors="replace").strip()
+        # Delegate to the lifted helper; return the terminating `ok` line so
+        # the public method signatures stay backward-compatible.
+        return send_and_wait_for_ok(self._port, line)[-1]
 
     def home(self) -> str:
         """Home all axes via `G28`. Returns the firmware reply line."""
