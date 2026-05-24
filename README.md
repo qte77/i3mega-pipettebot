@@ -1,18 +1,24 @@
 # i3mega-pipettebot
 
-> Turn an **Anycubic i3 Mega** into a sub-$150 disposable-tip pipetting robot
-> driven by a **DLAB dPette** electronic pipette and Python.
+> Turn a cheap consumer 3D printer into a sub-$150 disposable-tip pipetting
+> robot driven by a **DLAB dPette** electronic pipette and Python.
 
-Marlin / Trigorilla stays unmodified; the print head and PCB are physically
-removed from the carriage and the chassis is repurposed as a 3-axis motion
-platform with the dPette mounted on the bare carriage
-(see [`docs/3d-parts.md`](docs/3d-parts.md)). The pipette is driven over a
-separate USB-serial link via
+Reference build is **dpette+i3** (Anycubic i3 Mega + DLAB dPette+);
+**Geeetech A30 (Smartto firmware)** is also a supported gantry via the
+same `pipettebot` library — discovery picks the firmware family from
+`M115` and the `safe_home` dispatcher routes Marlin → plain `G28` and
+Smartto → polled-Z descent (firmware `G28 Z` is broken on stock A30
+builds; see [ADR 0004](docs/adr/0004-printer-firmware-policy-and-safe-home.md)
+and the [bring-up notes](docs/research/gantry-firmware-alternatives.md)).
+Firmware stays unmodified on every supported platform; the print head
+and PCB are physically removed from the carriage and the chassis is
+repurposed as a 3-axis motion platform with the dPette mounted on the
+bare carriage (see [`docs/3d-parts.md`](docs/3d-parts.md)). The pipette
+is driven over a separate USB-serial link via
 [`dpette-usb-driver`](https://github.com/Lambda-Biolab/dpette-usb-driver),
-and used-tips bin pickup is delegated to an optional companion SO-101 arm
-via [`so101-biolab-automation`](https://github.com/qte77/so101-biolab-automation).
-The concrete reference build is **dpette+i3** (i3 Mega + DLAB dPette+);
-the library itself is pipette-agnostic via the `_Pipette` Protocol.
+and used-tips bin pickup is delegated to an optional companion SO-101
+arm via [`so101-biolab-automation`](https://github.com/qte77/so101-biolab-automation).
+The library is also pipette-agnostic via the `_Pipette` Protocol.
 
 <details>
 <summary>dpette+i3 in action (animated GIF)</summary>
@@ -38,6 +44,7 @@ end-to-end workflows, and what is explicitly out of scope.
 | Solution                                | Cost          | Tips        | API control |
 |-----------------------------------------|---------------|-------------|-------------|
 | **i3 Mega (used) + dPette (new) + this repo**        | **~$150**     | Disposable  | Python      |
+| **A30 (used) + dPette (new) + this repo**            | **~$200**     | Disposable  | Python      |
 | [Science Jubilee][sj] + OT-2 pipette    | ~$900+ build  | Disposable  | Python      |
 | [Opentrons OT-2][ot2]                   | from $15,950  | Disposable  | Python      |
 
@@ -197,27 +204,44 @@ stroke → bed sweeps to front well → another stroke → home.
 ## Architecture
 
 ```text
-examples/showcase_v0_i3_pipette_sim.py
-        │
-        ▼
-raw serial @ 250000 baud  ──► /dev/cu.usbserial-*  (Marlin, G-code)
+examples/showcase_v0_i3_pipette_sim.py     examples/showcase_v0_a30_liquid_handling.py
+        │                                                │
+        ▼                                                ▼
+raw serial @ 250000 baud                   pipettebot.gantry + safe_home dispatcher
+        │                                                │
+        ▼                                                ▼
+/dev/ttyUSB*  (Marlin / AI3M)              /dev/ttyUSB*  (Smartto / A30 @ 115200)
         │
         └─ tee G-code stream ──► OUTPUT_GCODE file (replay / SD)
 ```
 
-The dPette is wired in via `dpette.DPetteDriver`.
-`showcase_v0_full_pipettebot.py` runs the full plate fill end-to-end —
-gantry transit + real B3 SUCK/BLOW at the bottom of each dive.
-`showcase_v0_full_plate.py` keeps the gantry-only path (plunger
-simulated via Z) for bring-up without the pipette.
+Both printer families share `tools/preflight.py --export` for discovery
+(`PRINTER_PORT` is the single env var) and the same library. Firmware
+family is identified by `pipettebot.devices.discover()`, and
+`safe_home` dispatches per-family: plain `G28` on Marlin, polled-Z
+descent on Smartto/A30 (firmware `G28 Z` is broken on stock Smartto).
+See [ADR 0004](docs/adr/0004-printer-firmware-policy-and-safe-home.md).
 
-Five modules: `gantry.py` (G-code wrapper), `bot.py` (composer),
+The dPette is wired in via `dpette.DPetteDriver`.
+`showcase_v0_i3_full_pipettebot.py` runs the full plate fill end-to-end —
+gantry transit + real B3 SUCK/BLOW at the bottom of each dive.
+`showcase_v0_i3_full_plate.py` keeps the gantry-only path (plunger
+simulated via Z) for bring-up without the pipette.
+`showcase_v0_a30_liquid_handling.py` is the A30 counterpart with the
+polled-Z home + split-feedrate dives; runs in gantry-only mode when
+`PIPETTE_PORT` is unset.
+
+Seven library modules under `src/pipettebot/`: `gantry.py` (G-code
+wrapper + `send`/`query`/`flush_input` public surface), `bot.py`
+(`PipetteBot` composer), `devices.py` (firmware discovery via M115,
+per-family `FirmwarePolicy`, `safe_home` dispatcher),
 `experiment_profile.py` (TOML experiment-profile loader; see
 [`examples/experiment_profiles/`](examples/experiment_profiles/)),
-`motion_profile.py` (bundled SLOW/MID/FAST gantry-tuning factors;
-`MOTION_PROFILE` env selects), and `__init__.py` (re-exports). No
-deck library, no safety limits, no calibration yet — the caller
-passes raw `(x, y, z)`.
+`motion_profile.py` (bundled SLOW/MID/FAST gantry-tuning factors at
+3x ratio; `MOTION_PROFILE` env selects), `cli_profile.py` (shared
+`PIPETTE_PROFILE` / `PIPETTE_VOLUME_UL` env resolution), and
+`__init__.py` (re-exports). No deck library, no safety limits, no
+calibration yet — the caller passes raw `(x, y, z)`.
 
 ## Development
 
@@ -273,12 +297,14 @@ PC-as-host architecture.
 ## Documentation
 
 - [docs/UserStory.md](docs/UserStory.md) — user personas, target workflows, scope and acceptance criteria
+- [docs/roadmap.md](docs/roadmap.md) — forward-looking work (near-term, Stage 1+ firmware, deferred API tiers, anti-roadmap)
 - [docs/hardware.md](docs/hardware.md) — i3 Mega + dPette wiring, port discovery, firmware sanity check, dPette+ specs
 - [docs/calibration.md](docs/calibration.md) — well-A1 origin procedure, 9 mm pitch check
-- [docs/deck-layout.md](docs/deck-layout.md) — deck slot extents, motion constants, four-phase tour sequence (canonical spec for `showcase_v0_full_plate.py`)
+- [docs/deck-layout.md](docs/deck-layout.md) — deck slot extents, motion constants, four-phase tour sequence (canonical spec for `showcase_v0_i3_full_plate.py`)
 - [docs/marlin-commands.md](docs/marlin-commands.md) — Marlin G/M-code reference + i3 Mega coordinate orientation
 - [docs/3d-parts.md](docs/3d-parts.md) — CAD pipeline design rationale, payload + Z envelope math, SBS labware reference
 - [docs/sbc-deployment.md](docs/sbc-deployment.md) — Path 2 (Single-Board Computer on-printer) deployment
+- [docs/research/gantry-firmware-alternatives.md](docs/research/gantry-firmware-alternatives.md) — A30 / Smartto bring-up notes (firmware-broken `G28 Z`, polled-Z descent recipe)
 - [docs/adr/](docs/adr/) — architectural decision records
 - [AGENTS.md](AGENTS.md) — agent rules, decision framework, architecture
 - [AGENT_LEARNINGS.md](AGENT_LEARNINGS.md) — gotchas as we discover them
