@@ -308,10 +308,12 @@ def _polled_z_home(
     finally:
         gantry.send("G90")  # restore absolute regardless of outcome
         if triggered:
-            # Let the firmware settle before the origin declaration — the
-            # M119/M400 burst leaves Smartto momentarily unresponsive, and
-            # G92 Z0 issued immediately after G90 reliably triggers a
-            # "readiness without data" SerialException on the live A30.
+            # The descent's M119/M400 burst leaves stale received bytes in
+            # the OS serial buffer; pyserial's select() then false-reports
+            # data-ready against empty data, throwing SerialException on the
+            # next read. Drop those bytes before the origin declaration.
+            # The settle sleep gives the firmware time to be ready too.
+            gantry.flush_input()
             time.sleep(_POLLED_Z_SETTLE_S)
             try:
                 gantry.send("G92 Z0")

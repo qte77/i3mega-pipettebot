@@ -91,6 +91,10 @@ from pipettebot.motion_profile import select_profile
 DEFAULT_NUM_CYCLES = 2
 DEFAULT_PIPETTE_BAUD = 9600
 DEFAULT_TRANSIT_FEEDRATE = 6000  # 100 mm/s
+# Smartto's M400 sometimes returns ack before motion completes; sleep
+# this long after the final park so the `with gantry_link:` block doesn't
+# close the port mid-motion. Worst-case bed-diagonal at 100 mm/s ~= 4.5 s.
+PARK_SETTLE_S = 6.0
 
 
 class _LoggingPipette:
@@ -261,6 +265,7 @@ def main() -> int:
             print("\n[host] parking at home corner (0, 0) at travel altitude")
             gantry.move_to(0.0, 0.0, travel_z, feedrate=DEFAULT_TRANSIT_FEEDRATE)
             gantry.wait_for_moves()
+            time.sleep(PARK_SETTLE_S)
             print("[host] done")
     finally:
         if isinstance(pipette, DPetteDriver):

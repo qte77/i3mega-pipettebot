@@ -176,6 +176,19 @@ class GcodeGantry:
         """
         return send_and_wait_for_ok(self._port, line)
 
+    def flush_input(self) -> None:
+        """Drop any received-but-unread bytes from the OS serial buffer.
+
+        Use after long bursts of multi-line-reply commands (`M119`, `M114`)
+        where pyserial's `select()` may falsely report data-ready against an
+        empty OS buffer, throwing `SerialException` on the next read.
+        """
+        # `_SerialPort` doesn't formally declare this — both pyserial.Serial
+        # and tests/conftest.py::FakeSerial expose it; we call it lazily so
+        # ports without the method (none in this codebase) would error
+        # loudly at runtime rather than silently no-op.
+        self._port.reset_input_buffer()  # type: ignore[attr-defined]
+
     def home(self) -> str:
         """Home all axes via `G28`. Returns the firmware reply line."""
         return self.send("G28")
