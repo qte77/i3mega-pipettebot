@@ -296,7 +296,10 @@ def main() -> int:
         f"[teleop] capture follower joints: kill -USR1 {os.getpid()} "
         "(prints a yaml-paste line of raw ticks)"
     )
-    record_file = open(args.record, "a") if args.record else None  # noqa: SIM115
+    # Open in write mode — append concatenated multiple teleop sessions into
+    # one file, and replay then rewound part-way through. Operators who want
+    # to extend a recording should record into a new file and concatenate.
+    record_file = open(args.record, "w") if args.record else None  # noqa: SIM115
     if record_file is not None:
         print(f"[teleop] recording leader joint stream to {args.record}")
     try:
