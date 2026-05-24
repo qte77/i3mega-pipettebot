@@ -47,6 +47,21 @@ jerk for cautious runs, FAST doubles them for time-critical tours.
   of more aggressive motion (more meniscus disturbance, more
   tip-pendulum swing, harsher leadscrew starts).
 
+Quick comparison
+----------------
+
+============  ====  ====  ====  ====
+Field         SLOW  MID   FAST  step
+============  ====  ====  ====  ====
+accel_x        300   600  1200  x2
+accel_y        400   800  1600  x2
+accel_z        100   200   400  x2
+accel_default  300   600  1200  x2
+jerk_x         1.5   3.0   6.0  x2
+jerk_y         2.5   5.0  10.0  x2
+jerk_z         0.1   0.2   0.4  x2
+============  ====  ====  ====  ====
+
 Feedrate caps (M203 X500 Y500 Z20) are shared across all profiles —
 they reflect the leadscrew mechanical limit on Z and a reasonable XY
 cruise speed, not a tuning choice. The dialed lever is per-axis accel
