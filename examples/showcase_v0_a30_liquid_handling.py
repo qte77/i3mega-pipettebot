@@ -136,9 +136,9 @@ PARK_SETTLE_S = 6.0
 # Pre-home Z lift: force safe_home's polled descent to run every demo
 # invocation, even if Z is already at the sensor from a prior home. The
 # lift overrides any earlier G92 Z origin; safe_home re-establishes Z=0
-# at the sensor trigger after descending. 20 mm clears the inductive
-# sensor's detection zone (~1-3 mm) with margin to spare.
-PRE_HOME_LIFT_MM = 20.0
+# at the sensor trigger after descending. 5 mm clears the inductive
+# sensor's detection zone (operator-validated on live A30).
+PRE_HOME_LIFT_MM = 5.0
 # Linger at Z=0 after each safe_home so the operator can visually verify
 # the carriage lands on the sensor's calibrated trigger point.
 HOME_LINGER_S = 3.0

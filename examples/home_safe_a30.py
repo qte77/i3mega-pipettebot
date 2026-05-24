@@ -66,10 +66,9 @@ BOOT_WAIT_S = 3.0
 # Pre-home Z lift: force safe_home's polled descent to run every
 # invocation, even when Z is already at the sensor from a prior home.
 # Without this, the pre-loop M119 short-circuits to G92 Z0 and the
-# operator sees no descent. 5 mm is enough to clear the inductive
-# sensor's detection zone (operator-validated on live A30); the
-# showcase uses 20 mm for extra margin since its full motion cycle
-# follows immediately.
+# operator sees no descent. 5 mm clears the inductive sensor's
+# detection zone (operator-validated on live A30). Same value as the
+# A30 liquid-handling showcase.
 PRE_HOME_LIFT_MM = 5.0
 PRE_HOME_LIFT_FEEDRATE = 1200  # 20 mm/s — at the M203 Z cap
 
