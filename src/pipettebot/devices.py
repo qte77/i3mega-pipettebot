@@ -301,13 +301,24 @@ def _polled_z_home(
     active, do not engage. Origin is redeclared via `G92 Z0` at the
     sensor trigger point.
     """
+    print("[polled-z] G28 X Y (XY home only — firmware G28 Z is broken on Smartto)")
     gantry.send("G28 X Y")
     if z_min_triggered(gantry):
+        # Carriage is already at the sensor trigger zone (typically from a
+        # prior successful home). Skip the descent — declare origin directly.
+        print(
+            "[polled-z] z_min already TRIGGERED — skipping descent, "
+            "declaring G92 Z0 at current position"
+        )
         gantry.send("G92 Z0")
         return
     # Declare current Z as max_travel so the absolute descent targets stay
     # positive (max_travel-step_mm, max_travel-2*step_mm, ..., 0).
     max_travel = max_steps * step_mm
+    print(
+        f"[polled-z] z_min OPEN — starting descent (G92 Z{max_travel:.0f}, "
+        f"step {step_mm:.1f} mm at {feedrate} mm/min, up to {max_steps} steps)"
+    )
     gantry.send(f"G92 Z{max_travel:.3f}")
     triggered = False
     try:
