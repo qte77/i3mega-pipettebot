@@ -52,6 +52,7 @@ from dataclasses import dataclass
 ADDR_TORQUE_ENABLE = 0x28
 ADDR_ACC = 0x29
 ADDR_GOAL_POSITION = 0x2A
+ADDR_GOAL_TIME = 0x2C
 ADDR_GOAL_VELOCITY = 0x2E
 ADDR_PRESENT_POSITION = 0x38
 
@@ -84,14 +85,23 @@ def _set_torque(packet: object, port: object, enabled: int) -> None:
 def setup_follower_motion(
     packet: object, port: object, *, acc: int, vel_cap: int
 ) -> None:
-    """Configure follower-side ACC and Goal_Velocity so receiver ramps locally.
+    """Configure follower-side ACC, Goal_Velocity, Goal_Time for live mirroring.
 
-    Writes once at startup. Without this, the follower receives stale
-    Goal_Position jumps and slews them at default max acceleration — the
-    operator feels this as a violent jerk on every tick.
+    Writes once at startup. Three registers, each addressing a separate
+    failure mode:
+
+    - `ACC` and `Goal_Velocity` cap the slew rate so a stale `Goal_Position`
+      jump doesn't slew at default max acceleration (violent jerk).
+    - `Goal_Time` is forced to 0 — when non-zero (lerobot-calibrate leaves
+      it set on some firmwares), STS3215 treats each `Goal_Position` as
+      "reach this in N ms" and ignores `Goal_Velocity` entirely. The
+      observable symptom is the follower only catching up after every
+      second leader move while individual moves complete a time-budgeted
+      slope.
     """
     for sid in SERVO_IDS:
         packet.write1ByteTxRx(port, sid, ADDR_ACC, acc)  # type: ignore[attr-defined]
+        packet.write2ByteTxRx(port, sid, ADDR_GOAL_TIME, 0)  # type: ignore[attr-defined]
         packet.write2ByteTxRx(port, sid, ADDR_GOAL_VELOCITY, vel_cap)  # type: ignore[attr-defined]
 
 
@@ -258,6 +268,10 @@ def main() -> int:
     signal.signal(signal.SIGUSR1, _on_capture_signal)
 
     print(f"[teleop] mirror leader -> follower @ {args.rate:.1f} Hz (Ctrl-C to stop)")
+    print(
+        f"[teleop] follower motion-profile: "
+        f"ACC={FOLLOWER_ACC} VEL_CAP={FOLLOWER_VEL_CAP} (Goal_Time forced to 0)"
+    )
     print(
         f"[teleop] capture follower joints: kill -USR1 {os.getpid()} "
         "(prints a yaml-paste line of raw ticks)"

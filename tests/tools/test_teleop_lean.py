@@ -83,10 +83,17 @@ def test_setup_follower_motion_writes_acc_byte_for_each_servo() -> None:
 def test_setup_follower_motion_writes_velocity_word_for_each_servo() -> None:
     packet = FakePacket()
     teleop_lean.setup_follower_motion(packet, port=object(), acc=40, vel_cap=2000)
-    expected = [
+    expected = {
         (sid, teleop_lean.ADDR_GOAL_VELOCITY, 2000) for sid in teleop_lean.SERVO_IDS
-    ]
-    assert packet.word_writes == expected
+    }
+    assert expected.issubset(set(packet.word_writes))
+
+
+def test_setup_follower_motion_writes_goal_time_zero_for_each_servo() -> None:
+    packet = FakePacket()
+    teleop_lean.setup_follower_motion(packet, port=object(), acc=40, vel_cap=2000)
+    expected = {(sid, teleop_lean.ADDR_GOAL_TIME, 0) for sid in teleop_lean.SERVO_IDS}
+    assert expected.issubset(set(packet.word_writes))
 
 
 def test_mirror_tick_forwards_all_available_positions() -> None:
