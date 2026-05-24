@@ -287,14 +287,18 @@ def main() -> int:
                 print(f"\n[host] ====== cycle {n}/{len(volumes)} ======")
                 transfer_cycle(gantry, bot, source, dest, well_z, travel_z, vol)
 
-            # Re-home Z after the cycles: confirms the origin is still
-            # at the sensor (no drift / accidental loss of reference)
-            # and gives the operator a second visible Z=0 verification.
-            # No pre-home lift needed here — Z is at travel_z, well above
-            # the sensor, so safe_home's pre-loop M119 reads OPEN and the
-            # polled descent runs naturally.
-            print("\n[host] re-homing Z after cycles to verify origin")
-            safe_home(gantry, policy)
+            # Z-only re-home after the cycles: confirms the origin is
+            # still at the sensor (no drift / accidental loss of
+            # reference) and gives the operator a second visible Z=0
+            # verification. home_xy=False skips the G28 X Y because XY
+            # is already homed from the bootstrap and Smartto's M400
+            # race can leave the cycle's queued moves blocking a fresh
+            # G28 X Y from completing within the ack timeout. The
+            # settle delay before this call drains any residual queue
+            # so the descent's first command isn't racing motion.
+            print("\n[host] post-cycle Z verification (polled descent only)")
+            time.sleep(2.0)
+            safe_home(gantry, policy, home_xy=False)
             print(
                 f"[host] lingering at Z=0 for {HOME_LINGER_S:.0f} s "
                 "— post-cycle home verification"

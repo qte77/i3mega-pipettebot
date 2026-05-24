@@ -222,6 +222,7 @@ def safe_home(
     max_steps: int = _POLLED_Z_MAX_STEPS,
     step_mm: float = _POLLED_Z_STEP_MM,
     feedrate: int = _POLLED_Z_FEEDRATE,
+    home_xy: bool = True,
 ) -> None:
     """Home `gantry` per `policy.home_strategy`.
 
@@ -253,6 +254,11 @@ def safe_home(
             Default 250 (one full A30 Z travel).
         step_mm: Per-step descent distance (mm). Default 1.0.
         feedrate: Z descent feedrate (mm/min). Default 300.
+        home_xy: Whether to send `G28 X Y` before the polled-Z descent.
+            Default True. Pass False for a post-cycle Z-only verification
+            where XY is already at the home reference and a full G28 X Y
+            would be a slow no-op (or stall on Smartto when motion queue
+            from prior commands hasn't drained).
 
     Raises:
         RuntimeError: if `policy.home_strategy` is `manual_only`,
@@ -269,6 +275,7 @@ def safe_home(
             max_steps=max_steps,
             step_mm=step_mm,
             feedrate=feedrate,
+            home_xy=home_xy,
         )
         return
     raise RuntimeError(
@@ -285,6 +292,7 @@ def _polled_z_home(
     max_steps: int,
     step_mm: float,
     feedrate: int,
+    home_xy: bool = True,
 ) -> None:
     """G28 X Y, descend Z in absolute steps until z_min triggers, G92 Z0.
 
@@ -301,8 +309,11 @@ def _polled_z_home(
     active, do not engage. Origin is redeclared via `G92 Z0` at the
     sensor trigger point.
     """
-    print("[polled-z] G28 X Y (XY home only — firmware G28 Z is broken on Smartto)")
-    gantry.send("G28 X Y")
+    if home_xy:
+        print("[polled-z] G28 X Y (XY home only — firmware G28 Z is broken on Smartto)")
+        gantry.send("G28 X Y")
+    else:
+        print("[polled-z] skipping G28 X Y (Z-only verification mode)")
     if z_min_triggered(gantry):
         # Carriage is already at the sensor trigger zone (typically from a
         # prior successful home). Skip the descent — declare origin directly.

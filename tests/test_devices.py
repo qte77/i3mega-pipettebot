@@ -199,6 +199,42 @@ def test_safe_home_polled_z_descends_in_absolute_mode_until_triggered(
     ]
 
 
+def test_safe_home_polled_z_home_xy_false_skips_g28_xy(
+    fake_serial: FakeSerial, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """home_xy=False mode (post-cycle Z verification): no G28 X Y at start."""
+    monkeypatch.setattr("pipettebot.devices.time.sleep", lambda _s: None)
+    safe_home(
+        _gantry_with(fake_serial),
+        _policy("smartto"),
+        z_min_triggered=_triggers_after(2),
+        max_steps=2,
+        step_mm=1.0,
+        feedrate=300,
+        home_xy=False,
+    )
+    assert b"G28 X Y\n" not in fake_serial.written
+    # But the rest of the descent still happens.
+    assert b"G92 Z2.000\n" in fake_serial.written
+    assert b"G92 Z0\n" in fake_serial.written
+
+
+def test_safe_home_polled_z_home_xy_default_true_sends_g28_xy(
+    fake_serial: FakeSerial, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Default behavior must still G28 X Y — bootstrap callers depend on it."""
+    monkeypatch.setattr("pipettebot.devices.time.sleep", lambda _s: None)
+    safe_home(
+        _gantry_with(fake_serial),
+        _policy("smartto"),
+        z_min_triggered=_triggers_after(2),
+        max_steps=2,
+        step_mm=1.0,
+        feedrate=300,
+    )
+    assert b"G28 X Y\n" in fake_serial.written
+
+
 def test_safe_home_polled_z_does_not_send_g91_or_g90(
     fake_serial: FakeSerial, monkeypatch: pytest.MonkeyPatch
 ) -> None:
