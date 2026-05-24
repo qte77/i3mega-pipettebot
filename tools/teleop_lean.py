@@ -50,7 +50,6 @@ SO-101 has 6 servos addressed 1..6.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import signal
 import sys
@@ -58,64 +57,51 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from _teleop_common import (
+    ADDR_ACC,
+    ADDR_GOAL_POSITION,
+    ADDR_GOAL_TIME,
+    ADDR_GOAL_VELOCITY,
+    ADDR_PRESENT_POSITION,
+    ADDR_TORQUE_ENABLE,
+    BAUD,
+    FOLLOWER_ACC,
+    FOLLOWER_VEL_CAP,
+    SERVO_IDS,
+    format_record_line,
+    set_torque,
+    setup_follower_motion,
+    write_follower_goals,
+)
+
 if TYPE_CHECKING:
     from typing import IO
 
-# STS3215 control table (Feetech STS series)
-ADDR_TORQUE_ENABLE = 0x28
-ADDR_ACC = 0x29
-ADDR_GOAL_POSITION = 0x2A
-ADDR_GOAL_TIME = 0x2C
-ADDR_GOAL_VELOCITY = 0x2E
-ADDR_PRESENT_POSITION = 0x38
-
-SERVO_IDS = (1, 2, 3, 4, 5, 6)
-BAUD = 1_000_000
 DEFAULT_HZ = 30.0
 
 
-# Follower motion-profile defaults — clamp slew rate so missed sample windows
-# don't manifest as a violent step on the receiver. ACC is 1 byte (0-254);
-# Goal_Velocity is ticks/sec (0 = uncapped). Tuned on STS3215 @ 1 Mbaud; tune
-# down for smoother motion, up for snappier response. Override via env vars
-# without editing the file: `FOLLOWER_ACC=80 FOLLOWER_VEL_CAP=5000 uv run ...`.
-def _env_int(name: str, default: int) -> int:
-    """Return int from env var `name`, falling back to `default` if unset/empty."""
-    raw = os.environ.get(name, "")
-    return int(raw) if raw else default
-
-
-FOLLOWER_ACC = _env_int("FOLLOWER_ACC", 40)
-FOLLOWER_VEL_CAP = _env_int("FOLLOWER_VEL_CAP", 2000)
-
-
-def _set_torque(packet: object, port: object, enabled: int) -> None:
-    """Write `enabled` (0 or 1) to ADDR_TORQUE_ENABLE for every SERVO_IDS entry."""
-    for sid in SERVO_IDS:
-        packet.write1ByteTxRx(port, sid, ADDR_TORQUE_ENABLE, enabled)  # type: ignore[attr-defined]
-
-
-def setup_follower_motion(
-    packet: object, port: object, *, acc: int, vel_cap: int
-) -> None:
-    """Configure follower-side ACC, Goal_Velocity, Goal_Time for live mirroring.
-
-    Writes once at startup. Three registers, each addressing a separate
-    failure mode:
-
-    - `ACC` and `Goal_Velocity` cap the slew rate so a stale `Goal_Position`
-      jump doesn't slew at default max acceleration (violent jerk).
-    - `Goal_Time` is forced to 0 — when non-zero (lerobot-calibrate leaves
-      it set on some firmwares), STS3215 treats each `Goal_Position` as
-      "reach this in N ms" and ignores `Goal_Velocity` entirely. The
-      observable symptom is the follower only catching up after every
-      second leader move while individual moves complete a time-budgeted
-      slope.
-    """
-    for sid in SERVO_IDS:
-        packet.write1ByteTxRx(port, sid, ADDR_ACC, acc)  # type: ignore[attr-defined]
-        packet.write2ByteTxRx(port, sid, ADDR_GOAL_TIME, 0)  # type: ignore[attr-defined]
-        packet.write2ByteTxRx(port, sid, ADDR_GOAL_VELOCITY, vel_cap)  # type: ignore[attr-defined]
+# Re-export for downstream tests that import constants/helpers via this module.
+__all__ = [
+    "ADDR_ACC",
+    "ADDR_GOAL_POSITION",
+    "ADDR_GOAL_TIME",
+    "ADDR_GOAL_VELOCITY",
+    "ADDR_PRESENT_POSITION",
+    "ADDR_TORQUE_ENABLE",
+    "BAUD",
+    "DEFAULT_HZ",
+    "FOLLOWER_ACC",
+    "FOLLOWER_VEL_CAP",
+    "SERVO_IDS",
+    "consume_capture",
+    "format_capture_line",
+    "format_record_line",
+    "main",
+    "read_follower_positions",
+    "set_torque",
+    "setup_follower_motion",
+    "write_follower_goals",
+]
 
 
 def format_capture_line(name: str, joint_ticks: list[int]) -> str:
@@ -226,17 +212,6 @@ def _mirror_tick(reader: object, writer: object) -> dict[int, int]:
     return goals
 
 
-def format_record_line(t: float, joints: dict[int, int]) -> str:
-    """Format one tick as a JSONL line: '{"t": <secs>, "joints": {sid: pos, ...}}\\n'.
-
-    Time is rounded to 1ms — sufficient for 60 Hz cadence, keeps lines
-    short. Joint IDs serialize as JSON string keys (a JSON object
-    constraint); parsers must coerce them back to int.
-    """
-    record = {"t": round(t, 3), "joints": joints}
-    return json.dumps(record) + "\n"
-
-
 def main() -> int:
     """Mirror leader joint positions to the follower until Ctrl-C."""
     parser = argparse.ArgumentParser(
@@ -292,8 +267,8 @@ def main() -> int:
     # Leader torque OFF (kinesthetic input — operator moves it by hand;
     # leftover torque from `lerobot-calibrate` causes servo fault / LED blink).
     # Follower torque ON so writes to goal_position actually move the arm.
-    _set_torque(packet, leader, 0)
-    _set_torque(packet, follower, 1)
+    set_torque(packet, leader, 0)
+    set_torque(packet, follower, 1)
     setup_follower_motion(packet, follower, acc=FOLLOWER_ACC, vel_cap=FOLLOWER_VEL_CAP)
 
     # GroupSyncRead/Write take (port, packet, addr, len) — port FIRST.
@@ -333,8 +308,8 @@ def main() -> int:
     finally:
         if record_file is not None:
             record_file.close()
-        _set_torque(packet, leader, 0)
-        _set_torque(packet, follower, 0)
+        set_torque(packet, leader, 0)
+        set_torque(packet, follower, 0)
         leader.closePort()
         follower.closePort()
     return 0

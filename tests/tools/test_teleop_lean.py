@@ -73,29 +73,6 @@ class FakeSyncWriter:
         return 0
 
 
-def test_setup_follower_motion_writes_acc_byte_for_each_servo() -> None:
-    packet = FakePacket()
-    teleop_lean.setup_follower_motion(packet, port=object(), acc=40, vel_cap=2000)
-    expected = [(sid, teleop_lean.ADDR_ACC, 40) for sid in teleop_lean.SERVO_IDS]
-    assert packet.byte_writes == expected
-
-
-def test_setup_follower_motion_writes_velocity_word_for_each_servo() -> None:
-    packet = FakePacket()
-    teleop_lean.setup_follower_motion(packet, port=object(), acc=40, vel_cap=2000)
-    expected = {
-        (sid, teleop_lean.ADDR_GOAL_VELOCITY, 2000) for sid in teleop_lean.SERVO_IDS
-    }
-    assert expected.issubset(set(packet.word_writes))
-
-
-def test_setup_follower_motion_writes_goal_time_zero_for_each_servo() -> None:
-    packet = FakePacket()
-    teleop_lean.setup_follower_motion(packet, port=object(), acc=40, vel_cap=2000)
-    expected = {(sid, teleop_lean.ADDR_GOAL_TIME, 0) for sid in teleop_lean.SERVO_IDS}
-    assert expected.issubset(set(packet.word_writes))
-
-
 def test_mirror_tick_forwards_all_available_positions() -> None:
     positions = {1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600}
     reader = FakeSyncReader(available=positions)
@@ -126,21 +103,6 @@ def test_mirror_tick_skips_write_when_no_servo_available() -> None:
     writer = FakeSyncWriter()
     teleop_lean._mirror_tick(reader, writer)
     assert writer.tx_calls == 0
-
-
-def test_env_int_returns_default_when_var_unset(monkeypatch) -> None:
-    monkeypatch.delenv("TEST_TELEOP_LEAN_INT", raising=False)
-    assert teleop_lean._env_int("TEST_TELEOP_LEAN_INT", 42) == 42
-
-
-def test_env_int_returns_default_when_var_empty(monkeypatch) -> None:
-    monkeypatch.setenv("TEST_TELEOP_LEAN_INT", "")
-    assert teleop_lean._env_int("TEST_TELEOP_LEAN_INT", 42) == 42
-
-
-def test_env_int_reads_value_from_env(monkeypatch) -> None:
-    monkeypatch.setenv("TEST_TELEOP_LEAN_INT", "123")
-    assert teleop_lean._env_int("TEST_TELEOP_LEAN_INT", 42) == 123
 
 
 def test_format_capture_line_emits_yaml_paste_line() -> None:
@@ -205,31 +167,3 @@ def test_mirror_tick_returns_empty_dict_when_no_servo_available() -> None:
     reader = FakeSyncReader(available={})
     writer = FakeSyncWriter()
     assert teleop_lean._mirror_tick(reader, writer) == {}
-
-
-def test_format_record_line_emits_jsonl_with_timestamp_and_joints() -> None:
-    import json
-
-    line = teleop_lean.format_record_line(
-        0.5, {1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600}
-    )
-    assert line.endswith("\n"), "record lines must terminate with newline for JSONL"
-    record = json.loads(line)
-    assert record["t"] == 0.5
-    assert record["joints"] == {
-        "1": 100,
-        "2": 200,
-        "3": 300,
-        "4": 400,
-        "5": 500,
-        "6": 600,
-    }
-
-
-def test_format_record_line_rounds_timestamp_to_milliseconds() -> None:
-    import json
-
-    line = teleop_lean.format_record_line(0.123456789, {1: 100})
-    record = json.loads(line)
-    # 1 ms precision is enough for STS3215's 30-60 Hz update; keeps lines short.
-    assert record["t"] == 0.123
