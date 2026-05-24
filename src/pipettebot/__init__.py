@@ -4,6 +4,7 @@ from pipettebot.bot import PipetteBot
 from pipettebot.cli_profile import build_volumes, resolve_profile
 from pipettebot.devices import (
     FIRMWARE_POLICIES,
+    PRINTER_PORT_ENV,
     DiscoveredDevice,
     FirmwarePolicy,
     classify,
@@ -11,6 +12,7 @@ from pipettebot.devices import (
     parse_m115,
     policy_for,
     resolve_port,
+    safe_home,
 )
 from pipettebot.experiment_profile import ExperimentProfile, load_experiment_profile
 from pipettebot.gantry import (
@@ -23,6 +25,7 @@ from pipettebot.motion_profile import MotionProfile, select_profile
 
 __all__ = [
     "FIRMWARE_POLICIES",
+    "PRINTER_PORT_ENV",
     "DiscoveredDevice",
     "ExperimentProfile",
     "FirmwarePolicy",
@@ -39,6 +42,7 @@ __all__ = [
     "policy_for",
     "resolve_port",
     "resolve_profile",
+    "safe_home",
     "select_profile",
     "send_and_wait_for_ok",
 ]

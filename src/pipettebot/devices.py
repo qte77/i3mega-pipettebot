@@ -13,10 +13,16 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pipettebot.gantry import open_gcode_port, send_and_wait_for_ok
+from pipettebot.gantry import GcodeGantry, open_gcode_port, send_and_wait_for_ok
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
+
+# Single env var operators set to point at the gantry's USB-serial path.
+# Resolved by `resolve_port()`. Used uniformly by every example, tool, and
+# discover-driven helper; printer model is identified by `discover()`, not
+# by which env var was set.
+PRINTER_PORT_ENV = "PRINTER_PORT"
 
 # (substring to match in M115 reply, firmware family it identifies).
 # Order matters: the first matching fingerprint wins. Keep more-specific
@@ -48,41 +54,31 @@ class DiscoveredDevice:
 
 @dataclass(frozen=True)
 class FirmwarePolicy:
-    """Per-family behavior decisions: how to home, port aliases, default baud.
+    """Per-family behavior decisions: how to home, default baud.
 
     Stable while machine models proliferate. A new printer model running an
     already-known firmware adds zero code; a new firmware family adds one
     entry to `FIRMWARE_POLICIES` plus matching `FIRMWARE_FINGERPRINTS`.
+
+    Port resolution is firmware-agnostic: every operator sets a single
+    `PRINTER_PORT` env var (see `resolve_port()`). Per-family port aliases
+    were collapsed when the env-var convention was unified.
     """
 
     family: str
     home_strategy: str
     preferred_baud: int
-    port_env_aliases: tuple[str, ...]
 
 
 # Per-firmware policies. The `unknown` entry is the conservative fallback
 # returned by `policy_for()` when classification fails — `manual_only`
 # homing forbids the gantry layer from calling `G28` blind.
 FIRMWARE_POLICIES: tuple[FirmwarePolicy, ...] = (
+    FirmwarePolicy(family="marlin", home_strategy="full_g28", preferred_baud=250000),
     FirmwarePolicy(
-        family="marlin",
-        home_strategy="full_g28",
-        preferred_baud=250000,
-        port_env_aliases=("I3MEGA_PORT", "GANTRY_PORT"),
+        family="smartto", home_strategy="xy_then_polled_z", preferred_baud=115200
     ),
-    FirmwarePolicy(
-        family="smartto",
-        home_strategy="xy_then_polled_z",
-        preferred_baud=115200,
-        port_env_aliases=("SMARTTO_PORT", "GANTRY_PORT"),
-    ),
-    FirmwarePolicy(
-        family="unknown",
-        home_strategy="manual_only",
-        preferred_baud=115200,
-        port_env_aliases=("GANTRY_PORT",),
-    ),
+    FirmwarePolicy(family="unknown", home_strategy="manual_only", preferred_baud=115200),
 )
 
 
@@ -154,26 +150,64 @@ def policy_for(device: DiscoveredDevice) -> FirmwarePolicy:
     return next(p for p in FIRMWARE_POLICIES if p.family == "unknown")
 
 
-def resolve_port(
-    policy: FirmwarePolicy, env: Mapping[str, str] | None = None
-) -> str | None:
-    """Return the operator's port for `policy`, iterating its env aliases.
+def resolve_port(env: Mapping[str, str] | None = None) -> str | None:
+    """Return the operator's `PRINTER_PORT` env value, or None if unset.
 
     Args:
-        policy: The policy whose `port_env_aliases` tuple is searched in
-            order; the first set environment variable wins.
         env: Mapping to read from. Defaults to `os.environ` so operators can
             use the usual shell-export workflow.
 
     Returns:
-        The port string if any alias is set, else None.
+        The port string if `PRINTER_PORT` is set and non-empty, else None.
     """
     source = env if env is not None else os.environ
-    for alias in policy.port_env_aliases:
-        value = source.get(alias)
-        if value:
-            return value
-    return None
+    value = source.get(PRINTER_PORT_ENV)
+    return value if value else None
+
+
+def safe_home(
+    gantry: GcodeGantry,
+    policy: FirmwarePolicy,
+    *,
+    confirm_z: Callable[[str], str] = input,
+) -> None:
+    """Home `gantry` per `policy.home_strategy`.
+
+    Branches on the policy's home strategy:
+
+    - `full_g28`: sends `G28`. Suitable for Marlin with working Z endstop.
+    - `xy_then_polled_z`: sends `G28 X Y`, invokes `confirm_z` to block
+      until the operator has manually positioned Z to the desired origin,
+      then sends `G92 Z0`. Required on Smartto / A30 builds where `G28 Z`
+      dives indefinitely (probe-pin variant; see
+      `docs/research/gantry-firmware-alternatives.md`).
+    - `manual_only`: raises. Unknown firmware: the caller must home by
+      hand and set origin via direct G-code, not via `safe_home`.
+
+    Args:
+        gantry: Live `GcodeGantry` bound to an open serial port.
+        policy: From `policy_for(discover(port))`.
+        confirm_z: Called between `G28 X Y` and `G92 Z0` on
+            `xy_then_polled_z` only. Default `input` blocks on stdin.
+            Inject `lambda _: ""` for unattended/test runs.
+
+    Raises:
+        RuntimeError: if `policy.home_strategy` is `manual_only` or
+            otherwise unhandled.
+    """
+    if policy.home_strategy == "full_g28":
+        gantry.home()
+        return
+    if policy.home_strategy == "xy_then_polled_z":
+        gantry.send("G28 X Y")
+        confirm_z("Manually jog Z to your desired origin, then press Enter: ")
+        gantry.send("G92 Z0")
+        return
+    raise RuntimeError(
+        f"home strategy {policy.home_strategy!r} (firmware family "
+        f"{policy.family!r}) requires manual operator action; safe_home "
+        "cannot proceed. Home and set origin via tools/gantry_repl.py."
+    )
 
 
 _DEFAULT_BAUDS: tuple[int, ...] = (115200, 250000, 57600, 9600)

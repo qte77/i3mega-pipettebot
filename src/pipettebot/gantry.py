@@ -157,23 +157,28 @@ class GcodeGantry:
         self._cfg = cfg
         self._port = port
 
-    def _send(self, line: str) -> str:
-        # Delegate to the lifted helper; return the terminating `ok` line so
-        # the public method signatures stay backward-compatible.
+    def send(self, line: str) -> str:
+        """Send a raw G-code `line`; return the firmware's terminating `ok` line.
+
+        Prefer the named methods (`home`, `move_to`, `wait_for_moves`) when one
+        fits. Use `send` for G-code outside the wrapped surface — e.g. single-
+        axis homes, `G92`, motion-profile setters from
+        `pipettebot.motion_profile.MotionProfile.as_marlin()`.
+        """
         return send_and_wait_for_ok(self._port, line)[-1]
 
     def home(self) -> str:
         """Home all axes via `G28`. Returns the firmware reply line."""
-        return self._send("G28")
+        return self.send("G28")
 
     def move_to(self, x: float, y: float, z: float, feedrate: int | None = None) -> str:
         """Move to `(x, y, z)` at `feedrate` mm/min (or the config default)."""
         f = feedrate if feedrate is not None else self._cfg.feedrate_mm_per_min
-        return self._send(f"G1 X{x:.3f} Y{y:.3f} Z{z:.3f} F{f}")
+        return self.send(f"G1 X{x:.3f} Y{y:.3f} Z{z:.3f} F{f}")
 
     def wait_for_moves(self) -> str:
         """Block until the planner queue drains (`M400`)."""
-        return self._send("M400")
+        return self.send("M400")
 
     def close(self) -> None:
         """Close the underlying serial port."""

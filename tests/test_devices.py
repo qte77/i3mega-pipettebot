@@ -11,12 +11,15 @@ from hypothesis import strategies as st
 from pipettebot.devices import (
     FIRMWARE_POLICIES,
     DiscoveredDevice,
+    FirmwarePolicy,
     classify,
     discover,
     parse_m115,
     policy_for,
     resolve_port,
+    safe_home,
 )
+from pipettebot.gantry import GantryConfig, GcodeGantry
 from tests.conftest import FakeSerial
 from tests.fixtures.m115_replies import (
     A30_M115_LIVE,
@@ -101,27 +104,84 @@ def test_policy_for_unknown_returns_manual_only_strategy() -> None:
     assert policy.home_strategy == "manual_only"
 
 
-# resolve_port(): operator env-var resolution with alias fallthrough.
+# resolve_port(): single PRINTER_PORT env, firmware-agnostic.
 
 
-def test_resolve_port_uses_first_alias_set_in_env() -> None:
-    device = parse_m115(MARLIN_AI3M_M115_SAMPLE, baud=250000)
-    policy = policy_for(device)
-    env = {"I3MEGA_PORT": "/dev/ttyUSB1"}
-    assert resolve_port(policy, env=env) == "/dev/ttyUSB1"
+def test_resolve_port_returns_printer_port_value_when_set() -> None:
+    assert resolve_port(env={"PRINTER_PORT": "/dev/ttyUSB1"}) == "/dev/ttyUSB1"
 
 
-def test_resolve_port_falls_through_to_gantry_port_when_specific_alias_unset() -> None:
-    device = parse_m115(MARLIN_AI3M_M115_SAMPLE, baud=250000)
-    policy = policy_for(device)
-    env = {"GANTRY_PORT": "/dev/ttyACM0"}
-    assert resolve_port(policy, env=env) == "/dev/ttyACM0"
+def test_resolve_port_returns_none_when_printer_port_unset() -> None:
+    assert resolve_port(env={}) is None
 
 
-def test_resolve_port_returns_none_when_no_alias_set() -> None:
-    device = parse_m115(A30_M115_LIVE, baud=115200)
-    policy = policy_for(device)
-    assert resolve_port(policy, env={}) is None
+def test_resolve_port_returns_none_when_printer_port_empty_string() -> None:
+    assert resolve_port(env={"PRINTER_PORT": ""}) is None
+
+
+# safe_home(): policy-driven home dispatch with operator-confirm callback.
+
+
+def _gantry_with(fake_serial: FakeSerial) -> GcodeGantry:
+    return GcodeGantry(GantryConfig(port="/dev/null"), fake_serial)
+
+
+def _policy(family: str) -> FirmwarePolicy:
+    return next(p for p in FIRMWARE_POLICIES if p.family == family)
+
+
+def test_safe_home_full_g28_sends_single_g28(fake_serial: FakeSerial) -> None:
+    safe_home(_gantry_with(fake_serial), _policy("marlin"))
+    assert fake_serial.written == [b"G28\n"]
+
+
+def test_safe_home_full_g28_does_not_invoke_confirm_z(fake_serial: FakeSerial) -> None:
+    def _raises(_prompt: str) -> str:
+        raise AssertionError("confirm_z must not fire on full_g28")
+
+    safe_home(_gantry_with(fake_serial), _policy("marlin"), confirm_z=_raises)
+
+
+def test_safe_home_xy_then_polled_z_sends_g28_xy_and_g92_z0(
+    fake_serial: FakeSerial,
+) -> None:
+    safe_home(
+        _gantry_with(fake_serial), _policy("smartto"), confirm_z=lambda _p: ""
+    )
+    assert fake_serial.written == [b"G28 X Y\n", b"G92 Z0\n"]
+
+
+def test_safe_home_xy_then_polled_z_calls_confirm_z_between_writes(
+    fake_serial: FakeSerial,
+) -> None:
+    """The Z origin must be operator-confirmed AFTER G28 X Y, BEFORE G92 Z0."""
+    writes_when_confirm_fired: list[bytes] = []
+
+    def _snapshot(_prompt: str) -> str:
+        writes_when_confirm_fired.extend(fake_serial.written)
+        return ""
+
+    safe_home(_gantry_with(fake_serial), _policy("smartto"), confirm_z=_snapshot)
+    assert writes_when_confirm_fired == [b"G28 X Y\n"]
+    assert fake_serial.written == [b"G28 X Y\n", b"G92 Z0\n"]
+
+
+def test_safe_home_manual_only_raises_and_writes_nothing(
+    fake_serial: FakeSerial,
+) -> None:
+    with pytest.raises(RuntimeError, match=r"manual_only"):
+        safe_home(_gantry_with(fake_serial), _policy("unknown"))
+    assert fake_serial.written == []
+
+
+def test_safe_home_manual_only_does_not_invoke_confirm_z(
+    fake_serial: FakeSerial,
+) -> None:
+    def _raises(_prompt: str) -> str:
+        raise AssertionError("confirm_z must not fire on manual_only")
+
+    with pytest.raises(RuntimeError):
+        safe_home(_gantry_with(fake_serial), _policy("unknown"), confirm_z=_raises)
 
 
 # discover(): the only I/O entry point. Tests monkeypatch the port opener.

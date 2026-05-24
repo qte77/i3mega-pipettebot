@@ -16,10 +16,8 @@ Three phases:
 Never sends motion: `G0`, `G1`, `G2`, `G3`, `G28`, `G29`, `G30`, `G92`,
 `M84`, `M18`, `M500` are all refused at the `_send` boundary.
 
-Required (first set wins):
-    GANTRY_PORT   Generic gantry serial path.
-    SMARTTO_PORT  Geeetech A30 / Smartto port.
-    I3MEGA_PORT   Anycubic i3 Mega / Marlin port.
+Required:
+    PRINTER_PORT  Gantry serial path. Run `tools/preflight.py` to discover.
 
 Tip: pipe through `tee captures/gantry_probe_$(date +%s).log` for a
 permanent capture of what the device reported.
@@ -36,7 +34,7 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
-from pipettebot.devices import discover
+from pipettebot.devices import PRINTER_PORT_ENV, discover
 
 if TYPE_CHECKING:
     import serial  # type: ignore[import-untyped]
@@ -191,11 +189,8 @@ def _confirm(prompt: str) -> bool:
 
 
 def _resolve_port() -> str | None:
-    for var in ("GANTRY_PORT", "SMARTTO_PORT", "I3MEGA_PORT"):
-        val = os.environ.get(var)
-        if val:
-            return val
-    return None
+    val = os.environ.get(PRINTER_PORT_ENV)
+    return val if val else None
 
 
 def _run_session(link: serial.Serial, family: str) -> int:
@@ -222,7 +217,7 @@ def _run_session(link: serial.Serial, family: str) -> int:
 def main() -> int:
     port = _resolve_port()
     if not port:
-        sys.stderr.write("ERROR: set GANTRY_PORT (or SMARTTO_PORT / I3MEGA_PORT).\n")
+        sys.stderr.write(f"ERROR: set {PRINTER_PORT_ENV}.\n")
         return 1
 
     print(
