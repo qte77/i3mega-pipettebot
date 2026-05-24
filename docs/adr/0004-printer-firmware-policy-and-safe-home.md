@@ -32,7 +32,7 @@ was advisory text, not enforcement.
 
 ## Decision
 
-### 1. Collapse all port aliases to a single `PRINTER_PORT` env var.
+### 1. Collapse all port aliases to a single `PRINTER_PORT` env var
 
 `FirmwarePolicy` no longer carries `port_env_aliases`. `devices.py`
 exposes a module-level `PRINTER_PORT_ENV = "PRINTER_PORT"` and
@@ -44,8 +44,7 @@ operator chose to set.
 regardless of the detected family. Operators set one env var; the same
 shell session can drive any supported printer.
 
-### 2. Introduce `safe_home(gantry, policy, *, z_min_triggered, ...)` as a
-free function in `devices.py`.
+### 2. Introduce `safe_home(gantry, policy, *, z_min_triggered, ...)` as a free function in `devices.py`
 
 ```python
 def safe_home(

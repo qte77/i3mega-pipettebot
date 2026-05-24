@@ -89,7 +89,7 @@ To chain discovery directly into the next command, use `--export`:
 
 ```bash
 eval "$(uv run python tools/preflight.py --export)" \
-  && uv run python examples/showcase_v0_pipette_sim.py
+  && uv run python examples/showcase_v0_i3_pipette_sim.py
 ```
 
 Then the demo. Hardware examples drive the gantry (and, for the
@@ -101,20 +101,20 @@ drag any mounted tip into the deck.
 
 ```bash
 # back-well ↔ front-well pipetting cycle (older two-well demo, simulated)
-uv run examples/showcase_v0_pipette_sim.py
+uv run examples/showcase_v0_i3_pipette_sim.py
 
 # Full 96-well plate fill, gantry-only (aspirate/dispense simulated via
 # Z dives). Useful for gantry/cabling bring-up without the dPette.
-uv run examples/showcase_v0_full_plate.py
+uv run examples/showcase_v0_i3_full_plate.py
 
 # Canonical end-to-end demo — same gantry tour with REAL dPette
 # aspirate/dispense (B3 SUCK at reservoir, B3 BLOW at each SBS column).
-# Needs both I3MEGA_PORT and PIPETTE_PORT set.
-uv run examples/showcase_v0_full_pipettebot.py
+# Needs both PRINTER_PORT and PIPETTE_PORT set.
+uv run examples/showcase_v0_i3_full_pipettebot.py
 
 # dPette-only bench test — 12 aspirate/dispense cycles, no gantry. Use
 # to measure real B3 motor timing. Run with tip in air or over waste.
-uv run examples/showcase_v0_full_dpette_cycles.py
+uv run examples/showcase_v0_i3_full_dpette_cycles.py
 
 # Every showcase (column/dpette-cycles/rows) accepts a TOML experiment
 # profile via PIPETTE_PROFILE — drives the cycle count, per-cycle volumes,
@@ -123,24 +123,46 @@ uv run examples/showcase_v0_full_dpette_cycles.py
 # `examples/experiment_profiles/` for samples
 # (calibration_curve_demo.toml, gradient_reservoir_demo.toml).
 PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
-  uv run examples/showcase_v0_full_dpette_cycles.py
+  uv run examples/showcase_v0_i3_full_dpette_cycles.py
 PIPETTE_PORT=/dev/ttyUSB1 \
   PIPETTE_PROFILE=examples/experiment_profiles/calibration_curve_demo.toml \
-  uv run examples/showcase_v0_full_pipettebot_rows.py
+  uv run examples/showcase_v0_i3_full_pipettebot_rows.py
 
 # Every gantry-using example also accepts MOTION_PROFILE to dial gantry
 # accel/jerk between slow / mid / fast (or off to skip the install).
 # Default is mid (liquid-handling friendly). See
 # `src/pipettebot/motion_profile.py` for the bundled values + semantics.
 MOTION_PROFILE=fast NUM_CYCLES=1 \
-  uv run examples/showcase_v0_full_pipettebot_rows.py
+  uv run examples/showcase_v0_i3_full_pipettebot_rows.py
 
 # Home — full `G28` to (X=0, Y=0, Z=0). Bootstrap installs the same
 # liquid-handling motion profile (M203/M201/M204/M205) that every
 # showcase_v0_*.py installs, so chaining a home before a tour leaves a
 # known motion state. No partial-axis shortcuts.
-uv run examples/home_G28_fast.py
+uv run examples/home_G28_fast_i3.py
 ```
+
+### Geeetech A30 (Smartto firmware)
+
+The same toolchain drives an A30 — discovery picks `smartto` from `M115`,
+the `safe_home` library routes around firmware-broken `G28 Z` via a
+polled-Z descent against the working inductive sensor, and a parallel
+showcase exercises the deck:
+
+```bash
+# Z home only — polled descent finds the sensor, declares G92 Z0.
+uv run examples/home_safe_a30.py
+
+# End-to-end liquid-handling demo — discovery, home, N cycles with
+# split-feedrate dives, post-cycle re-home, park at (0, 0, 0). Runs
+# in GANTRY-ONLY mode when PIPETTE_PORT is unset (motion executes for
+# real; aspirate/dispense are log-only stubs).
+uv run examples/showcase_v0_a30_liquid_handling.py
+```
+
+See [`docs/research/gantry-firmware-alternatives.md`](docs/research/gantry-firmware-alternatives.md)
+for the A30 bring-up notes and [ADR 0004](docs/adr/0004-printer-firmware-policy-and-safe-home.md)
+for the `safe_home` design.
 
 The full-plate tour's deck layout (slot positions, motion constants,
 tour sequence) is the canonical spec — see
@@ -175,7 +197,7 @@ stroke → bed sweeps to front well → another stroke → home.
 ## Architecture
 
 ```text
-examples/showcase_v0_pipette_sim.py
+examples/showcase_v0_i3_pipette_sim.py
         │
         ▼
 raw serial @ 250000 baud  ──► /dev/cu.usbserial-*  (Marlin, G-code)
