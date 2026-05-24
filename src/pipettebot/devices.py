@@ -78,7 +78,9 @@ FIRMWARE_POLICIES: tuple[FirmwarePolicy, ...] = (
     FirmwarePolicy(
         family="smartto", home_strategy="xy_then_polled_z", preferred_baud=115200
     ),
-    FirmwarePolicy(family="unknown", home_strategy="manual_only", preferred_baud=115200),
+    FirmwarePolicy(
+        family="unknown", home_strategy="manual_only", preferred_baud=115200
+    ),
 )
 
 

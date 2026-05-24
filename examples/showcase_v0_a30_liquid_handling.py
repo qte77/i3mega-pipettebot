@@ -94,7 +94,10 @@ def _coord(name: str, default: float) -> float:
 
 def _read_deck() -> tuple[tuple[float, float], tuple[float, float], float, float]:
     """Return ((source_x, source_y), (dest_x, dest_y), well_z, travel_z)."""
-    source = (_coord("SOURCE_X", DEFAULT_SOURCE_X), _coord("SOURCE_Y", DEFAULT_SOURCE_Y))
+    source = (
+        _coord("SOURCE_X", DEFAULT_SOURCE_X),
+        _coord("SOURCE_Y", DEFAULT_SOURCE_Y),
+    )
     dest = (_coord("DEST_X", DEFAULT_DEST_X), _coord("DEST_Y", DEFAULT_DEST_Y))
     well_z = _coord("WELL_Z", DEFAULT_WELL_Z)
     travel_z = _coord("TRAVEL_Z", DEFAULT_TRAVEL_Z)
@@ -119,7 +122,9 @@ def transfer_cycle(
     """
     sx, sy = source
     dx, dy = dest
-    print(f"[host] cycle: aspirate {volume_ul:.1f} uL @ ({sx},{sy}) -> dispense @ ({dx},{dy})")
+    print(
+        f"[host] cycle: aspirate {volume_ul:.1f} uL @ ({sx},{sy}) -> dispense @ ({dx},{dy})"
+    )
     # Transit to source at travel altitude.
     gantry.move_to(sx, sy, travel_z, feedrate=DEFAULT_TRANSIT_FEEDRATE)
     gantry.wait_for_moves()

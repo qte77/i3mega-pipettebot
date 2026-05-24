@@ -28,7 +28,7 @@ gantry_repl = _import_gantry_repl()
 
 
 def _clear_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for var in ("GANTRY_PORT", "I3MEGA_PORT", "SMARTTO_PORT", "BAUD"):
+    for var in ("PRINTER_PORT", "BAUD"):
         monkeypatch.delenv(var, raising=False)
 
 
@@ -39,7 +39,7 @@ def test_gantry_repl_exits_1_when_port_missing(
     rc = gantry_repl.main(argv=[])
     assert rc == 1
     err = capsys.readouterr().err
-    assert "GANTRY_PORT" in err or "SMARTTO_PORT" in err or "I3MEGA_PORT" in err
+    assert "PRINTER_PORT" in err
 
 
 def test_select_cheat_sheet_for_marlin_returns_marlin_content() -> None:
@@ -69,7 +69,7 @@ def test_gantry_repl_device_flag_overrides_autodetect(
 ) -> None:
     """--device smartto must skip discover() entirely."""
     _clear_env(monkeypatch)
-    monkeypatch.setenv("GANTRY_PORT", "/dev/null")
+    monkeypatch.setenv("PRINTER_PORT", "/dev/null")
     discover_calls: list[str] = []
 
     def _discover_spy(port: str, *args: object, **kwargs: object) -> DiscoveredDevice:

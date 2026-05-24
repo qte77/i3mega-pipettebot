@@ -145,9 +145,7 @@ def test_safe_home_full_g28_does_not_invoke_confirm_z(fake_serial: FakeSerial) -
 def test_safe_home_xy_then_polled_z_sends_g28_xy_and_g92_z0(
     fake_serial: FakeSerial,
 ) -> None:
-    safe_home(
-        _gantry_with(fake_serial), _policy("smartto"), confirm_z=lambda _p: ""
-    )
+    safe_home(_gantry_with(fake_serial), _policy("smartto"), confirm_z=lambda _p: "")
     assert fake_serial.written == [b"G28 X Y\n", b"G92 Z0\n"]
 
 
