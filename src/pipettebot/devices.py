@@ -176,6 +176,11 @@ def resolve_port(env: Mapping[str, str] | None = None) -> str | None:
 _POLLED_Z_STEP_MM = 1.0
 _POLLED_Z_FEEDRATE = 300
 _POLLED_Z_MAX_STEPS = 250
+# After the descent burst (many G1/M400/M119 round-trips) Smartto sometimes
+# needs a beat before it can process the next command. Without this, the
+# final G92 Z0 reliably throws "device reports readiness to read but
+# returned no data" on the live A30.
+_POLLED_Z_SETTLE_S = 1.0
 # Case-insensitive, whitespace-tolerant match for the Z-min "triggered" state.
 # Catches Smartto's `z_min:TRIGGERED`, Marlin's `Z_min: TRIGGERED`, and the
 # `z min :triggered` variants observed in the wild on different firmware
@@ -303,7 +308,28 @@ def _polled_z_home(
     finally:
         gantry.send("G90")  # restore absolute regardless of outcome
         if triggered:
-            gantry.send("G92 Z0")  # redeclare trigger point as origin
+            # Let the firmware settle before the origin declaration — the
+            # M119/M400 burst leaves Smartto momentarily unresponsive, and
+            # G92 Z0 issued immediately after G90 reliably triggers a
+            # "readiness without data" SerialException on the live A30.
+            time.sleep(_POLLED_Z_SETTLE_S)
+            try:
+                gantry.send("G92 Z0")
+            except OSError as e:
+                # OSError covers serial.SerialException (subclass of
+                # IOError = OSError). Z is at the sensor trigger right
+                # now — re-running this script will short-circuit on the
+                # pre-loop M119 check and declare origin without descending.
+                raise RuntimeError(
+                    "polled Z home: descent SUCCEEDED — carriage is at "
+                    "the sensor trigger point — but the final G92 Z0 "
+                    f"failed with a serial-level error: {e}. The firmware "
+                    "is in an inconsistent state where it thinks Z is "
+                    f"near {max_travel * 1.0:.0f} mm rather than 0. "
+                    "Recovery: re-run this same script — the pre-loop "
+                    "M119 check will see TRIGGERED and declare G92 Z0 "
+                    "from a fresh serial connection."
+                ) from e
     if not triggered:
         # Capture both endstop state AND firmware-recorded position so the
         # operator can tell whether Z motion was rejected (M114 Z unchanged

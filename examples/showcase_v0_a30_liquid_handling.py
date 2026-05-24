@@ -30,10 +30,14 @@ Optional environment variables:
                    unknown #5).
 
 Deck-geometry overrides (defaults are A30-sized, ~320x320 bed, well
-positions inset by ~80 mm from edges — adjust to your physical layout):
+positions inset by ~80 mm from each edge — adjust to your physical
+layout). The defaults place SOURCE and DEST at diagonal corners so a
+single cycle exercises both X and Y travel, not just one axis:
 
-    SOURCE_X / SOURCE_Y    Aspirate well (mm). Default 160 / 80.
-    DEST_X   / DEST_Y      Dispense well (mm). Default 160 / 240.
+    SOURCE_X / SOURCE_Y    Aspirate well (mm). Default 80 / 80
+                           (back-left corner area).
+    DEST_X   / DEST_Y      Dispense well (mm). Default 240 / 240
+                           (front-right corner area).
     WELL_Z                 Tip depth into well (mm above operator Z=0).
                            Default 5.0.
     TRAVEL_Z               Safe transit altitude (mm). Default 60.0.
@@ -100,10 +104,12 @@ class _LoggingPipette:
         print("[host] (sim) dispense — no dPette wired")
 
 
-# A30 deck-frame defaults — operator-overridable via env.
-DEFAULT_SOURCE_X = 160.0
+# A30 deck-frame defaults — operator-overridable via env. SOURCE and
+# DEST sit at diagonal corners (back-left vs. front-right) so each cycle
+# crosses ~160 mm in X AND ~160 mm in Y — validates both axes per pass.
+DEFAULT_SOURCE_X = 80.0
 DEFAULT_SOURCE_Y = 80.0
-DEFAULT_DEST_X = 160.0
+DEFAULT_DEST_X = 240.0
 DEFAULT_DEST_Y = 240.0
 DEFAULT_WELL_Z = 5.0
 DEFAULT_TRAVEL_Z = 60.0
