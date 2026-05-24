@@ -107,10 +107,11 @@ The end-to-end paths the project must support:
 | Workflow | Driver | Doc |
 |---|---|---|
 | Bring-up — connect both devices, mocked tests pass | [README Quickstart](../README.md#quickstart) | — |
-| Hardware probe — Marlin + dPette firmware detected | `tools/preflight.py` | [docs/hardware.md](hardware.md) |
-| Well-A1 calibration — measure deck zero, set constants | `tools/marlin_repl.py` | [docs/calibration.md](calibration.md) |
-| First plate fill | `examples/showcase_v0_full_pipettebot.py` | [docs/deck-layout.md](deck-layout.md) |
-| Custom protocol — TOML profile, vary cycles + volumes | `PIPETTE_PROFILE=…` | [examples/profiles/](../examples/profiles/) |
+| Hardware probe — any G-code firmware + dPette detected | `tools/preflight.py` | [docs/hardware.md](hardware.md) |
+| Well-A1 calibration — measure deck zero, set constants | `tools/gantry_repl.py` | [docs/calibration.md](calibration.md) |
+| First plate fill (i3 Mega) | `examples/showcase_v0_i3_full_pipettebot.py` | [docs/deck-layout.md](deck-layout.md) |
+| A30 liquid-handling demo (Smartto firmware, polled-Z home) | `examples/showcase_v0_a30_liquid_handling.py` | [docs/research/gantry-firmware-alternatives.md](research/gantry-firmware-alternatives.md) |
+| Custom protocol — TOML profile, vary cycles + volumes | `PIPETTE_PROFILE=…` | [examples/experiment_profiles/](../examples/experiment_profiles/) |
 | Print a custom part | `make render_all` | [docs/3d-parts.md](3d-parts.md) |
 | Deploy on a Single-Board Computer | `tools/setup_pi.sh` | [docs/sbc-deployment.md](sbc-deployment.md) |
 
