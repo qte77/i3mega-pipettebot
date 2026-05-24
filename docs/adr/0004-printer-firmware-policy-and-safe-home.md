@@ -44,7 +44,7 @@ operator chose to set.
 regardless of the detected family. Operators set one env var; the same
 shell session can drive any supported printer.
 
-### 2. Introduce `safe_home(gantry, policy, *, confirm_z=input)` as a
+### 2. Introduce `safe_home(gantry, policy, *, z_min_triggered, ...)` as a
 free function in `devices.py`.
 
 ```python
@@ -52,23 +52,39 @@ def safe_home(
     gantry: GcodeGantry,
     policy: FirmwarePolicy,
     *,
-    confirm_z: Callable[[str], str] = input,
+    z_min_triggered: Callable[[GcodeGantry], bool] = _read_z_min_triggered,
+    max_steps: int = 250,
+    step_mm: float = 1.0,
+    feedrate: int = 300,
 ) -> None:
 ```
 
 Branches on `policy.home_strategy`:
 
 - `full_g28` → `gantry.home()` (sends `G28`).
-- `xy_then_polled_z` → `gantry.send("G28 X Y")`, invoke `confirm_z`
-  prompt, `gantry.send("G92 Z0")`. The callback blocks on stdin by
-  default; tests and unattended runners inject `lambda _: ""`.
+- `xy_then_polled_z` → `G28 X Y` then polled descent: `G91`, loop
+  (`G1 Z-step_mm F<feedrate>`, `M400`, `M119`-via-`z_min_triggered`,
+  break-on-triggered), `G90`, `G92 Z0`. If `z_min_triggered` returns
+  True before the first descend step, the loop is skipped and origin
+  is declared immediately. If `max_steps` is exceeded without trigger,
+  `G90` is restored (`try`/`finally`) and `RuntimeError` is raised
+  without declaring origin. Required on Smartto/A30 builds where
+  firmware `G28 Z` dives indefinitely (probe-pin variant ignores the
+  working `z_min` switch).
 - `manual_only` → raise `RuntimeError`. Operator must home via
   `tools/gantry_repl.py` and set origin by hand.
 
-`GcodeGantry._send` was promoted to public `send()` so `safe_home` can
-issue the two-step Smartto sequence without poking a private helper —
-the same surface is reusable by any future caller emitting G-code
-outside the wrapped method set (`home`, `move_to`, `wait_for_moves`).
+The default `_read_z_min_triggered` probe sends `M119` and substring-
+matches `z_min:TRIGGERED` in the multi-line reply — same logic that
+worked for both Smartto and Marlin in the bring-up log. Inject a fake
+for tests or to read a different endstop pin.
+
+`GcodeGantry` gained two public methods: `send(line) -> str` (returns
+only the terminating `ok` line — for fire-and-forget commands) and
+`query(line) -> list[str]` (returns every non-empty reply line including
+the `ok` — for commands whose payload matters: `M119`, `M114`, `M115`,
+`M503`). The polled descent loop uses `query("M119")` via
+`_read_z_min_triggered` to read sensor state.
 
 ### Alternatives considered
 
@@ -78,7 +94,7 @@ outside the wrapped method set (`home`, `move_to`, `wait_for_moves`).
 | **Method on `GcodeGantry`: `gantry.home(policy)`** | Requires moving `FirmwarePolicy` from `devices.py` into `gantry.py` (else circular import — `devices.py` already imports from `gantry.py`). Composition-over-coupling preferred: `safe_home` lives in `devices.py` alongside `policy_for()` and `discover()`, where firmware-identity concerns already cluster. |
 | **Keep `port_env_aliases` on `FirmwarePolicy` for forward flexibility** | YAGNI. After collapse, every policy held the same single-element tuple `("PRINTER_PORT",)`. The field added indirection without supporting any actual divergence. Re-add if a future firmware genuinely needs a different env name. |
 | **Inline the safe-home sequence in each example script** | Duplication smell at three (soon: more) call sites, none of which would consistently emit the correct `G28 X Y` + `G92 Z0` pair. The whole point of `home_strategy` is to centralize this; honoring it requires a central consumer. |
-| **Make `safe_home` always interactive (no callback injection)** | Untestable without monkeypatching stdin; locks out unattended scripts and future schedulers. Default-to-`input` preserves the interactive UX while keeping the seam open. |
+| **Manual operator-confirm Z origin (jog by hand + press Enter)** | Initially shipped — matched the v0 runbook in the research log. Withdrawn post-hardware-test: the A30's Z axis is a stepper-energized leadscrew, so "jog by hand" is not actually possible. The polled descent uses the working inductive `z_min` sensor that `M119` correctly reports (firmware `G28 Z` ignores it, but `M119` reads it fine). |
 
 ## Consequences
 

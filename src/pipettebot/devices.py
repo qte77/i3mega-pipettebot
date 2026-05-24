@@ -167,49 +167,118 @@ def resolve_port(env: Mapping[str, str] | None = None) -> str | None:
     return value if value else None
 
 
+# Polled-descent parameters for `xy_then_polled_z`. Defaults match the
+# `docs/research/gantry-firmware-alternatives.md` recipe — 1 mm steps at
+# 300 mm/min (5 mm/s) is slow enough for the inductive z_min sensor to
+# trigger cleanly without overshoot. `MAX_STEPS` caps the descent at
+# 250 mm — the A30's full Z travel — so a missing sensor raises rather
+# than dives forever.
+_POLLED_Z_STEP_MM = 1.0
+_POLLED_Z_FEEDRATE = 300
+_POLLED_Z_MAX_STEPS = 250
+_Z_MIN_TRIGGERED_TOKEN = "z_min:TRIGGERED"  # noqa: S105 (M119 status token, not a credential)
+
+
+def _read_z_min_triggered(gantry: GcodeGantry) -> bool:
+    """Return True if `M119` reports `z_min:TRIGGERED`.
+
+    Parses the multi-line M119 reply for the `z_min:TRIGGERED` substring.
+    Smartto's M119 emits a single status line + `ok`; Marlin emits one
+    line per endstop. The substring match works for both.
+    """
+    return any(_Z_MIN_TRIGGERED_TOKEN in line for line in gantry.query("M119"))
+
+
 def safe_home(
     gantry: GcodeGantry,
     policy: FirmwarePolicy,
     *,
-    confirm_z: Callable[[str], str] = input,
+    z_min_triggered: Callable[[GcodeGantry], bool] = _read_z_min_triggered,
+    max_steps: int = _POLLED_Z_MAX_STEPS,
+    step_mm: float = _POLLED_Z_STEP_MM,
+    feedrate: int = _POLLED_Z_FEEDRATE,
 ) -> None:
     """Home `gantry` per `policy.home_strategy`.
 
     Branches on the policy's home strategy:
 
     - `full_g28`: sends `G28`. Suitable for Marlin with working Z endstop.
-    - `xy_then_polled_z`: sends `G28 X Y`, invokes `confirm_z` to block
-      until the operator has manually positioned Z to the desired origin,
-      then sends `G92 Z0`. Required on Smartto / A30 builds where `G28 Z`
-      dives indefinitely (probe-pin variant; see
-      `docs/research/gantry-firmware-alternatives.md`).
+    - `xy_then_polled_z`: sends `G28 X Y`, then drives Z down `step_mm`
+      mm at a time at `feedrate` mm/min, polling `z_min_triggered` after
+      each step. Stops when triggered, declares `G92 Z0`. Required on
+      Smartto/A30 builds where firmware `G28 Z` dives indefinitely
+      (probe-pin variant ignores the working `z_min` switch). The
+      operator-jog path it replaced was unworkable on stepper-energized
+      leadscrew Z axes — see
+      `docs/research/gantry-firmware-alternatives.md`.
     - `manual_only`: raises. Unknown firmware: the caller must home by
       hand and set origin via direct G-code, not via `safe_home`.
 
     Args:
         gantry: Live `GcodeGantry` bound to an open serial port.
         policy: From `policy_for(discover(port))`.
-        confirm_z: Called between `G28 X Y` and `G92 Z0` on
-            `xy_then_polled_z` only. Default `input` blocks on stdin.
-            Inject `lambda _: ""` for unattended/test runs.
+        z_min_triggered: Sensor probe. Default sends `M119` and matches
+            `z_min:TRIGGERED` in the reply. Inject a fake for tests or
+            to read a different endstop pin.
+        max_steps: Descent ceiling for `xy_then_polled_z` — raises if
+            the sensor doesn't trigger within `max_steps * step_mm` mm.
+            Default 250 (one full A30 Z travel).
+        step_mm: Per-step descent distance (mm). Default 1.0.
+        feedrate: Z descent feedrate (mm/min). Default 300.
 
     Raises:
-        RuntimeError: if `policy.home_strategy` is `manual_only` or
-            otherwise unhandled.
+        RuntimeError: if `policy.home_strategy` is `manual_only`,
+            unhandled, or if polled descent exceeds `max_steps` without
+            triggering the sensor.
     """
     if policy.home_strategy == "full_g28":
         gantry.home()
         return
     if policy.home_strategy == "xy_then_polled_z":
-        gantry.send("G28 X Y")
-        confirm_z("Manually jog Z to your desired origin, then press Enter: ")
-        gantry.send("G92 Z0")
+        _polled_z_home(
+            gantry,
+            z_min_triggered=z_min_triggered,
+            max_steps=max_steps,
+            step_mm=step_mm,
+            feedrate=feedrate,
+        )
         return
     raise RuntimeError(
         f"home strategy {policy.home_strategy!r} (firmware family "
         f"{policy.family!r}) requires manual operator action; safe_home "
         "cannot proceed. Home and set origin via tools/gantry_repl.py."
     )
+
+
+def _polled_z_home(
+    gantry: GcodeGantry,
+    *,
+    z_min_triggered: Callable[[GcodeGantry], bool],
+    max_steps: int,
+    step_mm: float,
+    feedrate: int,
+) -> None:
+    """G28 X Y, descend Z in steps until z_min triggers, declare G92 Z0."""
+    gantry.send("G28 X Y")
+    if z_min_triggered(gantry):
+        gantry.send("G92 Z0")
+        return
+    gantry.send("G91")  # relative
+    try:
+        for _ in range(max_steps):
+            gantry.send(f"G1 Z-{step_mm:.3f} F{feedrate}")
+            gantry.wait_for_moves()
+            if z_min_triggered(gantry):
+                break
+        else:
+            raise RuntimeError(
+                f"polled Z home: z_min did not trigger within "
+                f"{max_steps * step_mm:.1f} mm of descent — verify the "
+                "carriage started above the sensor's trigger zone."
+            )
+    finally:
+        gantry.send("G90")  # restore absolute
+    gantry.send("G92 Z0")
 
 
 _DEFAULT_BAUDS: tuple[int, ...] = (115200, 250000, 57600, 9600)

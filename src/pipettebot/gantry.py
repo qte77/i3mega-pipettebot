@@ -167,6 +167,15 @@ class GcodeGantry:
         """
         return send_and_wait_for_ok(self._port, line)[-1]
 
+    def query(self, line: str) -> list[str]:
+        """Send `line`; return every non-empty reply (including the final `ok`).
+
+        Use for commands whose reply payload matters — `M119` (endstops),
+        `M114` (position), `M115` (identity), `M503` (settings dump). For
+        fire-and-forget commands where only the ack matters, use `send`.
+        """
+        return send_and_wait_for_ok(self._port, line)
+
     def home(self) -> str:
         """Home all axes via `G28`. Returns the firmware reply line."""
         return self.send("G28")

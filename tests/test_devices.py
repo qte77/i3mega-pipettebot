@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import dataclasses
+from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from pipettebot.devices import (
     FIRMWARE_POLICIES,
@@ -119,7 +123,7 @@ def test_resolve_port_returns_none_when_printer_port_empty_string() -> None:
     assert resolve_port(env={"PRINTER_PORT": ""}) is None
 
 
-# safe_home(): policy-driven home dispatch with operator-confirm callback.
+# safe_home(): policy-driven home dispatch + polled-Z descent for smartto.
 
 
 def _gantry_with(fake_serial: FakeSerial) -> GcodeGantry:
@@ -130,38 +134,89 @@ def _policy(family: str) -> FirmwarePolicy:
     return next(p for p in FIRMWARE_POLICIES if p.family == family)
 
 
+def _triggers_after(n_polls: int) -> Callable[[GcodeGantry], bool]:
+    """Return a probe that says False `n_polls` times, then True forever."""
+    state = {"polls": 0}
+
+    def _probe(_gantry: GcodeGantry) -> bool:
+        triggered = state["polls"] >= n_polls
+        state["polls"] += 1
+        return triggered
+
+    return _probe
+
+
 def test_safe_home_full_g28_sends_single_g28(fake_serial: FakeSerial) -> None:
     safe_home(_gantry_with(fake_serial), _policy("marlin"))
     assert fake_serial.written == [b"G28\n"]
 
 
-def test_safe_home_full_g28_does_not_invoke_confirm_z(fake_serial: FakeSerial) -> None:
-    def _raises(_prompt: str) -> str:
-        raise AssertionError("confirm_z must not fire on full_g28")
+def test_safe_home_full_g28_does_not_poll_z_min(fake_serial: FakeSerial) -> None:
+    def _raises(_gantry: GcodeGantry) -> bool:
+        raise AssertionError("z_min_triggered must not fire on full_g28")
 
-    safe_home(_gantry_with(fake_serial), _policy("marlin"), confirm_z=_raises)
+    safe_home(_gantry_with(fake_serial), _policy("marlin"), z_min_triggered=_raises)
 
 
-def test_safe_home_xy_then_polled_z_sends_g28_xy_and_g92_z0(
+def test_safe_home_polled_z_skips_descent_when_already_triggered(
     fake_serial: FakeSerial,
 ) -> None:
-    safe_home(_gantry_with(fake_serial), _policy("smartto"), confirm_z=lambda _p: "")
+    """Carriage already at sensor trigger zone: G28 X Y then G92 Z0, no descent."""
+    safe_home(
+        _gantry_with(fake_serial),
+        _policy("smartto"),
+        z_min_triggered=_triggers_after(0),
+    )
     assert fake_serial.written == [b"G28 X Y\n", b"G92 Z0\n"]
 
 
-def test_safe_home_xy_then_polled_z_calls_confirm_z_between_writes(
+def test_safe_home_polled_z_descends_until_sensor_triggers(
     fake_serial: FakeSerial,
 ) -> None:
-    """The Z origin must be operator-confirmed AFTER G28 X Y, BEFORE G92 Z0."""
-    writes_when_confirm_fired: list[bytes] = []
+    """Three descent steps, then trigger; expect 3 G1 Z- writes framed by G91/G90."""
+    safe_home(
+        _gantry_with(fake_serial),
+        _policy("smartto"),
+        z_min_triggered=_triggers_after(3),
+        step_mm=1.0,
+        feedrate=300,
+    )
+    assert fake_serial.written == [
+        b"G28 X Y\n",
+        b"G91\n",
+        b"G1 Z-1.000 F300\n",
+        b"M400\n",
+        b"G1 Z-1.000 F300\n",
+        b"M400\n",
+        b"G1 Z-1.000 F300\n",
+        b"M400\n",
+        b"G90\n",
+        b"G92 Z0\n",
+    ]
 
-    def _snapshot(_prompt: str) -> str:
-        writes_when_confirm_fired.extend(fake_serial.written)
-        return ""
 
-    safe_home(_gantry_with(fake_serial), _policy("smartto"), confirm_z=_snapshot)
-    assert writes_when_confirm_fired == [b"G28 X Y\n"]
-    assert fake_serial.written == [b"G28 X Y\n", b"G92 Z0\n"]
+def test_safe_home_polled_z_raises_when_max_steps_exceeded(
+    fake_serial: FakeSerial,
+) -> None:
+    """Sensor never triggers within max_steps; expect RuntimeError + restored G90."""
+
+    def _never_triggers(_gantry: GcodeGantry) -> bool:
+        return False
+
+    with pytest.raises(RuntimeError, match=r"z_min did not trigger"):
+        safe_home(
+            _gantry_with(fake_serial),
+            _policy("smartto"),
+            z_min_triggered=_never_triggers,
+            max_steps=2,
+            step_mm=1.0,
+            feedrate=300,
+        )
+    # Even on failure, G90 must restore absolute mode so the caller's next
+    # G1 isn't interpreted relative.
+    assert b"G90\n" in fake_serial.written
+    # No G92 Z0 on failure — origin is not declared if the sensor never fired.
+    assert b"G92 Z0\n" not in fake_serial.written
 
 
 def test_safe_home_manual_only_raises_and_writes_nothing(
@@ -172,14 +227,42 @@ def test_safe_home_manual_only_raises_and_writes_nothing(
     assert fake_serial.written == []
 
 
-def test_safe_home_manual_only_does_not_invoke_confirm_z(
+def test_safe_home_manual_only_does_not_poll_z_min(
     fake_serial: FakeSerial,
 ) -> None:
-    def _raises(_prompt: str) -> str:
-        raise AssertionError("confirm_z must not fire on manual_only")
+    def _raises(_gantry: GcodeGantry) -> bool:
+        raise AssertionError("z_min_triggered must not fire on manual_only")
 
     with pytest.raises(RuntimeError):
-        safe_home(_gantry_with(fake_serial), _policy("unknown"), confirm_z=_raises)
+        safe_home(
+            _gantry_with(fake_serial), _policy("unknown"), z_min_triggered=_raises
+        )
+
+
+# _read_z_min_triggered(): default probe — sends M119, matches "z_min:TRIGGERED".
+
+
+def test_read_z_min_triggered_true_on_smartto_style_reply() -> None:
+    from pipettebot.devices import _read_z_min_triggered
+
+    triggered_reply = (
+        b"x_min:OPEN  x_max:OPEN  y_min:OPEN  y_max:OPEN  z_min:TRIGGERED z_max:OPEN\n"
+    )
+    fake = FakeSerial(responses=[triggered_reply, b"ok\n"])
+    gantry = GcodeGantry(GantryConfig(port="/dev/null"), fake)
+    assert _read_z_min_triggered(gantry) is True
+    assert fake.written == [b"M119\n"]
+
+
+def test_read_z_min_triggered_false_when_z_min_open() -> None:
+    from pipettebot.devices import _read_z_min_triggered
+
+    open_reply = (
+        b"x_min:OPEN  x_max:OPEN  y_min:OPEN  y_max:OPEN  z_min:OPEN z_max:OPEN\n"
+    )
+    fake = FakeSerial(responses=[open_reply, b"ok\n"])
+    gantry = GcodeGantry(GantryConfig(port="/dev/null"), fake)
+    assert _read_z_min_triggered(gantry) is False
 
 
 # discover(): the only I/O entry point. Tests monkeypatch the port opener.
