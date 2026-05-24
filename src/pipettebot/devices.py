@@ -273,13 +273,22 @@ def _polled_z_home(
     step_mm: float,
     feedrate: int,
 ) -> None:
-    """G28 X Y, descend Z in steps until z_min triggers, declare G92 Z0."""
+    """G28 X Y, descend Z in steps until z_min triggers, declare G92 Z0.
+
+    Software endstops are disabled (`M211 S0`) for the descent because
+    after `G28 X Y` the firmware's Z reference is uninitialized (treated
+    as 0); soft endstops would then block `G1 Z-N` as a violation of the
+    Z>=0 floor, silently accepting `ok` without moving — Smartto's
+    "no-op on rejected command" behavior. Endstops are restored
+    (`M211 S1`) after origin is declared at the sensor trigger point.
+    """
     gantry.send("G28 X Y")
     if z_min_triggered(gantry):
         gantry.send("G92 Z0")
         return
-    gantry.send("G91")  # relative
     triggered = False
+    gantry.send("M211 S0")  # disable soft endstops so Z can move below firmware 0
+    gantry.send("G91")  # relative
     try:
         for _ in range(max_steps):
             gantry.send(f"G1 Z-{step_mm:.3f} F{feedrate}")
@@ -289,22 +298,28 @@ def _polled_z_home(
                 break
     finally:
         gantry.send("G90")  # restore absolute regardless of outcome
+        if triggered:
+            # Declare origin while soft endstops are still off — if M211 S1
+            # ran first, the firmware would clamp the G92 to the still-bad
+            # Z reference. Order: G90 -> G92 -> M211 S1.
+            gantry.send("G92 Z0")
+        gantry.send("M211 S1")  # restore soft endstops
     if not triggered:
         # Surface the raw M119 so the operator can see what the firmware
-        # actually said. Most failures here are parser misses (token
-        # casing / spacing); ascending the carriage to start above the
-        # sensor's trigger zone is the next thing to try.
+        # actually said. Most failures here are either soft endstops still
+        # blocking motion (Z never physically moved) or the carriage
+        # started below the sensor (descent moved nut away from sensor).
         last_m119 = _read_m119_raw(gantry)
         raise RuntimeError(
             f"polled Z home: z_min did not trigger within "
             f"{max_steps * step_mm:.1f} mm of descent. Last M119 reply: "
-            f"{last_m119!r}. Likely causes: (a) parser missed the "
-            "triggered token — paste this reply so we can adjust "
-            "_Z_MIN_TRIGGERED_RE; (b) carriage started below the "
-            "sensor's trigger zone — ascend Z via tools/gantry_repl.py "
-            "and retry."
+            f"{last_m119!r}. Diagnostic checklist: (a) physically observe "
+            "the carriage during the next run — if Z does not move, soft "
+            "endstops are still blocking (try `M211 S0; G91; G1 Z-5 F300` "
+            "in tools/gantry_repl.py); (b) if Z does move but never "
+            "triggers, the carriage is below the sensor — ascend Z via "
+            "the REPL before retrying."
         )
-    gantry.send("G92 Z0")
 
 
 _DEFAULT_BAUDS: tuple[int, ...] = (115200, 250000, 57600, 9600)

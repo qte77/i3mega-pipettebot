@@ -173,7 +173,7 @@ def test_safe_home_polled_z_skips_descent_when_already_triggered(
 def test_safe_home_polled_z_descends_until_sensor_triggers(
     fake_serial: FakeSerial,
 ) -> None:
-    """Three descent steps, then trigger; expect 3 G1 Z- writes framed by G91/G90."""
+    """Three descent steps, then trigger; soft endstops bracketed off/on."""
     safe_home(
         _gantry_with(fake_serial),
         _policy("smartto"),
@@ -183,6 +183,7 @@ def test_safe_home_polled_z_descends_until_sensor_triggers(
     )
     assert fake_serial.written == [
         b"G28 X Y\n",
+        b"M211 S0\n",
         b"G91\n",
         b"G1 Z-1.000 F300\n",
         b"M400\n",
@@ -192,7 +193,35 @@ def test_safe_home_polled_z_descends_until_sensor_triggers(
         b"M400\n",
         b"G90\n",
         b"G92 Z0\n",
+        b"M211 S1\n",
     ]
+
+
+def test_safe_home_polled_z_restores_m211_on_failure(
+    fake_serial: FakeSerial,
+) -> None:
+    """Even when descent fails, M211 S1 must restore soft endstops."""
+
+    def _never_triggers(_gantry: GcodeGantry) -> bool:
+        return False
+
+    with pytest.raises(RuntimeError):
+        safe_home(
+            _gantry_with(fake_serial),
+            _policy("smartto"),
+            z_min_triggered=_never_triggers,
+            max_steps=2,
+            step_mm=1.0,
+            feedrate=300,
+        )
+    # M211 S0 was sent at descent start and M211 S1 must run in `finally`
+    # so the firmware doesn't keep soft endstops off after the failure.
+    assert b"M211 S0\n" in fake_serial.written
+    assert b"M211 S1\n" in fake_serial.written
+    # Order check: M211 S0 before M211 S1.
+    s0_idx = fake_serial.written.index(b"M211 S0\n")
+    s1_idx = fake_serial.written.index(b"M211 S1\n")
+    assert s0_idx < s1_idx
 
 
 def test_safe_home_polled_z_raises_when_max_steps_exceeded(
