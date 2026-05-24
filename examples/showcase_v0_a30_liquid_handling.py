@@ -102,6 +102,9 @@ PARK_SETTLE_S = 6.0
 # sensor's detection zone (~1-3 mm) with margin to spare.
 PRE_HOME_LIFT_MM = 20.0
 PRE_HOME_LIFT_FEEDRATE = 1200  # 20 mm/s (at the M203 Z cap)
+# Linger at Z=0 after each safe_home so the operator can visually verify
+# the carriage lands on the sensor's calibrated trigger point.
+HOME_LINGER_S = 3.0
 
 
 class _LoggingPipette:
@@ -270,6 +273,11 @@ def main() -> int:
             # is physically complete before safe_home polls M119.
             time.sleep(PRE_HOME_LIFT_MM / (PRE_HOME_LIFT_FEEDRATE / 60.0) + 1.5)
             safe_home(gantry, policy)
+            print(
+                f"[host] lingering at Z=0 (sensor trigger) for "
+                f"{HOME_LINGER_S:.0f} s — verify carriage is at the LED point"
+            )
+            time.sleep(HOME_LINGER_S)
             # Lift to travel altitude before the first XY move so the tip
             # clears any obstacle the operator placed near the Z origin.
             gantry.send(f"G1 Z{travel_z:.3f} F1200")
@@ -279,11 +287,22 @@ def main() -> int:
                 print(f"\n[host] ====== cycle {n}/{len(volumes)} ======")
                 transfer_cycle(gantry, bot, source, dest, well_z, travel_z, vol)
 
-            # End-of-run park at the home corner. Z stays at travel_z
-            # (tip lifted above origin) and XY returns to (0, 0) — the
-            # known reference established by safe_home. Mirrors the
-            # "always finish at a known state" pattern in the i3
-            # showcases.
+            # Re-home Z after the cycles: confirms the origin is still
+            # at the sensor (no drift / accidental loss of reference)
+            # and gives the operator a second visible Z=0 verification.
+            # No pre-home lift needed here — Z is at travel_z, well above
+            # the sensor, so safe_home's pre-loop M119 reads OPEN and the
+            # polled descent runs naturally.
+            print("\n[host] re-homing Z after cycles to verify origin")
+            safe_home(gantry, policy)
+            print(
+                f"[host] lingering at Z=0 for {HOME_LINGER_S:.0f} s "
+                "— post-cycle home verification"
+            )
+            time.sleep(HOME_LINGER_S)
+
+            # End-of-run park at the home corner. Lift Z back to
+            # travel_z first so the carriage parks above the sensor.
             print("\n[host] parking at home corner (0, 0) at travel altitude")
             gantry.move_to(0.0, 0.0, travel_z, feedrate=DEFAULT_TRANSIT_FEEDRATE)
             gantry.wait_for_moves()
