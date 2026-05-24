@@ -37,7 +37,7 @@ is missing. No pre-commit hooks; CI runs the same recipes.
 ## Code conventions
 
 - Python ≥3.11, mypy strict, ruff (rule sets in `pyproject.toml`).
-- `src/pipettebot/` for library code. Six v0 modules (`gantry`, `bot`, `experiment_profile`, `motion_profile`, `cli_profile`, `__init__`) — see AGENTS.md.
+- `src/pipettebot/` for library code. Seven v0 modules (`gantry`, `bot`, `devices`, `experiment_profile`, `motion_profile`, `cli_profile`, `__init__`) — see AGENTS.md.
 - Tests use mocked serial fixtures from `tests/conftest.py`. New features need new tests.
 
 ## Hardware experiments
