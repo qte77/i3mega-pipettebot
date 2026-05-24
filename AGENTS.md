@@ -43,7 +43,7 @@ Single source of truth for agents working in this repo. `CLAUDE.md` and
 ## Architecture Overview
 
 ```text
-examples/showcase_v0_pipette_sim.py
+examples/showcase_v0_i3_pipette_sim.py
         │
         ▼
 raw pyserial @ 250000 baud   ──► /dev/cu.usbserial-*  Marlin (Anycubic stock / AI3M)

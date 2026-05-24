@@ -16,13 +16,13 @@ mirror Y after Marlin-frame translation"). Rule: any `build_*_assembly()`
 applies `mirror(translated, about=Plane.XZ)` after the Marlin-frame
 translation. Per-half / printable parts stay in Marlin frame.
 
-
 ## 2026-05-09 — pyserial 3.5 cannot open 250000 baud on Linux Python builds without `termios.B250000`
 
 Symptom: `serial.Serial(port, 250000, timeout=...)` raises
 `termios.error: (22, 'Invalid argument')` from `_reconfigure_port`'s
 `tcsetattr` call. Hit in `tools/preflight.py` (#30) and
-`examples/showcase_v0_pipette_sim.py` (same root cause, separate script).
+`examples/showcase_v0_i3_pipette_sim.py` (same root cause, separate script;
+renamed from `showcase_v0_pipette_sim.py` in PR #157).
 
 Root cause: pyserial 3.5's `BAUDRATE_CONSTANTS` doesn't list 250000, and
 the Python `termios` module doesn't expose `B250000` on every build —

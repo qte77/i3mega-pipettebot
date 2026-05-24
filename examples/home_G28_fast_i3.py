@@ -28,11 +28,11 @@ Phases
 
 Required environment variable:
 
-    I3MEGA_PORT     Marlin USB-serial path. Run `tools/preflight.py` first.
+    PRINTER_PORT     Marlin USB-serial path. Run `tools/preflight.py` first.
 
 Optional:
 
-    I3MEGA_BAUD     Default 250000 (Anycubic stock + MARLIN-AI3M).
+    PRINTER_BAUD     Default 250000 (Anycubic stock + MARLIN-AI3M).
     MOTION_PROFILE  Bundled profile name: `slow` / `mid` / `fast`
                     (default `mid`). Empty or `off` to skip the install.
                     See `src/pipettebot/motion_profile.py` for values.
@@ -71,14 +71,14 @@ def gsend(link: serial.Serial, cmd: str, *, max_secs: float = 120.0) -> None:
 
 
 def main() -> int:
-    port = os.environ.get("I3MEGA_PORT")
+    port = os.environ.get("PRINTER_PORT")
     if not port:
         sys.stderr.write(
-            "ERROR: set I3MEGA_PORT to your printer's serial port.\n"
+            "ERROR: set PRINTER_PORT to your printer's serial port.\n"
             "       Run `uv run tools/preflight.py` to discover it.\n"
         )
         return 1
-    baud = int(os.environ.get("I3MEGA_BAUD", str(DEFAULT_BAUD)))
+    baud = int(os.environ.get("PRINTER_BAUD", str(DEFAULT_BAUD)))
 
     link = open_gcode_port(port, baudrate=baud, timeout=2.0)
     if link is None:

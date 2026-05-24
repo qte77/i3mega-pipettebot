@@ -25,6 +25,12 @@ set listed in the message.
 Profile semantics
 -----------------
 
+Profiles scale by exact factor of 3x: SLOW x3 = MID, MID x3 = FAST.
+MID is the anchor (operator-validated baseline); SLOW divides accel +
+jerk by 3 for cautious runs, FAST triples them for time-critical
+tours. Accel is rounded to integer mm/s^2 (M201/M204 want integers);
+jerk keeps two decimals.
+
 - **MID** (default): liquid-handling friendly. Z accel held at the
   leadscrew-friendly floor of 200 mm/s² (balances dive speed with
   leadscrew + cantilever shock). X/Y accel kept careful (600 / 800
@@ -32,15 +38,31 @@ Profile semantics
   on X. Tight classic jerk. This is what every showcase script gets
   when MOTION_PROFILE is unset.
 
-- **SLOW**: extra-gentle (Z accel 80, X/Y accel 300/400, jerk 1.5/2/0.15).
-  Use for first-time runs on a new fixture, very viscous reagents,
-  or any time you want the gantry to look obviously cautious.
+- **SLOW** (MID / 3): extra-gentle. Z accel 67, X/Y accel 200/267,
+  jerk 1.0/1.67/0.07. Use for first-time runs on a new fixture, very
+  viscous reagents, or any time you want the gantry to look obviously
+  cautious.
 
-- **FAST**: quicker tours (Z accel 400, X/Y accel 1000/1200, jerk 5/8/0.4).
-  Use once you know the deck geometry is solid and liquid surface
-  quality is acceptable — saves cycle time at the cost of more
-  aggressive motion (more meniscus disturbance, more tip-pendulum
-  swing, harsher leadscrew starts).
+- **FAST** (MID x3): quicker tours. Z accel 600, X/Y accel 1800/2400,
+  jerk 9/15/0.6. Use once you know the deck geometry is solid and
+  liquid surface quality is acceptable — saves cycle time at the cost
+  of more aggressive motion (more meniscus disturbance, more
+  tip-pendulum swing, harsher leadscrew starts).
+
+Quick comparison
+----------------
+
+============  ====  ====  =====  ====
+Field         SLOW   MID   FAST  step
+============  ====  ====  =====  ====
+accel_x        200   600   1800  x3
+accel_y        267   800   2400  x3
+accel_z         67   200    600  x3
+accel_default  200   600   1800  x3
+jerk_x         1.0   3.0    9.0  x3
+jerk_y        1.67   5.0   15.0  x3
+jerk_z        0.07   0.2    0.6  x3
+============  ====  ====  =====  ====
 
 Feedrate caps (M203 X500 Y500 Z20) are shared across all profiles —
 they reflect the leadscrew mechanical limit on Z and a reasonable XY
@@ -85,15 +107,21 @@ class MotionProfile:
         )
 
 
+# SLOW / MID / FAST scale by exact 3x. MID is the operator-validated
+# baseline; SLOW = MID/3, FAST = MID*3. Third/triple makes the
+# difference obvious on the bench and keeps the relative spacing
+# predictable for anyone tuning per-leg feedrates inside these caps.
+# Non-clean MID values (800, 200, 5, 0.2) produce non-integer SLOW
+# accels — rounded since M201/M204 want integer mm/s^2.
 SLOW = MotionProfile(
     name="slow",
-    accel_x=300,
-    accel_y=400,
-    accel_z=80,
-    accel_default=300,
-    jerk_x=1.5,
-    jerk_y=2,
-    jerk_z=0.15,
+    accel_x=200,
+    accel_y=267,
+    accel_z=67,
+    accel_default=200,
+    jerk_x=1.0,
+    jerk_y=1.67,
+    jerk_z=0.07,
 )
 MID = MotionProfile(
     name="mid",
@@ -107,13 +135,13 @@ MID = MotionProfile(
 )
 FAST = MotionProfile(
     name="fast",
-    accel_x=1000,
-    accel_y=1200,
-    accel_z=400,
-    accel_default=1000,
-    jerk_x=5,
-    jerk_y=8,
-    jerk_z=0.4,
+    accel_x=1800,
+    accel_y=2400,
+    accel_z=600,
+    accel_default=1800,
+    jerk_x=9,
+    jerk_y=15,
+    jerk_z=0.6,
 )
 
 PROFILES: dict[str, MotionProfile] = {"slow": SLOW, "mid": MID, "fast": FAST}

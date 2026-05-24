@@ -57,13 +57,13 @@ Cycle budget: NUM_COLUMNS × 2 ops = 22 < dPette MAX_CONTIGUOUS_CYCLES=50.
 
 Required environment variables:
 
-    I3MEGA_PORT          Marlin USB-serial path.
+    PRINTER_PORT          Marlin USB-serial path.
     PIPETTE_PORT         dPette USB-serial path. Run `tools/preflight.py`
                          to discover both.
 
 Optional:
 
-    I3MEGA_BAUD          Default 250000 (Anycubic stock + MARLIN-AI3M).
+    PRINTER_BAUD          Default 250000 (Anycubic stock + MARLIN-AI3M).
     PIPETTE_BAUD         Default 9600 (DLAB dPette CP2102 stock).
     PIPETTE_VOLUME_UL    Per-channel volume in microlitres. Default 100.0.
                          Ignored when PIPETTE_PROFILE is set.
@@ -478,15 +478,15 @@ def _run(
 
 
 def main() -> int:
-    port = os.environ.get("I3MEGA_PORT")
+    port = os.environ.get("PRINTER_PORT")
     pipette_port = os.environ.get("PIPETTE_PORT")
     if not port or not pipette_port:
         sys.stderr.write(
-            "ERROR: set both I3MEGA_PORT and PIPETTE_PORT.\n"
+            "ERROR: set both PRINTER_PORT and PIPETTE_PORT.\n"
             "       Run `uv run tools/preflight.py` to discover both.\n"
         )
         return 1
-    baud = int(os.environ.get("I3MEGA_BAUD", str(DEFAULT_BAUD)))
+    baud = int(os.environ.get("PRINTER_BAUD", str(DEFAULT_BAUD)))
     pipette_baud = int(os.environ.get("PIPETTE_BAUD", str(DEFAULT_PIPETTE_BAUD)))
     volumes_ul, banner = build_volumes(NUM_COLUMNS, "columns")
     gcode_path = os.environ.get("OUTPUT_GCODE", DEFAULT_GCODE_OUT)

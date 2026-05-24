@@ -26,11 +26,11 @@ Sequence (mirrors the hand-traced G-code that calibrated the geometry):
 
 Required environment variable:
 
-    I3MEGA_PORT   Marlin USB-serial path. Run `tools/preflight.py` first.
+    PRINTER_PORT   Marlin USB-serial path. Run `tools/preflight.py` first.
 
 Optional:
 
-    I3MEGA_BAUD     Default 250000 (Anycubic stock + MARLIN-AI3M).
+    PRINTER_BAUD     Default 250000 (Anycubic stock + MARLIN-AI3M).
     OUTPUT_GCODE    Path to also tee the G-code stream to disk.
                     Default: `showcase_v0_tip_pickup_release.gcode` in the cwd.
                     Set to empty (`OUTPUT_GCODE=`) to disable.
@@ -191,14 +191,14 @@ def _run(link: serial.Serial, gcode_out: TextIO | None) -> None:
 
 
 def main() -> int:
-    port = os.environ.get("I3MEGA_PORT")
+    port = os.environ.get("PRINTER_PORT")
     if not port:
         sys.stderr.write(
-            "ERROR: set I3MEGA_PORT to your printer's serial port.\n"
+            "ERROR: set PRINTER_PORT to your printer's serial port.\n"
             "       Run `uv run tools/preflight.py` to discover it.\n"
         )
         return 1
-    baud = int(os.environ.get("I3MEGA_BAUD", str(DEFAULT_BAUD)))
+    baud = int(os.environ.get("PRINTER_BAUD", str(DEFAULT_BAUD)))
     gcode_path = os.environ.get("OUTPUT_GCODE", DEFAULT_GCODE_OUT)
 
     link = open_marlin_port(port, baudrate=baud, timeout=2.0)
