@@ -173,17 +173,19 @@ def test_safe_home_polled_z_skips_descent_when_already_triggered(
 def test_safe_home_polled_z_descends_until_sensor_triggers(
     fake_serial: FakeSerial,
 ) -> None:
-    """Three descent steps, then trigger; soft endstops bracketed off/on."""
+    """Descent stays in positive Z via G92 Z<max_travel>; trigger after 3 steps."""
     safe_home(
         _gantry_with(fake_serial),
         _policy("smartto"),
         z_min_triggered=_triggers_after(3),
+        max_steps=3,
         step_mm=1.0,
         feedrate=300,
     )
+    # G92 Z3.000 puts the descent in [3, 0], avoiding the firmware Z=0 floor.
     assert fake_serial.written == [
         b"G28 X Y\n",
-        b"M211 S0\n",
+        b"G92 Z3.000\n",
         b"G91\n",
         b"G1 Z-1.000 F300\n",
         b"M400\n",
@@ -193,14 +195,13 @@ def test_safe_home_polled_z_descends_until_sensor_triggers(
         b"M400\n",
         b"G90\n",
         b"G92 Z0\n",
-        b"M211 S1\n",
     ]
 
 
-def test_safe_home_polled_z_restores_m211_on_failure(
+def test_safe_home_polled_z_sets_g92_headroom_before_descent(
     fake_serial: FakeSerial,
 ) -> None:
-    """Even when descent fails, M211 S1 must restore soft endstops."""
+    """G92 Z<max_travel> must precede G91 so the firmware Z reference is set."""
 
     def _never_triggers(_gantry: GcodeGantry) -> bool:
         return False
@@ -210,18 +211,14 @@ def test_safe_home_polled_z_restores_m211_on_failure(
             _gantry_with(fake_serial),
             _policy("smartto"),
             z_min_triggered=_never_triggers,
-            max_steps=2,
-            step_mm=1.0,
+            max_steps=5,
+            step_mm=2.0,
             feedrate=300,
         )
-    # M211 S0 was sent at descent start and M211 S1 must run in `finally`
-    # so the firmware doesn't keep soft endstops off after the failure.
-    assert b"M211 S0\n" in fake_serial.written
-    assert b"M211 S1\n" in fake_serial.written
-    # Order check: M211 S0 before M211 S1.
-    s0_idx = fake_serial.written.index(b"M211 S0\n")
-    s1_idx = fake_serial.written.index(b"M211 S1\n")
-    assert s0_idx < s1_idx
+    # max_travel = max_steps * step_mm = 10.0
+    g92_headroom_idx = fake_serial.written.index(b"G92 Z10.000\n")
+    g91_idx = fake_serial.written.index(b"G91\n")
+    assert g92_headroom_idx < g91_idx
 
 
 def test_safe_home_polled_z_raises_when_max_steps_exceeded(
@@ -246,9 +243,10 @@ def test_safe_home_polled_z_raises_when_max_steps_exceeded(
     assert b"G90\n" in fake_serial.written
     # No G92 Z0 on failure — origin is not declared if the sensor never fired.
     assert b"G92 Z0\n" not in fake_serial.written
-    # Failure path queries M119 once more to capture the raw reply for the
-    # error message — that diagnostic M119 must be on the wire.
+    # Failure path queries M119 + M114 to capture endstop state and
+    # firmware-recorded position for the diagnostic error message.
     assert fake_serial.written.count(b"M119\n") == 1
+    assert fake_serial.written.count(b"M114\n") == 1
 
 
 def test_safe_home_polled_z_failure_message_includes_diagnostic_prefix(
