@@ -174,13 +174,18 @@ def resolve_port(env: Mapping[str, str] | None = None) -> str | None:
 # 250 mm — the A30's full Z travel — so a missing sensor raises rather
 # than dives forever.
 _POLLED_Z_STEP_MM = 1.0
-_POLLED_Z_FEEDRATE = 300
+_POLLED_Z_FEEDRATE = 180  # 3 mm/s — slow enough that 1 mm step = 333 ms motion
 _POLLED_Z_MAX_STEPS = 250
-# After the descent burst (many G1/M400/M119 round-trips) Smartto sometimes
-# needs a beat before it can process the next command. Without this, the
-# final G92 Z0 reliably throws "device reports readiness to read but
-# returned no data" on the live A30.
-_POLLED_Z_SETTLE_S = 1.0
+# Smartto's M400 ack appears to return before motion physically completes,
+# so the descent loop's G1 commands queue ahead of the carriage. Without
+# this per-step host-side sleep, M119 polling sees stale "OPEN" replies
+# while the firmware buffers dozens more G1s and the carriage drives past
+# the sensor by the time triggering is detected. Sized for step_mm/feedrate
+# motion time + generous margin: 1 mm / (180/60) mm/s = 333 ms + 500 ms.
+_POLLED_Z_STEP_SETTLE_S = 0.8
+# After the descent burst Smartto needs longer to drain any leftover queued
+# moves before the final G92 Z0 can be processed.
+_POLLED_Z_SETTLE_S = 2.0
 # Case-insensitive, whitespace-tolerant match for the Z-min "triggered" state.
 # Catches Smartto's `z_min:TRIGGERED`, Marlin's `Z_min: TRIGGERED`, and the
 # `z min :triggered` variants observed in the wild on different firmware
@@ -308,9 +313,15 @@ def _polled_z_home(
     try:
         for step in range(1, max_steps + 1):
             target_z = max_travel - step * step_mm
+            print(f"[polled-z] step {step}/{max_steps}: Z target {target_z:.1f} mm")
             gantry.send(f"G1 Z{target_z:.3f} F{feedrate}")
             gantry.wait_for_moves()
+            # Smartto's M400 acks before motion completes — without this
+            # the host races ahead, queueing G1s the carriage can't keep
+            # up with, and overshoots the sensor by tens of mm.
+            time.sleep(_POLLED_Z_STEP_SETTLE_S)
             if z_min_triggered(gantry):
+                print(f"[polled-z] z_min TRIGGERED at step {step}")
                 triggered = True
                 break
     finally:

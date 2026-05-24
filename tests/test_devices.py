@@ -171,9 +171,10 @@ def test_safe_home_polled_z_skips_descent_when_already_triggered(
 
 
 def test_safe_home_polled_z_descends_in_absolute_mode_until_triggered(
-    fake_serial: FakeSerial,
+    fake_serial: FakeSerial, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Absolute-mode descent: targets walk max_travel down to 0, no G91/G90."""
+    monkeypatch.setattr("pipettebot.devices.time.sleep", lambda _s: None)
     safe_home(
         _gantry_with(fake_serial),
         _policy("smartto"),
@@ -199,9 +200,10 @@ def test_safe_home_polled_z_descends_in_absolute_mode_until_triggered(
 
 
 def test_safe_home_polled_z_does_not_send_g91_or_g90(
-    fake_serial: FakeSerial,
+    fake_serial: FakeSerial, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Polled descent must stay in absolute mode — G91 broke Z on Smartto."""
+    monkeypatch.setattr("pipettebot.devices.time.sleep", lambda _s: None)
 
     def _never_triggers(_gantry: GcodeGantry) -> bool:
         return False
@@ -227,9 +229,10 @@ def test_safe_home_polled_z_does_not_send_g91_or_g90(
 
 
 def test_safe_home_polled_z_raises_when_max_steps_exceeded(
-    fake_serial: FakeSerial,
+    fake_serial: FakeSerial, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Sensor never triggers within max_steps; expect RuntimeError + restored G90."""
+    monkeypatch.setattr("pipettebot.devices.time.sleep", lambda _s: None)
 
     def _never_triggers(_gantry: GcodeGantry) -> bool:
         return False
@@ -252,9 +255,10 @@ def test_safe_home_polled_z_raises_when_max_steps_exceeded(
 
 
 def test_safe_home_polled_z_failure_message_includes_diagnostic_prefix(
-    fake_serial: FakeSerial,
+    fake_serial: FakeSerial, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The RuntimeError must carry the 'Last M119 reply:' diagnostic prefix."""
+    monkeypatch.setattr("pipettebot.devices.time.sleep", lambda _s: None)
 
     def _never_triggers(_gantry: GcodeGantry) -> bool:
         return False
