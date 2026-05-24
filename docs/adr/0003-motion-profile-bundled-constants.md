@@ -28,19 +28,19 @@ Bundle three named motion profiles as Python constants in
 `src/pipettebot/motion_profile.py`:
 
 ```python
-SLOW = MotionProfile("slow", accel_x=300,  accel_y=400,  accel_z=100,
-                              accel_default=300,  jerk_x=1.5, jerk_y=2.5, jerk_z=0.1)
+SLOW = MotionProfile("slow", accel_x=200,  accel_y=267,  accel_z=67,
+                              accel_default=200,  jerk_x=1.0, jerk_y=1.67, jerk_z=0.07)
 MID  = MotionProfile("mid",  accel_x=600,  accel_y=800,  accel_z=200,
-                              accel_default=600,  jerk_x=3,   jerk_y=5,   jerk_z=0.2)
-FAST = MotionProfile("fast", accel_x=1200, accel_y=1600, accel_z=400,
-                              accel_default=1200, jerk_x=6,   jerk_y=10,  jerk_z=0.4)
+                              accel_default=600,  jerk_x=3,   jerk_y=5,    jerk_z=0.2)
+FAST = MotionProfile("fast", accel_x=1800, accel_y=2400, accel_z=600,
+                              accel_default=1800, jerk_x=9,   jerk_y=15,   jerk_z=0.6)
 ```
 
-SLOW / MID / FAST scale by an exact factor of 2x: SLOW x2 = MID,
-MID x2 = FAST. MID is the operator-validated anchor. Earlier values
-had non-uniform spacing (FAST = 1.67x MID on accel_x) — retuned for
-predictable behavior when operators tune per-leg feedrates inside
-these caps.
+SLOW / MID / FAST scale by an exact factor of 3x: SLOW x3 = MID,
+MID x3 = FAST. MID is the operator-validated anchor. Earlier values
+had non-uniform spacing — retuned for predictable behavior when
+operators tune per-leg feedrates inside these caps. Accel rounded to
+integer mm/s^2 (M201/M204 want integers); jerk to two decimals.
 
 Feedrate caps (`M203`) are shared across all profiles — `X=500 Y=500 Z=20` —
 since they reflect the leadscrew mechanical limit on Z and a reasonable
