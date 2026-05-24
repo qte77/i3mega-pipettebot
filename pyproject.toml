@@ -145,3 +145,8 @@ markers = [
 # fresh clones get the same versions regardless of when they run. Bump this
 # when you want to take newer wheels.
 exclude-newer = "2026-05-17T00:00:00Z"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+extraPaths = ["src"]
