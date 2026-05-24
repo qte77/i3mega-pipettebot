@@ -1,10 +1,17 @@
 """Home the Geeetech A30 via `safe_home` and exit — no motion afterwards.
 
 Counterpart to `home_G28_fast_i3.py` but for the Smartto firmware path:
-sends `G28 X Y`, then polled-Z descent (`G91`, loop[`G1 Z-1 F300`, `M119`,
-break-on-`z_min:TRIGGERED`], `G90`, `G92 Z0`). Uses the *working*
-inductive `z_min` sensor — firmware `G28 Z` is broken on this build but
-`M119` correctly reports the sensor state.
+sends `G28 X Y`, then absolute-mode polled-Z descent (`G92 Z<max>`, loop
+[`G1 Z<target> F300`, `M119`, break-on-`z_min:TRIGGERED`], `G92 Z0`).
+Uses the *working* inductive `z_min` sensor — firmware `G28 Z` is broken
+on this build but `M119` correctly reports the sensor state.
+
+Applies the motion profile (M203/M204/M205 caps + jerk) before
+`safe_home` because Smartto's default Z motion parameters (no caps set)
+make the polled descent's M119 polling unreliable on the live A30 —
+matches the showcase's pattern. Operator can opt out via
+`MOTION_PROFILE=off` but the smartto path may not home reliably without
+caps applied.
 
 Use this when you want a known-good Z=0 reference before running a
 showcase, jogging via `tools/gantry_repl.py`, or any motion test.
@@ -13,6 +20,12 @@ Required environment variables:
 
     PRINTER_PORT     Gantry USB-serial path. Run `tools/preflight.py
                      --export` first, or set manually.
+
+Optional environment variables:
+
+    MOTION_PROFILE   `slow` / `mid` / `fast` / `off`. Default `mid`.
+                     See ADR 0003. On smartto, the caps applied here
+                     are required for reliable polled descent.
 
 Pre-conditions for safe polled descent:
 
@@ -35,6 +48,7 @@ Safety:
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 
@@ -46,8 +60,20 @@ from pipettebot.devices import (
     safe_home,
 )
 from pipettebot.gantry import GantryConfig, GcodeGantry, open_gcode_port
+from pipettebot.motion_profile import select_profile
 
 BOOT_WAIT_S = 3.0
+
+
+def _apply_motion_profile(gantry: GcodeGantry) -> None:
+    """Send M203/M204/M205 caps so polled-Z descent has predictable motion."""
+    profile = select_profile(os.environ.get("MOTION_PROFILE"))
+    if profile is None:
+        print("[host] motion profile: SKIPPED (MOTION_PROFILE opt-out)")
+        return
+    print(f"[host] motion profile: {profile.name}")
+    for cmd in profile.as_marlin():
+        gantry.send(cmd)
 
 
 def main() -> int:
@@ -80,6 +106,7 @@ def main() -> int:
         time.sleep(BOOT_WAIT_S)
         link.reset_input_buffer()
         gantry = GcodeGantry(GantryConfig(port=port, baudrate=device.baud), link)
+        _apply_motion_profile(gantry)
         try:
             safe_home(gantry, policy)
         except RuntimeError as e:

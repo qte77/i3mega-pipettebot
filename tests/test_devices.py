@@ -170,10 +170,10 @@ def test_safe_home_polled_z_skips_descent_when_already_triggered(
     assert fake_serial.written == [b"G28 X Y\n", b"G92 Z0\n"]
 
 
-def test_safe_home_polled_z_descends_until_sensor_triggers(
+def test_safe_home_polled_z_descends_in_absolute_mode_until_triggered(
     fake_serial: FakeSerial,
 ) -> None:
-    """Descent stays in positive Z via G92 Z<max_travel>; trigger after 3 steps."""
+    """Absolute-mode descent: targets walk max_travel down to 0, no G91/G90."""
     safe_home(
         _gantry_with(fake_serial),
         _policy("smartto"),
@@ -182,26 +182,26 @@ def test_safe_home_polled_z_descends_until_sensor_triggers(
         step_mm=1.0,
         feedrate=300,
     )
-    # G92 Z3.000 puts the descent in [3, 0], avoiding the firmware Z=0 floor.
+    # G92 Z3.000 declares current Z as max_travel; absolute descent walks
+    # 2.000 -> 1.000 -> 0.000. No G91 (relative mode is broken on Smartto)
+    # and no G90 (we never left absolute).
     assert fake_serial.written == [
         b"G28 X Y\n",
         b"G92 Z3.000\n",
-        b"G91\n",
-        b"G1 Z-1.000 F300\n",
+        b"G1 Z2.000 F300\n",
         b"M400\n",
-        b"G1 Z-1.000 F300\n",
+        b"G1 Z1.000 F300\n",
         b"M400\n",
-        b"G1 Z-1.000 F300\n",
+        b"G1 Z0.000 F300\n",
         b"M400\n",
-        b"G90\n",
         b"G92 Z0\n",
     ]
 
 
-def test_safe_home_polled_z_sets_g92_headroom_before_descent(
+def test_safe_home_polled_z_does_not_send_g91_or_g90(
     fake_serial: FakeSerial,
 ) -> None:
-    """G92 Z<max_travel> must precede G91 so the firmware Z reference is set."""
+    """Polled descent must stay in absolute mode — G91 broke Z on Smartto."""
 
     def _never_triggers(_gantry: GcodeGantry) -> bool:
         return False
@@ -215,10 +215,15 @@ def test_safe_home_polled_z_sets_g92_headroom_before_descent(
             step_mm=2.0,
             feedrate=300,
         )
-    # max_travel = max_steps * step_mm = 10.0
+    assert b"G91\n" not in fake_serial.written
+    assert b"G90\n" not in fake_serial.written
+    # max_travel = max_steps * step_mm = 10.0 — headroom must be set before
+    # any G1 Z command.
     g92_headroom_idx = fake_serial.written.index(b"G92 Z10.000\n")
-    g91_idx = fake_serial.written.index(b"G91\n")
-    assert g92_headroom_idx < g91_idx
+    first_g1_idx = next(
+        i for i, w in enumerate(fake_serial.written) if w.startswith(b"G1 Z")
+    )
+    assert g92_headroom_idx < first_g1_idx
 
 
 def test_safe_home_polled_z_raises_when_max_steps_exceeded(
@@ -238,9 +243,6 @@ def test_safe_home_polled_z_raises_when_max_steps_exceeded(
             step_mm=1.0,
             feedrate=300,
         )
-    # Even on failure, G90 must restore absolute mode so the caller's next
-    # G1 isn't interpreted relative.
-    assert b"G90\n" in fake_serial.written
     # No G92 Z0 on failure — origin is not declared if the sensor never fired.
     assert b"G92 Z0\n" not in fake_serial.written
     # Failure path queries M119 + M114 to capture endstop state and

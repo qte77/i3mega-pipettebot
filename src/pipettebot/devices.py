@@ -224,12 +224,15 @@ def safe_home(
 
     - `full_g28`: sends `G28`. Suitable for Marlin with working Z endstop.
     - `xy_then_polled_z`: sends `G28 X Y`, then drives Z down `step_mm`
-      mm at a time at `feedrate` mm/min, polling `z_min_triggered` after
-      each step. Stops when triggered, declares `G92 Z0`. Required on
-      Smartto/A30 builds where firmware `G28 Z` dives indefinitely
-      (probe-pin variant ignores the working `z_min` switch). The
-      operator-jog path it replaced was unworkable on stepper-energized
-      leadscrew Z axes — see
+      mm at a time in ABSOLUTE mode at `feedrate` mm/min, polling
+      `z_min_triggered` after each step. Stops when triggered, declares
+      `G92 Z0`. Required on Smartto/A30 builds where firmware `G28 Z`
+      dives indefinitely (probe-pin variant ignores the working `z_min`
+      switch). Caller must apply motion caps via
+      `pipettebot.motion_profile.select_profile(...).as_marlin()` BEFORE
+      `safe_home` on the smartto branch — without M203/M204/M205 set,
+      Smartto's default Z motion parameters make the polled descent
+      unreliable (M119 polling can't catch the trigger window). See
       `docs/research/gantry-firmware-alternatives.md`.
     - `manual_only`: raises. Unknown firmware: the caller must home by
       hand and set origin via direct G-code, not via `safe_home`.
@@ -278,35 +281,39 @@ def _polled_z_home(
     step_mm: float,
     feedrate: int,
 ) -> None:
-    """G28 X Y, descend Z in steps until z_min triggers, declare G92 Z0.
+    """G28 X Y, descend Z in absolute steps until z_min triggers, G92 Z0.
 
-    Soft endstops bypassed via `G92 Z<max_travel>` rather than `M211 S0`:
-    after `G28 X Y` the firmware's Z reference is uninitialized; declaring
-    current Z as `max_steps * step_mm` puts the entire descent in
-    positive-Z territory (249, 248, ..., 0), so soft endstops never
-    engage. This is firmware-independent — Smartto's `M211` support is
-    unconfirmed and the firmware silently accepts unsupported commands.
-    Origin is redeclared via `G92 Z0` at the sensor trigger point.
+    Uses ABSOLUTE positioning (G90 default), not relative (G91). Hardware
+    bring-up on the live A30 surfaced that Smartto executes absolute `G1 Z`
+    correctly (the showcase cycles work) but relative `G91 G1 Z-N` either
+    doesn't move Z or moves it in a way our M119 polling can't catch the
+    trigger window. Same descent intent, executable motion mode.
+
+    Soft endstops bypassed via `G92 Z<max_travel>`: after `G28 X Y` the
+    firmware's Z reference is uninitialized; declaring current Z as
+    `max_steps * step_mm` puts the entire descent in positive-Z territory
+    (target_z goes max_travel - step_mm, ..., 0). Soft endstops, if
+    active, do not engage. Origin is redeclared via `G92 Z0` at the
+    sensor trigger point.
     """
     gantry.send("G28 X Y")
     if z_min_triggered(gantry):
         gantry.send("G92 Z0")
         return
-    # Declare current Z as max_travel so the descent loop stays positive
-    # (Z=max_travel down to Z=0). Soft endstops, if active, do not engage.
+    # Declare current Z as max_travel so the absolute descent targets stay
+    # positive (max_travel-step_mm, max_travel-2*step_mm, ..., 0).
     max_travel = max_steps * step_mm
     gantry.send(f"G92 Z{max_travel:.3f}")
-    gantry.send("G91")  # relative
     triggered = False
     try:
-        for _ in range(max_steps):
-            gantry.send(f"G1 Z-{step_mm:.3f} F{feedrate}")
+        for step in range(1, max_steps + 1):
+            target_z = max_travel - step * step_mm
+            gantry.send(f"G1 Z{target_z:.3f} F{feedrate}")
             gantry.wait_for_moves()
             if z_min_triggered(gantry):
                 triggered = True
                 break
     finally:
-        gantry.send("G90")  # restore absolute regardless of outcome
         if triggered:
             # The descent's M119/M400 burst leaves stale received bytes in
             # the OS serial buffer; pyserial's select() then false-reports
