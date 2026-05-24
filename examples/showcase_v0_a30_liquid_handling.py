@@ -359,14 +359,16 @@ def main() -> int:
             # is already homed from the bootstrap and Smartto's M400
             # race can leave the cycle's queued moves blocking a fresh
             # G28 X Y from completing within the ack timeout. Before
-            # the descent: drain the firmware motion queue explicitly
-            # (long-timeout M400) — without G28 X Y as a sync barrier,
-            # the first G92 inside safe_home was timing out at the
-            # default 30 s ack window while the firmware finished
-            # cycle motion. 5 s sleep then 120 s M400 ack window covers
-            # the deepest plausible queue depth.
-            print("\n[host] draining firmware motion queue before post-cycle home")
-            time.sleep(5.0)
+            # the descent: physically wait for cycle motion to drain.
+            # Smartto's M400 acks instantly even with queued motion
+            # behind it (research log "M400 race"), so M400-as-sync is
+            # unreliable — host-side sleep is the only thing that
+            # actually waits for the carriage. Sized for the worst
+            # plausible queue from 2 cycles at the current per-leg
+            # feedrates (~26 s of physical motion); 30 s covers that
+            # with margin. The M400 afterwards just confirms idle.
+            print("\n[host] draining firmware motion queue (30 s sleep + M400)")
+            time.sleep(30.0)
             gantry.wait_for_moves(max_secs=120.0)
             print("[host] post-cycle Z verification (polled descent only)")
             safe_home(gantry, policy, home_xy=False)
