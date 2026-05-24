@@ -28,13 +28,19 @@ Bundle three named motion profiles as Python constants in
 `src/pipettebot/motion_profile.py`:
 
 ```python
-SLOW = MotionProfile("slow", accel_x=300,  accel_y=400,  accel_z=80,
-                              accel_default=300,  jerk_x=1.5, jerk_y=2, jerk_z=0.15)
+SLOW = MotionProfile("slow", accel_x=300,  accel_y=400,  accel_z=100,
+                              accel_default=300,  jerk_x=1.5, jerk_y=2.5, jerk_z=0.1)
 MID  = MotionProfile("mid",  accel_x=600,  accel_y=800,  accel_z=200,
-                              accel_default=600,  jerk_x=3,   jerk_y=5, jerk_z=0.2)
-FAST = MotionProfile("fast", accel_x=1000, accel_y=1200, accel_z=400,
-                              accel_default=1000, jerk_x=5,   jerk_y=8, jerk_z=0.4)
+                              accel_default=600,  jerk_x=3,   jerk_y=5,   jerk_z=0.2)
+FAST = MotionProfile("fast", accel_x=1200, accel_y=1600, accel_z=400,
+                              accel_default=1200, jerk_x=6,   jerk_y=10,  jerk_z=0.4)
 ```
+
+SLOW / MID / FAST scale by an exact factor of 2x: SLOW x2 = MID,
+MID x2 = FAST. MID is the operator-validated anchor. Earlier values
+had non-uniform spacing (FAST = 1.67x MID on accel_x) — retuned for
+predictable behavior when operators tune per-leg feedrates inside
+these caps.
 
 Feedrate caps (`M203`) are shared across all profiles — `X=500 Y=500 Z=20` —
 since they reflect the leadscrew mechanical limit on Z and a reasonable

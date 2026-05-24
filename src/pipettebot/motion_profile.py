@@ -25,6 +25,10 @@ set listed in the message.
 Profile semantics
 -----------------
 
+Profiles scale by exact factor of 2x: SLOW x2 = MID, MID x2 = FAST.
+MID is the anchor (operator-validated baseline); SLOW halves accel +
+jerk for cautious runs, FAST doubles them for time-critical tours.
+
 - **MID** (default): liquid-handling friendly. Z accel held at the
   leadscrew-friendly floor of 200 mm/s² (balances dive speed with
   leadscrew + cantilever shock). X/Y accel kept careful (600 / 800
@@ -32,15 +36,16 @@ Profile semantics
   on X. Tight classic jerk. This is what every showcase script gets
   when MOTION_PROFILE is unset.
 
-- **SLOW**: extra-gentle (Z accel 80, X/Y accel 300/400, jerk 1.5/2/0.15).
-  Use for first-time runs on a new fixture, very viscous reagents,
-  or any time you want the gantry to look obviously cautious.
+- **SLOW** (MID / 2): extra-gentle. Z accel 100, X/Y accel 300/400,
+  jerk 1.5/2.5/0.1. Use for first-time runs on a new fixture, very
+  viscous reagents, or any time you want the gantry to look obviously
+  cautious.
 
-- **FAST**: quicker tours (Z accel 400, X/Y accel 1000/1200, jerk 5/8/0.4).
-  Use once you know the deck geometry is solid and liquid surface
-  quality is acceptable — saves cycle time at the cost of more
-  aggressive motion (more meniscus disturbance, more tip-pendulum
-  swing, harsher leadscrew starts).
+- **FAST** (MID x2): quicker tours. Z accel 400, X/Y accel 1200/1600,
+  jerk 6/10/0.4. Use once you know the deck geometry is solid and
+  liquid surface quality is acceptable — saves cycle time at the cost
+  of more aggressive motion (more meniscus disturbance, more
+  tip-pendulum swing, harsher leadscrew starts).
 
 Feedrate caps (M203 X500 Y500 Z20) are shared across all profiles —
 they reflect the leadscrew mechanical limit on Z and a reasonable XY
@@ -85,15 +90,19 @@ class MotionProfile:
         )
 
 
+# SLOW / MID / FAST scale by exact 2x. MID is the operator-validated
+# baseline; SLOW = MID/2, FAST = MID*2. Half/double makes the difference
+# obvious on the bench and keeps the relative spacing predictable for
+# anyone tuning per-leg feedrates inside these caps.
 SLOW = MotionProfile(
     name="slow",
     accel_x=300,
     accel_y=400,
-    accel_z=80,
+    accel_z=100,
     accel_default=300,
     jerk_x=1.5,
-    jerk_y=2,
-    jerk_z=0.15,
+    jerk_y=2.5,
+    jerk_z=0.1,
 )
 MID = MotionProfile(
     name="mid",
@@ -107,12 +116,12 @@ MID = MotionProfile(
 )
 FAST = MotionProfile(
     name="fast",
-    accel_x=1000,
-    accel_y=1200,
+    accel_x=1200,
+    accel_y=1600,
     accel_z=400,
-    accel_default=1000,
-    jerk_x=5,
-    jerk_y=8,
+    accel_default=1200,
+    jerk_x=6,
+    jerk_y=10,
     jerk_z=0.4,
 )
 
