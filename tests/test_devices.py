@@ -217,6 +217,28 @@ def test_safe_home_polled_z_raises_when_max_steps_exceeded(
     assert b"G90\n" in fake_serial.written
     # No G92 Z0 on failure — origin is not declared if the sensor never fired.
     assert b"G92 Z0\n" not in fake_serial.written
+    # Failure path queries M119 once more to capture the raw reply for the
+    # error message — that diagnostic M119 must be on the wire.
+    assert fake_serial.written.count(b"M119\n") == 1
+
+
+def test_safe_home_polled_z_failure_message_includes_diagnostic_prefix(
+    fake_serial: FakeSerial,
+) -> None:
+    """The RuntimeError must carry the 'Last M119 reply:' diagnostic prefix."""
+
+    def _never_triggers(_gantry: GcodeGantry) -> bool:
+        return False
+
+    with pytest.raises(RuntimeError, match=r"Last M119 reply"):
+        safe_home(
+            _gantry_with(fake_serial),
+            _policy("smartto"),
+            z_min_triggered=_never_triggers,
+            max_steps=1,
+            step_mm=1.0,
+            feedrate=300,
+        )
 
 
 def test_safe_home_manual_only_raises_and_writes_nothing(

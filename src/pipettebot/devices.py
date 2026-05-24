@@ -176,17 +176,32 @@ def resolve_port(env: Mapping[str, str] | None = None) -> str | None:
 _POLLED_Z_STEP_MM = 1.0
 _POLLED_Z_FEEDRATE = 300
 _POLLED_Z_MAX_STEPS = 250
-_Z_MIN_TRIGGERED_TOKEN = "z_min:TRIGGERED"  # noqa: S105 (M119 status token, not a credential)
+# Case-insensitive, whitespace-tolerant match for the Z-min "triggered" state.
+# Catches Smartto's `z_min:TRIGGERED`, Marlin's `Z_min: TRIGGERED`, and the
+# `z min :triggered` variants observed in the wild on different firmware
+# builds. Substring match was too brittle — see PR #157 hardware notes.
+_Z_MIN_TRIGGERED_RE = re.compile(r"z[_\s-]?min\s*:\s*triggered", re.IGNORECASE)
 
 
 def _read_z_min_triggered(gantry: GcodeGantry) -> bool:
-    """Return True if `M119` reports `z_min:TRIGGERED`.
+    """Return True if `M119` reports a triggered Z-min endstop.
 
-    Parses the multi-line M119 reply for the `z_min:TRIGGERED` substring.
-    Smartto's M119 emits a single status line + `ok`; Marlin emits one
-    line per endstop. The substring match works for both.
+    Sends `M119` and applies `_Z_MIN_TRIGGERED_RE` to every reply line.
+    Smartto emits a single status line + `ok`; Marlin emits one line per
+    endstop. The regex tolerates case + separator variation so both pass
+    without per-firmware branching.
     """
-    return any(_Z_MIN_TRIGGERED_TOKEN in line for line in gantry.query("M119"))
+    return any(_Z_MIN_TRIGGERED_RE.search(line) for line in gantry.query("M119"))
+
+
+def _read_m119_raw(gantry: GcodeGantry) -> list[str]:
+    """Return every `M119` reply line (terminating `ok` included).
+
+    Used on polled-Z descent failure to surface what the firmware
+    actually said — most descent failures are parser misses (token
+    casing / spacing) rather than physical sensor issues.
+    """
+    return gantry.query("M119")
 
 
 def safe_home(
@@ -264,20 +279,31 @@ def _polled_z_home(
         gantry.send("G92 Z0")
         return
     gantry.send("G91")  # relative
+    triggered = False
     try:
         for _ in range(max_steps):
             gantry.send(f"G1 Z-{step_mm:.3f} F{feedrate}")
             gantry.wait_for_moves()
             if z_min_triggered(gantry):
+                triggered = True
                 break
-        else:
-            raise RuntimeError(
-                f"polled Z home: z_min did not trigger within "
-                f"{max_steps * step_mm:.1f} mm of descent — verify the "
-                "carriage started above the sensor's trigger zone."
-            )
     finally:
-        gantry.send("G90")  # restore absolute
+        gantry.send("G90")  # restore absolute regardless of outcome
+    if not triggered:
+        # Surface the raw M119 so the operator can see what the firmware
+        # actually said. Most failures here are parser misses (token
+        # casing / spacing); ascending the carriage to start above the
+        # sensor's trigger zone is the next thing to try.
+        last_m119 = _read_m119_raw(gantry)
+        raise RuntimeError(
+            f"polled Z home: z_min did not trigger within "
+            f"{max_steps * step_mm:.1f} mm of descent. Last M119 reply: "
+            f"{last_m119!r}. Likely causes: (a) parser missed the "
+            "triggered token — paste this reply so we can adjust "
+            "_Z_MIN_TRIGGERED_RE; (b) carriage started below the "
+            "sensor's trigger zone — ascend Z via tools/gantry_repl.py "
+            "and retry."
+        )
     gantry.send("G92 Z0")
 
 
