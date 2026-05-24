@@ -68,6 +68,7 @@ from _teleop_common import (
     FOLLOWER_ACC,
     FOLLOWER_VEL_CAP,
     SERVO_IDS,
+    clamp_position,
     format_record_line,
     set_torque,
     setup_follower_motion,
@@ -120,14 +121,18 @@ def read_follower_positions(reader: object) -> dict[int, int] | None:
     """Sync-read follower joint positions; return None on bus failure or no data.
 
     Used by the SIGUSR1 capture path. Mirrors `_mirror_tick`'s read half but
-    returns the dict (or None) instead of forwarding to a writer.
+    returns the dict (or None) instead of forwarding to a writer. Clamps
+    each value to the 12-bit STS3215 range to defend against mixed-firmware
+    sync_read corruption.
     """
     if reader.txRxPacket() != 0:  # type: ignore[attr-defined]
         return None
     positions: dict[int, int] = {}
     for sid in SERVO_IDS:
         if reader.isAvailable(sid, ADDR_PRESENT_POSITION, 2):  # type: ignore[attr-defined]
-            positions[sid] = reader.getData(sid, ADDR_PRESENT_POSITION, 2)  # type: ignore[attr-defined]
+            positions[sid] = clamp_position(
+                reader.getData(sid, ADDR_PRESENT_POSITION, 2)  # type: ignore[attr-defined]
+            )
     return positions or None
 
 
@@ -202,7 +207,9 @@ def _mirror_tick(reader: object, writer: object) -> dict[int, int]:
     goals: dict[int, int] = {}
     for sid in SERVO_IDS:
         if reader.isAvailable(sid, ADDR_PRESENT_POSITION, 2):  # type: ignore[attr-defined]
-            goals[sid] = reader.getData(sid, ADDR_PRESENT_POSITION, 2)  # type: ignore[attr-defined]
+            goals[sid] = clamp_position(
+                reader.getData(sid, ADDR_PRESENT_POSITION, 2)  # type: ignore[attr-defined]
+            )
     if not goals:
         return {}
     writer.clearParam()  # type: ignore[attr-defined]

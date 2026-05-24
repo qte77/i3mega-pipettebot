@@ -153,3 +153,20 @@ def test_parse_record_line_round_trips_with_format_record_line() -> None:
     assert t == original_t
     assert joints == original_joints
     assert all(isinstance(k, int) for k in joints)
+
+
+def test_clamp_position_passes_in_range_value_unchanged() -> None:
+    assert teleop_common.clamp_position(0) == 0
+    assert teleop_common.clamp_position(2048) == 2048
+    assert teleop_common.clamp_position(4095) == 4095
+
+
+def test_clamp_position_floors_negative_to_zero() -> None:
+    assert teleop_common.clamp_position(-1) == 0
+    assert teleop_common.clamp_position(-32703) == 0  # observed in session_001
+
+
+def test_clamp_position_caps_overflow_to_4095() -> None:
+    assert teleop_common.clamp_position(4096) == 4095
+    assert teleop_common.clamp_position(32833) == 4095  # observed in session_001
+    assert teleop_common.clamp_position(32925) == 4095

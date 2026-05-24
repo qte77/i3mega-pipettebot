@@ -167,3 +167,17 @@ def test_mirror_tick_returns_empty_dict_when_no_servo_available() -> None:
     reader = FakeSyncReader(available={})
     writer = FakeSyncWriter()
     assert teleop_lean._mirror_tick(reader, writer) == {}
+
+
+def test_mirror_tick_clamps_out_of_range_reads_to_valid_position_range() -> None:
+    # Corrupted reads observed in production: 32833, -32703.
+    reader = FakeSyncReader(available={1: 32833, 2: -32703, 3: 2048})
+    writer = FakeSyncWriter()
+    goals = teleop_lean._mirror_tick(reader, writer)
+    assert goals == {1: 4095, 2: 0, 3: 2048}
+    assert writer.written == {1: 4095, 2: 0, 3: 2048}
+
+
+def test_read_follower_positions_clamps_out_of_range_reads() -> None:
+    reader = FakeSyncReader(available={1: 32833, 2: -1, 3: 2048})
+    assert teleop_lean.read_follower_positions(reader) == {1: 4095, 2: 0, 3: 2048}

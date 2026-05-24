@@ -68,6 +68,19 @@ def setup_follower_motion(
         packet.write2ByteTxRx(port, sid, ADDR_GOAL_VELOCITY, vel_cap)  # type: ignore[attr-defined]
 
 
+def clamp_position(pos: int) -> int:
+    """Clamp a raw STS3215 read to the valid 12-bit position range [0, 4095].
+
+    Mixed-firmware setups (STS3215 firmware 3.9 + 3.10) can return corrupted
+    sync_read responses where individual joint reads come back as huge
+    positives (sign-extended negatives) — e.g., 32833 observed in
+    session_001.jsonl. Writing those raw bytes as Goal_Position drives the
+    servo to a nonsense position (low byte taken, high byte ignored). Mirrors
+    the clamp in so101-patch-lerobot's `calibration_clamp` patch.
+    """
+    return max(0, min(4095, pos))
+
+
 def write_follower_goals(writer: object, goals: dict[int, int]) -> None:
     """Sync-write Goal_Position to each servo in `goals` (no-op if empty)."""
     if not goals:
