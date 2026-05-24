@@ -1,18 +1,24 @@
 # i3mega-pipettebot
 
-> Turn an **Anycubic i3 Mega** into a sub-$150 disposable-tip pipetting robot
-> driven by a **DLAB dPette** electronic pipette and Python.
+> Turn a cheap consumer 3D printer into a sub-$150 disposable-tip pipetting
+> robot driven by a **DLAB dPette** electronic pipette and Python.
 
-Marlin / Trigorilla stays unmodified; the print head and PCB are physically
-removed from the carriage and the chassis is repurposed as a 3-axis motion
-platform with the dPette mounted on the bare carriage
-(see [`docs/3d-parts.md`](docs/3d-parts.md)). The pipette is driven over a
-separate USB-serial link via
+Reference build is **dpette+i3** (Anycubic i3 Mega + DLAB dPette+);
+**Geeetech A30 (Smartto firmware)** is also a supported gantry via the
+same `pipettebot` library — discovery picks the firmware family from
+`M115` and the `safe_home` dispatcher routes Marlin → plain `G28` and
+Smartto → polled-Z descent (firmware `G28 Z` is broken on stock A30
+builds; see [ADR 0004](docs/adr/0004-printer-firmware-policy-and-safe-home.md)
+and the [bring-up notes](docs/research/gantry-firmware-alternatives.md)).
+Firmware stays unmodified on every supported platform; the print head
+and PCB are physically removed from the carriage and the chassis is
+repurposed as a 3-axis motion platform with the dPette mounted on the
+bare carriage (see [`docs/3d-parts.md`](docs/3d-parts.md)). The pipette
+is driven over a separate USB-serial link via
 [`dpette-usb-driver`](https://github.com/Lambda-Biolab/dpette-usb-driver),
-and used-tips bin pickup is delegated to an optional companion SO-101 arm
-via [`so101-biolab-automation`](https://github.com/qte77/so101-biolab-automation).
-The concrete reference build is **dpette+i3** (i3 Mega + DLAB dPette+);
-the library itself is pipette-agnostic via the `_Pipette` Protocol.
+and used-tips bin pickup is delegated to an optional companion SO-101
+arm via [`so101-biolab-automation`](https://github.com/qte77/so101-biolab-automation).
+The library is also pipette-agnostic via the `_Pipette` Protocol.
 
 <details>
 <summary>dpette+i3 in action (animated GIF)</summary>
@@ -38,6 +44,7 @@ end-to-end workflows, and what is explicitly out of scope.
 | Solution                                | Cost          | Tips        | API control |
 |-----------------------------------------|---------------|-------------|-------------|
 | **i3 Mega (used) + dPette (new) + this repo**        | **~$150**     | Disposable  | Python      |
+| **A30 (used) + dPette (new) + this repo**            | **~$200**     | Disposable  | Python      |
 | [Science Jubilee][sj] + OT-2 pipette    | ~$900+ build  | Disposable  | Python      |
 | [Opentrons OT-2][ot2]                   | from $15,950  | Disposable  | Python      |
 
