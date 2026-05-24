@@ -63,6 +63,13 @@ from pipettebot.gantry import GantryConfig, GcodeGantry, open_gcode_port
 from pipettebot.motion_profile import select_profile
 
 BOOT_WAIT_S = 3.0
+# Pre-home Z lift: force safe_home's polled descent to run every
+# invocation, even when Z is already at the sensor from a prior home.
+# Without this, the pre-loop M119 short-circuits to G92 Z0 and the
+# operator sees no descent. 20 mm clears the inductive sensor's ~1-3 mm
+# detection zone with margin. Same pattern as the showcase.
+PRE_HOME_LIFT_MM = 20.0
+PRE_HOME_LIFT_FEEDRATE = 1200  # 20 mm/s — at the M203 Z cap
 
 
 def _apply_motion_profile(gantry: GcodeGantry) -> None:
@@ -107,6 +114,18 @@ def main() -> int:
         link.reset_input_buffer()
         gantry = GcodeGantry(GantryConfig(port=port, baudrate=device.baud), link)
         _apply_motion_profile(gantry)
+        # Force fresh descent: lift Z 20 mm so safe_home's pre-loop M119
+        # reads OPEN even if Z is at the sensor from a prior run.
+        print(
+            f"[host] lifting Z {PRE_HOME_LIFT_MM:.0f} mm so safe_home runs a "
+            "fresh descent (otherwise pre-loop M119 may short-circuit)"
+        )
+        gantry.send("G92 Z0")
+        gantry.send(f"G1 Z{PRE_HOME_LIFT_MM:.3f} F{PRE_HOME_LIFT_FEEDRATE}")
+        gantry.wait_for_moves()
+        # Smartto M400 race: block for motion time + margin so the lift
+        # is physically complete before safe_home polls M119.
+        time.sleep(PRE_HOME_LIFT_MM / (PRE_HOME_LIFT_FEEDRATE / 60.0) + 1.5)
         try:
             safe_home(gantry, policy)
         except RuntimeError as e:
