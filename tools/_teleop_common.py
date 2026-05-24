@@ -81,6 +81,39 @@ def clamp_position(pos: int) -> int:
     return max(0, min(4095, pos))
 
 
+def read_leader_positions(
+    reader: object, packet: object, port: object
+) -> dict[int, int]:
+    """Read all leader joint positions; falls back per-servo on batch failure.
+
+    Mixed-firmware STS3215 setups (3.9 + 3.10) make batched `sync_read`
+    unreliable — the upstream parser corrupts replies that span firmware
+    versions, dropping the entire tick. Mirror lerobot's `sync_read_fallback`
+    patch: try batch first, then for any servo not seen, fall back to per-
+    servo `read2ByteTxRx`. All returned values are clamped to [0, 4095].
+
+    Returns the partial dict (may have fewer than `len(SERVO_IDS)` entries)
+    so callers can decide whether to drop the tick or proceed with what
+    they got.
+    """
+    positions: dict[int, int] = {}
+    if reader.txRxPacket() == 0:  # type: ignore[attr-defined]
+        for sid in SERVO_IDS:
+            if reader.isAvailable(sid, ADDR_PRESENT_POSITION, 2):  # type: ignore[attr-defined]
+                positions[sid] = clamp_position(
+                    reader.getData(sid, ADDR_PRESENT_POSITION, 2)  # type: ignore[attr-defined]
+                )
+    if len(positions) == len(SERVO_IDS):
+        return positions
+    for sid in SERVO_IDS:
+        if sid in positions:
+            continue
+        val, comm, _err = packet.read2ByteTxRx(port, sid, ADDR_PRESENT_POSITION)  # type: ignore[attr-defined]
+        if comm == 0:
+            positions[sid] = clamp_position(val)
+    return positions
+
+
 def write_follower_goals(writer: object, goals: dict[int, int]) -> None:
     """Sync-write Goal_Position to each servo in `goals` (no-op if empty)."""
     if not goals:

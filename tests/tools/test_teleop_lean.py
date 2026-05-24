@@ -73,11 +73,26 @@ class FakeSyncWriter:
         return 0
 
 
+@dataclass
+class FakeFallbackPacket:
+    """Stand-in for scservo_sdk PacketHandler — per-servo read2ByteTxRx only."""
+
+    per_servo: dict[int, int] = field(default_factory=dict)
+
+    def read2ByteTxRx(self, _port: object, sid: int, _addr: int):  # noqa: N802
+        if sid in self.per_servo:
+            return self.per_servo[sid], 0, 0
+        return 0, -1, 0
+
+
+_NO_FALLBACK_PORT = object()
+
+
 def test_mirror_tick_forwards_all_available_positions() -> None:
     positions = {1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600}
     reader = FakeSyncReader(available=positions)
     writer = FakeSyncWriter()
-    teleop_lean._mirror_tick(reader, writer)
+    teleop_lean._mirror_tick(reader, writer, FakeFallbackPacket(), _NO_FALLBACK_PORT)
     assert writer.written == positions
     assert writer.tx_calls == 1
 
@@ -85,7 +100,7 @@ def test_mirror_tick_forwards_all_available_positions() -> None:
 def test_mirror_tick_skips_unavailable_servos() -> None:
     reader = FakeSyncReader(available={1: 100, 3: 300})  # 2,4,5,6 unavailable
     writer = FakeSyncWriter()
-    teleop_lean._mirror_tick(reader, writer)
+    teleop_lean._mirror_tick(reader, writer, FakeFallbackPacket(), _NO_FALLBACK_PORT)
     assert writer.written == {1: 100, 3: 300}
     assert writer.tx_calls == 1
 
@@ -93,7 +108,7 @@ def test_mirror_tick_skips_unavailable_servos() -> None:
 def test_mirror_tick_skips_write_when_sync_read_fails() -> None:
     reader = FakeSyncReader(available={1: 100}, txrx_result=-1)
     writer = FakeSyncWriter()
-    teleop_lean._mirror_tick(reader, writer)
+    teleop_lean._mirror_tick(reader, writer, FakeFallbackPacket(), _NO_FALLBACK_PORT)
     assert writer.written == {}
     assert writer.tx_calls == 0
 
@@ -101,7 +116,7 @@ def test_mirror_tick_skips_write_when_sync_read_fails() -> None:
 def test_mirror_tick_skips_write_when_no_servo_available() -> None:
     reader = FakeSyncReader(available={})
     writer = FakeSyncWriter()
-    teleop_lean._mirror_tick(reader, writer)
+    teleop_lean._mirror_tick(reader, writer, FakeFallbackPacket(), _NO_FALLBACK_PORT)
     assert writer.tx_calls == 0
 
 
@@ -154,28 +169,56 @@ def test_mirror_tick_returns_goals_dict_on_success() -> None:
     positions = {1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600}
     reader = FakeSyncReader(available=positions)
     writer = FakeSyncWriter()
-    assert teleop_lean._mirror_tick(reader, writer) == positions
+    assert (
+        teleop_lean._mirror_tick(
+            reader, writer, FakeFallbackPacket(), _NO_FALLBACK_PORT
+        )
+        == positions
+    )
 
 
 def test_mirror_tick_returns_empty_dict_when_sync_read_fails() -> None:
     reader = FakeSyncReader(available={1: 100}, txrx_result=-1)
     writer = FakeSyncWriter()
-    assert teleop_lean._mirror_tick(reader, writer) == {}
+    assert (
+        teleop_lean._mirror_tick(
+            reader, writer, FakeFallbackPacket(), _NO_FALLBACK_PORT
+        )
+        == {}
+    )
 
 
 def test_mirror_tick_returns_empty_dict_when_no_servo_available() -> None:
     reader = FakeSyncReader(available={})
     writer = FakeSyncWriter()
-    assert teleop_lean._mirror_tick(reader, writer) == {}
+    assert (
+        teleop_lean._mirror_tick(
+            reader, writer, FakeFallbackPacket(), _NO_FALLBACK_PORT
+        )
+        == {}
+    )
 
 
 def test_mirror_tick_clamps_out_of_range_reads_to_valid_position_range() -> None:
     # Corrupted reads observed in production: 32833, -32703.
     reader = FakeSyncReader(available={1: 32833, 2: -32703, 3: 2048})
     writer = FakeSyncWriter()
-    goals = teleop_lean._mirror_tick(reader, writer)
+    goals = teleop_lean._mirror_tick(
+        reader, writer, FakeFallbackPacket(), _NO_FALLBACK_PORT
+    )
     assert goals == {1: 4095, 2: 0, 3: 2048}
     assert writer.written == {1: 4095, 2: 0, 3: 2048}
+
+
+def test_mirror_tick_falls_back_per_servo_when_batch_fails() -> None:
+    reader = FakeSyncReader(available={}, txrx_result=-1)
+    writer = FakeSyncWriter()
+    packet = FakeFallbackPacket(
+        per_servo={1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600}
+    )
+    goals = teleop_lean._mirror_tick(reader, writer, packet, _NO_FALLBACK_PORT)
+    assert goals == {1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600}
+    assert writer.written == {1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600}
 
 
 def test_read_follower_positions_clamps_out_of_range_reads() -> None:

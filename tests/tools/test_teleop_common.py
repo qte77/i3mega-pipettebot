@@ -170,3 +170,77 @@ def test_clamp_position_caps_overflow_to_4095() -> None:
     assert teleop_common.clamp_position(4096) == 4095
     assert teleop_common.clamp_position(32833) == 4095  # observed in session_001
     assert teleop_common.clamp_position(32925) == 4095
+
+
+@dataclass
+class FakeSyncReader:
+    available: dict[int, int]
+    txrx_result: int = 0
+
+    def txRxPacket(self) -> int:  # noqa: N802
+        return self.txrx_result
+
+    def isAvailable(self, sid: int, _addr: int, _length: int) -> bool:  # noqa: N802
+        return sid in self.available
+
+    def getData(self, sid: int, _addr: int, _length: int) -> int:  # noqa: N802
+        return self.available[sid]
+
+
+@dataclass
+class FakeFallbackPacket:
+    """Stand-in for scservo_sdk PacketHandler — per-servo read2ByteTxRx only."""
+
+    per_servo: dict[int, int] = field(default_factory=dict)
+
+    def read2ByteTxRx(self, _port: object, sid: int, _addr: int):  # noqa: N802
+        if sid in self.per_servo:
+            return self.per_servo[sid], 0, 0  # (value, comm_ok, no_error)
+        return 0, -1, 0  # comm failure
+
+
+def test_read_leader_positions_returns_batch_results_when_all_available() -> None:
+    available = {sid: 100 * sid for sid in teleop_common.SERVO_IDS}
+    reader = FakeSyncReader(available=available)
+    packet = FakeFallbackPacket()  # empty — fallback should not be used
+    positions = teleop_common.read_leader_positions(reader, packet, port=object())
+    assert positions == available
+
+
+def test_read_leader_positions_falls_back_per_servo_when_batch_fails() -> None:
+    reader = FakeSyncReader(available={}, txrx_result=-1)
+    fallback = {sid: 100 * sid for sid in teleop_common.SERVO_IDS}
+    packet = FakeFallbackPacket(per_servo=fallback)
+    positions = teleop_common.read_leader_positions(reader, packet, port=object())
+    assert positions == fallback
+
+
+def test_read_leader_positions_fills_missing_servos_from_fallback() -> None:
+    # Batch returns half; fallback fills the other half.
+    reader = FakeSyncReader(available={1: 100, 2: 200, 3: 300})
+    packet = FakeFallbackPacket(per_servo={4: 400, 5: 500, 6: 600})
+    positions = teleop_common.read_leader_positions(reader, packet, port=object())
+    assert positions == {1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600}
+
+
+def test_read_leader_positions_returns_partial_when_fallback_also_fails() -> None:
+    reader = FakeSyncReader(available={}, txrx_result=-1)
+    packet = FakeFallbackPacket(per_servo={1: 100})  # only servo 1 responds
+    positions = teleop_common.read_leader_positions(reader, packet, port=object())
+    assert positions == {1: 100}
+
+
+def test_read_leader_positions_clamps_batch_corrupted_values() -> None:
+    reader = FakeSyncReader(available={1: 32833, 2: -1, 3: 2048})
+    packet = FakeFallbackPacket(per_servo={4: 400, 5: 500, 6: 600})
+    positions = teleop_common.read_leader_positions(reader, packet, port=object())
+    assert positions == {1: 4095, 2: 0, 3: 2048, 4: 400, 5: 500, 6: 600}
+
+
+def test_read_leader_positions_clamps_fallback_corrupted_values() -> None:
+    reader = FakeSyncReader(available={}, txrx_result=-1)
+    packet = FakeFallbackPacket(
+        per_servo={1: 32833, 2: -1, 3: 2048, 4: 400, 5: 500, 6: 600}
+    )
+    positions = teleop_common.read_leader_positions(reader, packet, port=object())
+    assert positions == {1: 4095, 2: 0, 3: 2048, 4: 400, 5: 500, 6: 600}

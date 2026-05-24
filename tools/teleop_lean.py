@@ -70,6 +70,7 @@ from _teleop_common import (
     SERVO_IDS,
     clamp_position,
     format_record_line,
+    read_leader_positions,
     set_torque,
     setup_follower_motion,
     write_follower_goals,
@@ -166,6 +167,8 @@ def _run_loop(
     reader: object,
     writer: object,
     follower_reader: object,
+    packet: object,
+    leader_port: object,
     capture: _CaptureState,
     rate_hz: float,
     record_file: IO[str] | None = None,
@@ -175,12 +178,14 @@ def _run_loop(
     When `record_file` is provided, each tick's leader goals are appended
     as a JSONL line with a session-relative timestamp (seconds since the
     first tick) for later open-loop replay via tools/teleop_replay.py.
+    `packet` + `leader_port` are required by `_mirror_tick` for per-servo
+    sync_read fallback under mixed firmware.
     """
     period = 1.0 / rate_hz
     t0 = time.perf_counter()
     while True:
         tick = time.perf_counter()
-        goals = _mirror_tick(reader, writer)
+        goals = _mirror_tick(reader, writer, packet, leader_port)
         if record_file is not None and goals:
             record_file.write(format_record_line(tick - t0, goals))
         line = consume_capture(capture, follower_reader)
@@ -191,31 +196,22 @@ def _run_loop(
             time.sleep(period - elapsed)
 
 
-def _mirror_tick(reader: object, writer: object) -> dict[int, int]:
-    """Sync-read all leader positions, sync-write available ones to follower.
+def _mirror_tick(
+    reader: object,
+    writer: object,
+    packet: object,
+    leader_port: object,
+) -> dict[int, int]:
+    """Sync-read leader positions, sync-write available ones to follower.
 
-    One bus exchange per direction instead of 12 sequential transactions —
-    raises achievable update rate from ~15-20 Hz to 60+ Hz on the same wire.
-    Transient per-servo read failures (isAvailable=False) are skipped; a
-    full sync_read failure (non-zero txRxPacket) drops the entire tick.
-
-    Returns the goals that were written this tick (empty dict if nothing
-    was written), so the caller can log them for offline replay.
+    Delegates the read to `read_leader_positions` which adds per-servo
+    fallback against mixed-firmware sync_read failures — the recording bug
+    where 75-second sessions captured only 36 ticks because batched reads
+    silently dropped most of them. Returns the goals dict so the caller
+    can record it.
     """
-    if reader.txRxPacket() != 0:  # type: ignore[attr-defined]
-        return {}
-    goals: dict[int, int] = {}
-    for sid in SERVO_IDS:
-        if reader.isAvailable(sid, ADDR_PRESENT_POSITION, 2):  # type: ignore[attr-defined]
-            goals[sid] = clamp_position(
-                reader.getData(sid, ADDR_PRESENT_POSITION, 2)  # type: ignore[attr-defined]
-            )
-    if not goals:
-        return {}
-    writer.clearParam()  # type: ignore[attr-defined]
-    for sid, pos in goals.items():
-        writer.addParam(sid, [pos & 0xFF, (pos >> 8) & 0xFF])  # type: ignore[attr-defined]
-    writer.txPacket()  # type: ignore[attr-defined]
+    goals = read_leader_positions(reader, packet, leader_port)
+    write_follower_goals(writer, goals)
     return goals
 
 
@@ -311,7 +307,14 @@ def main() -> int:
         print(f"[teleop] recording leader joint stream to {args.record}")
     try:
         _run_loop(
-            reader, writer, follower_reader, capture, args.rate, record_file=record_file
+            reader,
+            writer,
+            follower_reader,
+            packet,
+            leader,
+            capture,
+            args.rate,
+            record_file=record_file,
         )
     except KeyboardInterrupt:
         print("\n[teleop] stopping; disabling torque on both arms...")
