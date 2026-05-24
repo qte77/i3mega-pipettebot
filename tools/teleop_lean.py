@@ -21,6 +21,28 @@ reports the CH340/CP2102 paths for your leader + follower.
 Press Ctrl-C to stop; follower torque is disabled on exit so the arm
 can be moved freely by hand.
 
+Tune smoothing live without editing the file via env vars (defaults shown):
+
+    FOLLOWER_ACC=40 FOLLOWER_VEL_CAP=2000 uv run --extra teaching \\
+        python tools/teleop_lean.py --leader=... --follower=... --rate=60
+
+Capture the follower's current joints (lean — raw STS3215 ticks) by
+sending SIGUSR1 to the script from another terminal:
+
+    kill -USR1 $(pgrep -f teleop_lean)
+
+The PID is printed at startup. Each capture prints one yaml-ish line
+to stdout — convert from raw ticks to the calibrated frame before
+pasting into configs/so101_arms.yaml.
+
+Record the leader joint stream for later open-loop replay:
+
+    uv run --extra teaching python tools/teleop_lean.py \\
+        --leader=... --follower=... --record=captures/session.jsonl
+
+JSONL format: one `{"t": secs_since_start, "joints": {sid: pos, ...}}`
+line per tick. Replay via `tools/teleop_replay.py` (when added).
+
 STS3215 control table addresses are from the Feetech STS series manual.
 SO-101 has 6 servos addressed 1..6.
 """
@@ -28,34 +50,169 @@ SO-101 has 6 servos addressed 1..6.
 from __future__ import annotations
 
 import argparse
+import os
+import signal
 import sys
 import time
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-# STS3215 control table (Feetech STS series)
-ADDR_TORQUE_ENABLE = 0x28
-ADDR_GOAL_POSITION = 0x2A
-ADDR_PRESENT_POSITION = 0x38
+from _teleop_common import (
+    ADDR_ACC,
+    ADDR_GOAL_POSITION,
+    ADDR_GOAL_TIME,
+    ADDR_GOAL_VELOCITY,
+    ADDR_PRESENT_POSITION,
+    ADDR_TORQUE_ENABLE,
+    BAUD,
+    FOLLOWER_ACC,
+    FOLLOWER_VEL_CAP,
+    SERVO_IDS,
+    clamp_position,
+    format_record_line,
+    read_leader_positions,
+    set_torque,
+    setup_follower_motion,
+    write_follower_goals,
+)
 
-SERVO_IDS = (1, 2, 3, 4, 5, 6)
-BAUD = 1_000_000
+if TYPE_CHECKING:
+    from typing import IO
+
 DEFAULT_HZ = 30.0
 
 
-def _set_torque(packet: object, port: object, enabled: int) -> None:
-    """Write `enabled` (0 or 1) to ADDR_TORQUE_ENABLE for every SERVO_IDS entry."""
-    for sid in SERVO_IDS:
-        packet.write1ByteTxRx(port, sid, ADDR_TORQUE_ENABLE, enabled)  # type: ignore[attr-defined]
+# Re-export for downstream tests that import constants/helpers via this module.
+__all__ = [
+    "ADDR_ACC",
+    "ADDR_GOAL_POSITION",
+    "ADDR_GOAL_TIME",
+    "ADDR_GOAL_VELOCITY",
+    "ADDR_PRESENT_POSITION",
+    "ADDR_TORQUE_ENABLE",
+    "BAUD",
+    "DEFAULT_HZ",
+    "FOLLOWER_ACC",
+    "FOLLOWER_VEL_CAP",
+    "SERVO_IDS",
+    "consume_capture",
+    "format_capture_line",
+    "format_record_line",
+    "main",
+    "read_follower_positions",
+    "set_torque",
+    "setup_follower_motion",
+    "write_follower_goals",
+]
 
 
-def _mirror_tick(packet: object, leader: object, follower: object) -> None:
-    """One read-from-leader, write-to-follower pass over all six servos."""
+def format_capture_line(name: str, joint_ticks: list[int]) -> str:
+    """Format a raw STS3215 joint vector as a yaml-paste line.
+
+    Lean teleop has no calibrated-frame conversion (that lives in the so101
+    full stack). The emitted line carries raw 0-4095 ticks with an inline
+    comment so it can't be mistaken for the calibrated yaml the orchestrator
+    expects. Convert before pasting into configs/so101_arms.yaml.
+    """
+    formatted = ", ".join(str(j) for j in joint_ticks)
+    return f"  {name}: [{formatted}]  # raw STS3215 ticks"
+
+
+def read_follower_positions(reader: object) -> dict[int, int] | None:
+    """Sync-read follower joint positions; return None on bus failure or no data.
+
+    Used by the SIGUSR1 capture path. Mirrors `_mirror_tick`'s read half but
+    returns the dict (or None) instead of forwarding to a writer. Clamps
+    each value to the 12-bit STS3215 range to defend against mixed-firmware
+    sync_read corruption.
+    """
+    if reader.txRxPacket() != 0:  # type: ignore[attr-defined]
+        return None
+    positions: dict[int, int] = {}
     for sid in SERVO_IDS:
-        pos, result, _ = packet.read2ByteTxRx(  # type: ignore[attr-defined]
-            leader, sid, ADDR_PRESENT_POSITION
-        )
-        if result != 0:
-            continue  # transient read failure; skip this servo this tick
-        packet.write2ByteTxRx(follower, sid, ADDR_GOAL_POSITION, pos)  # type: ignore[attr-defined]
+        if reader.isAvailable(sid, ADDR_PRESENT_POSITION, 2):  # type: ignore[attr-defined]
+            positions[sid] = clamp_position(
+                reader.getData(sid, ADDR_PRESENT_POSITION, 2)  # type: ignore[attr-defined]
+            )
+    return positions or None
+
+
+@dataclass
+class _CaptureState:
+    """SIGUSR1-driven capture flag + counter, mutated by the signal handler."""
+
+    requested: bool = False
+    counter: int = 0
+
+
+def consume_capture(state: _CaptureState, reader: object) -> str | None:
+    """Drain a pending SIGUSR1 capture; return a yaml-paste line or None.
+
+    Returns None when no capture is pending or the sync_read failed. The
+    caller decides whether to print to stdout or stderr — keeps this
+    function deterministic and testable.
+    """
+    if not state.requested:
+        return None
+    state.requested = False
+    state.counter += 1
+    positions = read_follower_positions(reader)
+    if positions is None:
+        return None
+    joints = [positions.get(sid, 0) for sid in SERVO_IDS]
+    return format_capture_line(f"captured_{state.counter}", joints)
+
+
+def _run_loop(
+    reader: object,
+    writer: object,
+    follower_reader: object,
+    packet: object,
+    leader_port: object,
+    capture: _CaptureState,
+    rate_hz: float,
+    record_file: IO[str] | None = None,
+) -> None:
+    """Mirror leader -> follower forever; drain pending captures between ticks.
+
+    When `record_file` is provided, each tick's leader goals are appended
+    as a JSONL line with a session-relative timestamp (seconds since the
+    first tick) for later open-loop replay via tools/teleop_replay.py.
+    `packet` + `leader_port` are required by `_mirror_tick` for per-servo
+    sync_read fallback under mixed firmware.
+    """
+    period = 1.0 / rate_hz
+    t0 = time.perf_counter()
+    while True:
+        tick = time.perf_counter()
+        goals = _mirror_tick(reader, writer, packet, leader_port)
+        if record_file is not None and goals:
+            record_file.write(format_record_line(tick - t0, goals))
+        line = consume_capture(capture, follower_reader)
+        if line is not None:
+            print(line)
+        elapsed = time.perf_counter() - tick
+        if elapsed < period:
+            time.sleep(period - elapsed)
+
+
+def _mirror_tick(
+    reader: object,
+    writer: object,
+    packet: object,
+    leader_port: object,
+) -> dict[int, int]:
+    """Sync-read leader positions, sync-write available ones to follower.
+
+    Delegates the read to `read_leader_positions` which adds per-servo
+    fallback against mixed-firmware sync_read failures — the recording bug
+    where 75-second sessions captured only 36 ticks because batched reads
+    silently dropped most of them. Returns the goals dict so the caller
+    can record it.
+    """
+    goals = read_leader_positions(reader, packet, leader_port)
+    write_follower_goals(writer, goals)
+    return goals
 
 
 def main() -> int:
@@ -73,10 +230,20 @@ def main() -> int:
         default=DEFAULT_HZ,
         help=f"loop rate Hz (default: {DEFAULT_HZ})",
     )
+    parser.add_argument(
+        "--record",
+        default=None,
+        help=(
+            "append leader joint stream as JSONL to this path (one line per tick)"
+            " for later replay via tools/teleop_replay.py"
+        ),
+    )
     args = parser.parse_args()
 
     try:
         from scservo_sdk import (  # type: ignore[import-untyped]
+            GroupSyncRead,
+            GroupSyncWrite,
             PacketHandler,
             PortHandler,
         )
@@ -103,23 +270,59 @@ def main() -> int:
     # Leader torque OFF (kinesthetic input — operator moves it by hand;
     # leftover torque from `lerobot-calibrate` causes servo fault / LED blink).
     # Follower torque ON so writes to goal_position actually move the arm.
-    _set_torque(packet, leader, 0)
-    _set_torque(packet, follower, 1)
+    set_torque(packet, leader, 0)
+    set_torque(packet, follower, 1)
+    setup_follower_motion(packet, follower, acc=FOLLOWER_ACC, vel_cap=FOLLOWER_VEL_CAP)
 
-    period = 1.0 / args.rate
+    # GroupSyncRead/Write take (port, packet, addr, len) — port FIRST.
+    reader = GroupSyncRead(leader, packet, ADDR_PRESENT_POSITION, 2)
+    for sid in SERVO_IDS:
+        reader.addParam(sid)
+    writer = GroupSyncWrite(follower, packet, ADDR_GOAL_POSITION, 2)
+    follower_reader = GroupSyncRead(follower, packet, ADDR_PRESENT_POSITION, 2)
+    for sid in SERVO_IDS:
+        follower_reader.addParam(sid)
+
+    capture = _CaptureState()
+
+    def _on_capture_signal(_signum: int, _frame: object) -> None:
+        capture.requested = True
+
+    signal.signal(signal.SIGUSR1, _on_capture_signal)
+
     print(f"[teleop] mirror leader -> follower @ {args.rate:.1f} Hz (Ctrl-C to stop)")
+    print(
+        f"[teleop] follower motion-profile: "
+        f"ACC={FOLLOWER_ACC} VEL_CAP={FOLLOWER_VEL_CAP} (Goal_Time forced to 0)"
+    )
+    print(
+        f"[teleop] capture follower joints: kill -USR1 {os.getpid()} "
+        "(prints a yaml-paste line of raw ticks)"
+    )
+    # Open in write mode — append concatenated multiple teleop sessions into
+    # one file, and replay then rewound part-way through. Operators who want
+    # to extend a recording should record into a new file and concatenate.
+    record_file = open(args.record, "w") if args.record else None  # noqa: SIM115
+    if record_file is not None:
+        print(f"[teleop] recording leader joint stream to {args.record}")
     try:
-        while True:
-            tick = time.perf_counter()
-            _mirror_tick(packet, leader, follower)
-            elapsed = time.perf_counter() - tick
-            if elapsed < period:
-                time.sleep(period - elapsed)
+        _run_loop(
+            reader,
+            writer,
+            follower_reader,
+            packet,
+            leader,
+            capture,
+            args.rate,
+            record_file=record_file,
+        )
     except KeyboardInterrupt:
         print("\n[teleop] stopping; disabling torque on both arms...")
     finally:
-        _set_torque(packet, leader, 0)
-        _set_torque(packet, follower, 0)
+        if record_file is not None:
+            record_file.close()
+        set_torque(packet, leader, 0)
+        set_torque(packet, follower, 0)
         leader.closePort()
         follower.closePort()
     return 0
