@@ -358,11 +358,17 @@ def main() -> int:
             # verification. home_xy=False skips the G28 X Y because XY
             # is already homed from the bootstrap and Smartto's M400
             # race can leave the cycle's queued moves blocking a fresh
-            # G28 X Y from completing within the ack timeout. The
-            # settle delay before this call drains any residual queue
-            # so the descent's first command isn't racing motion.
-            print("\n[host] post-cycle Z verification (polled descent only)")
-            time.sleep(2.0)
+            # G28 X Y from completing within the ack timeout. Before
+            # the descent: drain the firmware motion queue explicitly
+            # (long-timeout M400) — without G28 X Y as a sync barrier,
+            # the first G92 inside safe_home was timing out at the
+            # default 30 s ack window while the firmware finished
+            # cycle motion. 5 s sleep then 120 s M400 ack window covers
+            # the deepest plausible queue depth.
+            print("\n[host] draining firmware motion queue before post-cycle home")
+            time.sleep(5.0)
+            gantry.wait_for_moves(max_secs=120.0)
+            print("[host] post-cycle Z verification (polled descent only)")
             safe_home(gantry, policy, home_xy=False)
             print(
                 f"[host] lingering at Z=0 for {HOME_LINGER_S:.0f} s "
