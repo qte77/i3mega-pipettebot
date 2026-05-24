@@ -27,13 +27,13 @@ upstream repo before relying on any of them for legal purposes.
 
 | Component                | What we use                       | License    | Upstream / 1p URL                                              |
 |--------------------------|-----------------------------------|------------|----------------------------------------------------------------|
-| Motion firmware          | MARLIN-AI3M v1.4.6 (1.1.9 base)   | GPL-3.0    | https://github.com/davidramiro/Marlin-AI3M                     |
-| Motion firmware (parent) | Marlin 1.1.x                      | GPL-3.0    | https://marlinfw.org/                                          |
-| Slicer (primary)         | OrcaSlicer                        | AGPL-3.0   | https://github.com/SoftFever/OrcaSlicer                        |
-| Slicer (fallback)        | PrusaSlicer                       | AGPL-3.0   | https://github.com/prusa3d/PrusaSlicer                         |
-| Pipette driver           | dpette-usb-driver                 | (own repo) | https://github.com/Lambda-Biolab/dpette-usb-driver             |
-| CAD                      | build123d                         | Apache-2.0 | https://github.com/gumyr/build123d                             |
-| Host orchestrator        | pipettebot (this repo)            | (own repo) | https://github.com/qte77/i3mega-pipettebot                     |
+| Motion firmware          | MARLIN-AI3M v1.4.6 (1.1.9 base)   | GPL-3.0    | <https://github.com/davidramiro/Marlin-AI3M>                     |
+| Motion firmware (parent) | Marlin 1.1.x                      | GPL-3.0    | <https://marlinfw.org/>                                          |
+| Slicer (primary)         | OrcaSlicer                        | AGPL-3.0   | <https://github.com/SoftFever/OrcaSlicer>                        |
+| Slicer (fallback)        | PrusaSlicer                       | AGPL-3.0   | <https://github.com/prusa3d/PrusaSlicer>                         |
+| Pipette driver           | dpette-usb-driver                 | (own repo) | <https://github.com/Lambda-Biolab/dpette-usb-driver>             |
+| CAD                      | build123d                         | Apache-2.0 | <https://github.com/gumyr/build123d>                             |
+| Host orchestrator        | pipettebot (this repo)            | (own repo) | <https://github.com/qte77/i3mega-pipettebot>                     |
 
 Every entry above is OSS by intent — no closed-source link in the v0
 stack. The "Future-proofing posture" section documents which components
@@ -46,8 +46,8 @@ started by Adrian Bowyer at the University of Bath as a self-replicating
 desktop machine designed to be open by construction. Reprap.org is the
 canonical wiki and project home:
 
-- https://reprap.org/wiki/Main_Page — project home
-- https://reprap.org/wiki/Slicer — survey of OSS slicers in the RepRap lineage
+- <https://reprap.org/wiki/Main_Page> — project home
+- <https://reprap.org/wiki/Slicer> — survey of OSS slicers in the RepRap lineage
 
 "reprap.com" exists as a UK reseller and partial wiki mirror — for
 canonical project references always use **reprap.org**.
@@ -115,9 +115,9 @@ firmware work (Stage 1+), not for the current host-orchestrated workflow.
 
 | Alternative      | License  | 1p URL                              | When to consider                                                                                                                                                                                                |
 |------------------|----------|-------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Klipper          | GPL-3.0  | https://www.klipper3d.org/          | Host-side motion planner — offloads compute from the ATmega2560. Input shaping, pressure advance, richer macros. Needs an always-on host (we already have one in Path 2; see [`sbc-deployment.md`](sbc-deployment.md)). |
-| RepRapFirmware   | GPL-3.0  | https://www.reprapfirmware.org/     | Duet3D ecosystem. Only viable if we replace the Trigorilla board entirely (heavy refactor).                                                                                                                     |
-| Smoothieware     | GPL-3.0  | https://smoothieware.org/           | LPC1768-based; doesn't run on the AI3M's AVR. Mainboard swap required.                                                                                                                                          |
+| Klipper          | GPL-3.0  | <https://www.klipper3d.org/>          | Host-side motion planner — offloads compute from the ATmega2560. Input shaping, pressure advance, richer macros. Needs an always-on host (we already have one in Path 2; see [`sbc-deployment.md`](sbc-deployment.md)). |
+| RepRapFirmware   | GPL-3.0  | <https://www.reprapfirmware.org/>     | Duet3D ecosystem. Only viable if we replace the Trigorilla board entirely (heavy refactor).                                                                                                                     |
+| Smoothieware     | GPL-3.0  | <https://smoothieware.org/>           | LPC1768-based; doesn't run on the AI3M's AVR. Mainboard swap required.                                                                                                                                          |
 
 For v0 and Stage 1 (firmware patch for `M820` pipette pass-through),
 MARLIN-AI3M is the right answer. Klipper becomes interesting if input
@@ -142,11 +142,11 @@ OrcaSlicer as primary, PrusaSlicer as fallback, both reading the same
 
 | Alternative           | License    | 1p URL                                       | Why we'd switch                                                                                              |
 |-----------------------|------------|----------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| SuperSlicer           | AGPL-3.0   | https://github.com/supermerill/SuperSlicer    | Drop-in if PrusaSlicer drifts; same `.ini` format.                                                            |
-| CuraEngine            | AGPL-3.0   | https://github.com/Ultimaker/CuraEngine       | Standalone engine — useful for slicer-as-library. Different profile format (incompatible with our `.ini`s).   |
-| RepRapPro Slicer      | GPL-family | https://github.com/holgero/RepRapProSlicer    | Java, independent lineage. Niche; mostly relevant for RepRap-canonical builds.                                |
-| Slic3r (legacy)       | AGPL-3.0   | https://github.com/slic3r/Slic3r              | The ancestor. Still alive but development pace is much slower than the PrusaSlicer fork.                      |
-| reprap.org overview   | n/a (wiki) | https://reprap.org/wiki/Slicer                | Survey of the broader landscape (Skeinforge, KISSlicer, etc.) for reference.                                  |
+| SuperSlicer           | AGPL-3.0   | <https://github.com/supermerill/SuperSlicer>    | Drop-in if PrusaSlicer drifts; same `.ini` format.                                                            |
+| CuraEngine            | AGPL-3.0   | <https://github.com/Ultimaker/CuraEngine>       | Standalone engine — useful for slicer-as-library. Different profile format (incompatible with our `.ini`s).   |
+| RepRapPro Slicer      | GPL-family | <https://github.com/holgero/RepRapProSlicer>    | Java, independent lineage. Niche; mostly relevant for RepRap-canonical builds.                                |
+| Slic3r (legacy)       | AGPL-3.0   | <https://github.com/slic3r/Slic3r>              | The ancestor. Still alive but development pace is much slower than the PrusaSlicer fork.                      |
+| reprap.org overview   | n/a (wiki) | <https://reprap.org/wiki/Slicer>                | Survey of the broader landscape (Skeinforge, KISSlicer, etc.) for reference.                                  |
 
 For the printability gate (overhang / unsupported / bridge scan, per
 `.claude/rules/cad-printability-gate.md`) all PrusaSlicer-lineage
@@ -160,7 +160,7 @@ on the bench), not technical.
 | Marlin family        | **Must stay OSS.** GPL-3.0 lineage protected. | We will likely need to patch firmware for the Stage 1 `M820` tap; vendor-lock would block this.                                                       |
 | Slicer family        | **Must stay OSS.** AGPL-3.0 lineage protected. | Print profiles are tuned for the AI3M-with-stripped-head geometry — we need source access to add deck-aware safety checks if we ever go autonomous.   |
 | dpette-usb-driver    | **Must stay OSS.** Our own.                 | Single source of truth for the dPette 6-byte protocol; bus factor = us.                                                                              |
-| build123d            | Can swap if needed.                         | If build123d stalls, OpenSCAD (https://openscad.org/) or CadQuery (https://github.com/CadQuery/cadquery) are parametric fallbacks.                    |
+| build123d            | Can swap if needed.                         | If build123d stalls, OpenSCAD (<https://openscad.org/>) or CadQuery (<https://github.com/CadQuery/cadquery>) are parametric fallbacks.                |
 | Host orchestrator    | n/a (ours)                                  | n/a                                                                                                                                                  |
 
 ## Exit strategies

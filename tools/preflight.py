@@ -8,24 +8,22 @@ Scans candidate `/dev/tty*` / `/dev/cu.*` ports and probes each one:
 
 1. **Gantry probe**: delegates to `pipettebot.devices.discover()`, which
    baud-sweeps and sends `M115`. Returns a `DiscoveredDevice` whose
-   `firmware_family` ("marlin", "smartto", or "unknown") drives the
-   per-family export-var name via `FIRMWARE_POLICIES`.
+   `firmware_family` ("marlin", "smartto", or "unknown") selects the
+   matching `FirmwarePolicy`.
 2. **dPette probe**: on every port that didn't answer as a gantry, open
    at 9600 baud via `dpette.DPetteDriver.connect()` (sends `A0` HELLO),
    then read EEPROM byte 0 (firmware version). A `None` return means
    the driver fell back to stub mode → not a real dPette.
 
-Env vars `I3MEGA_PORT` / `SMARTTO_PORT` / `GANTRY_PORT` and `PIPETTE_PORT`
-win over discovery — useful when discovery picks the wrong port or you
-want a stable mapping. First-set wins for the gantry override (checked
-in that order).
+Env vars `PRINTER_PORT` and `PIPETTE_PORT` win over discovery — useful
+when discovery picks the wrong port or you want a stable mapping.
 
 Pass `--export` to suppress probe chatter on stdout and print only
-`export <I3MEGA|SMARTTO|GANTRY>_PORT=...` / `export PIPETTE_PORT=...`
-lines, suitable for shell `eval`:
+`export PRINTER_PORT=...` / `export PIPETTE_PORT=...` lines, suitable
+for shell `eval`:
 
     eval "$(uv run python tools/preflight.py --export)" \
-      && uv run python examples/showcase_v0_pipette_sim.py
+      && uv run python examples/showcase_v0_i3_pipette_sim.py
 
 Probe chatter still goes to stderr in export mode, so you can see
 what was happening if the discovery failed.
@@ -52,12 +50,11 @@ import time
 
 from dpette import DPetteDriver, SerialConfig
 
-from pipettebot.devices import DiscoveredDevice, discover, policy_for
+from pipettebot.devices import PRINTER_PORT_ENV, DiscoveredDevice, discover
 
 DPETTE_BAUD = 9600  # informational; the driver opens the port itself
 DPETTE_RETRY_ATTEMPTS_DEFAULT = 3
 DPETTE_RETRY_DELAY_S_DEFAULT = 5.0
-GANTRY_PORT_ENV_ORDER = ("I3MEGA_PORT", "SMARTTO_PORT", "GANTRY_PORT")
 
 PORT_GLOBS = (
     "/dev/cu.usbserial-*",
@@ -188,15 +185,6 @@ def _resolve_dpette_with_retry(
     return None, None
 
 
-def _gantry_env_override() -> str | None:
-    """Return the first set gantry-port env var, in I3MEGA->SMARTTO->GANTRY order."""
-    for var in GANTRY_PORT_ENV_ORDER:
-        value = os.environ.get(var)
-        if value:
-            return value
-    return None
-
-
 def main() -> int:
     export_mode = "--export" in sys.argv
     original_stdout = sys.stdout
@@ -215,7 +203,9 @@ def main() -> int:
             return 1
         print(f"Discovered ports: {ports}\n")
 
-        gantry_port, gantry_device = _resolve_gantry(ports, _gantry_env_override())
+        gantry_port, gantry_device = _resolve_gantry(
+            ports, os.environ.get(PRINTER_PORT_ENV)
+        )
 
         print()
         print("(press the dPette's button if it's asleep — handshake needs it awake)")
@@ -230,21 +220,17 @@ def main() -> int:
     finally:
         sys.stdout = original_stdout
 
-    gantry_export_name: str | None = None
-    if gantry_device is not None:
-        # First alias in the policy is canonical (e.g. I3MEGA_PORT for marlin,
-        # SMARTTO_PORT for smartto, GANTRY_PORT for unknown).
-        gantry_export_name = policy_for(gantry_device).port_env_aliases[0]
-
     if export_mode:
-        if gantry_port and gantry_export_name:
-            print(f"export {gantry_export_name}={gantry_port}")
+        if gantry_port:
+            print(f"export {PRINTER_PORT_ENV}={gantry_port}")
         if dpette_port:
             print(f"export PIPETTE_PORT={dpette_port}")
     else:
+        # Reference gantry_device so the variable stays meaningful even though
+        # the export-var name no longer depends on the discovered family.
+        family = gantry_device.firmware_family if gantry_device else "?"
         print("===== preflight =====")
-        label = gantry_export_name or "GANTRY_PORT"
-        print(f"  {label:12} = {gantry_port or '(not found)'}")
+        print(f"  {PRINTER_PORT_ENV:12} = {gantry_port or '(not found)'} ({family})")
         print(f"  PIPETTE_PORT = {dpette_port or '(not found)'}")
     return 0
 

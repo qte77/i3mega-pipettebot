@@ -177,7 +177,8 @@ several speculative items above.
   A30 gantry layer must never call `G28 Z` directly. Replacement
   recipe, using only commands the live probe confirmed Smartto handles
   (`G1`, `M119`, `G92`, `G90/G91`):
-  ```
+
+  ```text
   G91
   loop:
     G1 Z-1 F300
@@ -186,6 +187,7 @@ several speculative items above.
   G90
   G92 Z0
   ```
+
   This makes `home()` semantics genuinely diverge between
   `MarlinGantry` (M400 + G28) and `SmarttoGantry` (polled descent +
   G92) — load-bearing argument for the adapter split rather than a

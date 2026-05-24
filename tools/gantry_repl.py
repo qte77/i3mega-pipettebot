@@ -5,10 +5,8 @@ that auto-detects firmware via pipettebot.devices.discover() and selects
 the matching cheat-sheet. The --device flag overrides auto-detect (useful
 when discover() doesn't like the firmware on the wire).
 
-Required (first set wins):
-    GANTRY_PORT   Generic gantry serial path.
-    SMARTTO_PORT  Geeetech A30 / Smartto port.
-    I3MEGA_PORT   Anycubic i3 Mega / Marlin port.
+Required:
+    PRINTER_PORT  Gantry serial path. Run `tools/preflight.py` to discover.
 
 Optional:
     BAUD          Override the policy's preferred_baud (or the discovered
@@ -35,7 +33,7 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
-from pipettebot.devices import FIRMWARE_POLICIES, discover
+from pipettebot.devices import FIRMWARE_POLICIES, PRINTER_PORT_ENV, discover
 from pipettebot.gantry import open_gcode_port, send_and_wait_for_ok
 
 if TYPE_CHECKING:
@@ -171,11 +169,8 @@ def select_cheat_sheet(family: str) -> str:
 
 
 def _resolve_port() -> str | None:
-    for var in ("GANTRY_PORT", "SMARTTO_PORT", "I3MEGA_PORT"):
-        val = os.environ.get(var)
-        if val:
-            return val
-    return None
+    val = os.environ.get(PRINTER_PORT_ENV)
+    return val if val else None
 
 
 def _read_command() -> str | None:
@@ -243,8 +238,7 @@ def main(argv: list[str] | None = None) -> int:
     port = _resolve_port()
     if not port:
         sys.stderr.write(
-            "ERROR: set GANTRY_PORT (or SMARTTO_PORT / I3MEGA_PORT) "
-            "to your printer's serial port.\n"
+            f"ERROR: set {PRINTER_PORT_ENV} to your printer's serial port.\n"
             "       Run `uv run tools/preflight.py` to discover it.\n"
         )
         return 1

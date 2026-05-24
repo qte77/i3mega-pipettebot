@@ -157,23 +157,58 @@ class GcodeGantry:
         self._cfg = cfg
         self._port = port
 
-    def _send(self, line: str) -> str:
-        # Delegate to the lifted helper; return the terminating `ok` line so
-        # the public method signatures stay backward-compatible.
-        return send_and_wait_for_ok(self._port, line)[-1]
+    def send(self, line: str, *, max_secs: float = 30.0) -> str:
+        """Send a raw G-code `line`; return the firmware's terminating `ok` line.
+
+        Prefer the named methods (`home`, `move_to`, `wait_for_moves`) when one
+        fits. Use `send` for G-code outside the wrapped surface — e.g. single-
+        axis homes, `G92`, motion-profile setters from
+        `pipettebot.motion_profile.MotionProfile.as_marlin()`. Pass `max_secs`
+        higher than 30 s for commands the firmware may take a long time to
+        ack (e.g. a final `M400` draining a deep motion queue on Smartto).
+        """
+        return send_and_wait_for_ok(self._port, line, max_secs=max_secs)[-1]
+
+    def query(self, line: str, *, max_secs: float = 30.0) -> list[str]:
+        """Send `line`; return every non-empty reply (including the final `ok`).
+
+        Use for commands whose reply payload matters — `M119` (endstops),
+        `M114` (position), `M115` (identity), `M503` (settings dump). For
+        fire-and-forget commands where only the ack matters, use `send`.
+        """
+        return send_and_wait_for_ok(self._port, line, max_secs=max_secs)
+
+    def flush_input(self) -> None:
+        """Drop any received-but-unread bytes from the OS serial buffer.
+
+        Use after long bursts of multi-line-reply commands (`M119`, `M114`)
+        where pyserial's `select()` may falsely report data-ready against an
+        empty OS buffer, throwing `SerialException` on the next read.
+        """
+        # `_SerialPort` doesn't formally declare this — both pyserial.Serial
+        # and tests/conftest.py::FakeSerial expose it; we call it lazily so
+        # ports without the method (none in this codebase) would error
+        # loudly at runtime rather than silently no-op.
+        self._port.reset_input_buffer()  # type: ignore[attr-defined]
 
     def home(self) -> str:
         """Home all axes via `G28`. Returns the firmware reply line."""
-        return self._send("G28")
+        return self.send("G28")
 
     def move_to(self, x: float, y: float, z: float, feedrate: int | None = None) -> str:
         """Move to `(x, y, z)` at `feedrate` mm/min (or the config default)."""
         f = feedrate if feedrate is not None else self._cfg.feedrate_mm_per_min
-        return self._send(f"G1 X{x:.3f} Y{y:.3f} Z{z:.3f} F{f}")
+        return self.send(f"G1 X{x:.3f} Y{y:.3f} Z{z:.3f} F{f}")
 
-    def wait_for_moves(self) -> str:
-        """Block until the planner queue drains (`M400`)."""
-        return self._send("M400")
+    def wait_for_moves(self, *, max_secs: float = 30.0) -> str:
+        """Block until the planner queue drains (`M400`).
+
+        Pass `max_secs` higher than the default 30 s when draining a deep
+        queue — e.g. on Smartto after a cycle loop where per-move `M400`
+        acks may have returned before motion physically completed, leaving
+        accumulated work for a final drain to process.
+        """
+        return self.send("M400", max_secs=max_secs)
 
     def close(self) -> None:
         """Close the underlying serial port."""

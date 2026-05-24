@@ -73,7 +73,7 @@ After the last cycle, the park sequence:
 
 Environment variables (all optional — modes chosen from env presence):
 
-    I3MEGA_PORT          Marlin USB-serial path. If unset, gantry G-code
+    PRINTER_PORT          Marlin USB-serial path. If unset, gantry G-code
                          is written to the tee file only — no Marlin
                          motion. Discover with `uv run tools/preflight.py`.
     PIPETTE_PORT         dPette USB-serial path. If unset, aspirate /
@@ -85,7 +85,7 @@ Environment variables (all optional — modes chosen from env presence):
                          (tip-box and well-plate footprints clash with
                          fixtures past N=8). See `# FIXME` on
                          `MAX_NUM_CYCLES` and the bed-range warning below.
-    I3MEGA_BAUD          Default 250000 (Anycubic stock + MARLIN-AI3M).
+    PRINTER_BAUD          Default 250000 (Anycubic stock + MARLIN-AI3M).
     PIPETTE_BAUD         Default 9600 (DLAB dPette CP2102 stock).
     PIPETTE_VOLUME_UL    Per-channel volume in microlitres. Default 100.0.
                          Ignored when PIPETTE_PROFILE is set.
@@ -108,8 +108,8 @@ Environment variables (all optional — modes chosen from env presence):
 
 Run modes (auto-selected from env presence):
 
-    FULL          I3MEGA_PORT + PIPETTE_PORT — real gantry + real dPette.
-    GANTRY ONLY   I3MEGA_PORT only — gantry moves; dPette ops skipped
+    FULL          PRINTER_PORT + PIPETTE_PORT — real gantry + real dPette.
+    GANTRY ONLY   PRINTER_PORT only — gantry moves; dPette ops skipped
                   (useful for path testing without consuming reagent).
     DPETTE ONLY   PIPETTE_PORT only — dPette ops fire with no spatial
                   context; primarily for dPette timing tests.
@@ -625,7 +625,7 @@ def _describe_mode(have_gantry: bool, have_pipette: bool) -> str:
     if have_gantry:
         return "GANTRY ONLY — dPette ops skipped (PIPETTE_PORT unset)"
     if have_pipette:
-        return "DPETTE ONLY — gantry moves skipped (I3MEGA_PORT unset)"
+        return "DPETTE ONLY — gantry moves skipped (PRINTER_PORT unset)"
     return "DRY RUN — both serial skipped; G-code tee only"
 
 
@@ -708,9 +708,9 @@ def main() -> int:
     if "--help" in sys.argv or "-h" in sys.argv:
         print(__doc__)
         return 0
-    port = os.environ.get("I3MEGA_PORT", "").strip()
+    port = os.environ.get("PRINTER_PORT", "").strip()
     pipette_port = os.environ.get("PIPETTE_PORT", "").strip()
-    baud = int(os.environ.get("I3MEGA_BAUD", str(DEFAULT_BAUD)))
+    baud = int(os.environ.get("PRINTER_BAUD", str(DEFAULT_BAUD)))
     pipette_baud = int(os.environ.get("PIPETTE_BAUD", str(DEFAULT_PIPETTE_BAUD)))
     so101_config_path = os.environ.get("SO101_CONFIG", "").strip()
     so101_arm_id = os.environ.get("SO101_ARM_ID", "arm_a").strip() or "arm_a"

@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
-from typing import TYPE_CHECKING
+
+import pytest
 
 from pipettebot.devices import DiscoveredDevice
-
-if TYPE_CHECKING:
-    import pytest
 
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 
@@ -40,7 +38,7 @@ def _make_device(
 
 
 def _clear_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for var in ("I3MEGA_PORT", "SMARTTO_PORT", "GANTRY_PORT", "PIPETTE_PORT"):
+    for var in ("PRINTER_PORT", "PIPETTE_PORT"):
         monkeypatch.delenv(var, raising=False)
 
 
@@ -57,15 +55,26 @@ def test_preflight_exits_1_when_no_ports_present(
     assert "No USB-serial" in out
 
 
-def test_preflight_export_emits_marlin_var_when_marlin_detected(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+@pytest.mark.parametrize(
+    ("family", "baud", "machine"),
+    [
+        ("marlin", 250000, "Anycubic_i3_Mega"),
+        ("smartto", 115200, "A30"),
+        ("unknown", 115200, "Voron2.4"),
+    ],
+)
+def test_preflight_export_emits_printer_port_regardless_of_family(
+    family: str,
+    baud: int,
+    machine: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """The export-var name is firmware-agnostic after the PRINTER_PORT collapse."""
     _clear_env(monkeypatch)
     monkeypatch.setattr(preflight, "discover_ports", lambda: ["/dev/ttyUSB0"])
     monkeypatch.setattr(
-        preflight,
-        "discover",
-        lambda port, **_kw: _make_device("marlin", 250000, "Anycubic_i3_Mega"),
+        preflight, "discover", lambda port, **_kw: _make_device(family, baud, machine)
     )
     monkeypatch.setattr(
         preflight, "_resolve_dpette_with_retry", lambda *_a, **_kw: (None, None)
@@ -75,46 +84,4 @@ def test_preflight_export_emits_marlin_var_when_marlin_detected(
     rc = preflight.main()
     out = capsys.readouterr().out
     assert rc == 0
-    assert "export I3MEGA_PORT=/dev/ttyUSB0" in out
-
-
-def test_preflight_export_emits_smartto_var_when_a30_detected(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    _clear_env(monkeypatch)
-    monkeypatch.setattr(preflight, "discover_ports", lambda: ["/dev/ttyUSB0"])
-    monkeypatch.setattr(
-        preflight,
-        "discover",
-        lambda port, **_kw: _make_device("smartto", 115200, "A30"),
-    )
-    monkeypatch.setattr(
-        preflight, "_resolve_dpette_with_retry", lambda *_a, **_kw: (None, None)
-    )
-    monkeypatch.setattr("sys.argv", ["preflight.py", "--export"])
-
-    rc = preflight.main()
-    out = capsys.readouterr().out
-    assert rc == 0
-    assert "export SMARTTO_PORT=/dev/ttyUSB0" in out
-
-
-def test_preflight_export_emits_gantry_port_for_unknown_family(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    _clear_env(monkeypatch)
-    monkeypatch.setattr(preflight, "discover_ports", lambda: ["/dev/ttyUSB0"])
-    monkeypatch.setattr(
-        preflight,
-        "discover",
-        lambda port, **_kw: _make_device("unknown", 115200, "Voron2.4"),
-    )
-    monkeypatch.setattr(
-        preflight, "_resolve_dpette_with_retry", lambda *_a, **_kw: (None, None)
-    )
-    monkeypatch.setattr("sys.argv", ["preflight.py", "--export"])
-
-    rc = preflight.main()
-    out = capsys.readouterr().out
-    assert rc == 0
-    assert "export GANTRY_PORT=/dev/ttyUSB0" in out
+    assert "export PRINTER_PORT=/dev/ttyUSB0" in out
