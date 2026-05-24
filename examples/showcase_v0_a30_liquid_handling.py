@@ -18,7 +18,16 @@ Required environment variables:
 
     PRINTER_PORT   Gantry USB-serial path. Set by `tools/preflight.py
                    --export` or manually.
-    PIPETTE_PORT   dPette USB-serial path. Same source.
+
+Optional environment variables:
+
+    PIPETTE_PORT   dPette USB-serial path. When unset the script runs in
+                   GANTRY-ONLY mode: motion executes for real but
+                   aspirate/dispense calls become log-only stubs. Use this
+                   to validate A30 motion before mounting the dPette on
+                   the carriage (payload budget is unmeasured — see
+                   `docs/research/gantry-firmware-alternatives.md`
+                   unknown #5).
 
 Deck-geometry overrides (defaults are A30-sized, ~320x320 bed, well
 positions inset by ~80 mm from edges — adjust to your physical layout):
@@ -78,6 +87,18 @@ from pipettebot.motion_profile import select_profile
 DEFAULT_NUM_CYCLES = 2
 DEFAULT_PIPETTE_BAUD = 9600
 DEFAULT_TRANSIT_FEEDRATE = 6000  # 100 mm/s
+
+
+class _LoggingPipette:
+    """Stub pipette for gantry-only runs. Satisfies the `_Pipette` protocol."""
+
+    def aspirate(self, volume_ul: float = 0.0) -> None:
+        print(f"[host] (sim) aspirate {volume_ul:.1f} uL — no dPette wired")
+
+    def dispense(self, volume_ul: float = 0.0) -> None:
+        _ = volume_ul
+        print("[host] (sim) dispense — no dPette wired")
+
 
 # A30 deck-frame defaults — operator-overridable via env.
 DEFAULT_SOURCE_X = 160.0
@@ -156,10 +177,9 @@ def _apply_motion_profile(gantry: GcodeGantry) -> None:
 def main() -> int:
     port = resolve_port()
     pipette_port = os.environ.get("PIPETTE_PORT")
-    if not port or not pipette_port:
+    if not port:
         sys.stderr.write(
-            f"ERROR: set {PRINTER_PORT_ENV} and PIPETTE_PORT (run "
-            "`tools/preflight.py --export`).\n"
+            f"ERROR: set {PRINTER_PORT_ENV} (run `tools/preflight.py --export`).\n"
         )
         return 1
 
@@ -185,8 +205,16 @@ def main() -> int:
         sys.stderr.write(f"ERROR: could not open {port} @ {device.baud}.\n")
         return 1
 
-    pipette = DPetteDriver(SerialConfig(port=pipette_port))
-    pipette.connect()
+    pipette: DPetteDriver | _LoggingPipette
+    if pipette_port:
+        pipette = DPetteDriver(SerialConfig(port=pipette_port))
+        pipette.connect()
+    else:
+        print(
+            "[host] GANTRY-ONLY mode — PIPETTE_PORT unset; aspirate/dispense "
+            "calls will log but not actuate any pipette."
+        )
+        pipette = _LoggingPipette()
 
     source, dest, well_z, travel_z = _read_deck()
     print(
@@ -221,7 +249,8 @@ def main() -> int:
 
             print("\n[host] done — parking at travel altitude over destination")
     finally:
-        pipette.disconnect()
+        if isinstance(pipette, DPetteDriver):
+            pipette.disconnect()
 
     return 0
 
