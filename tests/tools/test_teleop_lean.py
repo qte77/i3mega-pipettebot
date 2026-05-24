@@ -186,3 +186,50 @@ def test_consume_capture_returns_none_and_clears_flag_on_read_failure() -> None:
     assert teleop_lean.consume_capture(state, reader) is None
     assert state.requested is False  # flag cleared even on failure (don't re-fire)
     assert state.counter == 1  # counter still increments; aligns with stdout log
+
+
+def test_mirror_tick_returns_goals_dict_on_success() -> None:
+    positions = {1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600}
+    reader = FakeSyncReader(available=positions)
+    writer = FakeSyncWriter()
+    assert teleop_lean._mirror_tick(reader, writer) == positions
+
+
+def test_mirror_tick_returns_empty_dict_when_sync_read_fails() -> None:
+    reader = FakeSyncReader(available={1: 100}, txrx_result=-1)
+    writer = FakeSyncWriter()
+    assert teleop_lean._mirror_tick(reader, writer) == {}
+
+
+def test_mirror_tick_returns_empty_dict_when_no_servo_available() -> None:
+    reader = FakeSyncReader(available={})
+    writer = FakeSyncWriter()
+    assert teleop_lean._mirror_tick(reader, writer) == {}
+
+
+def test_format_record_line_emits_jsonl_with_timestamp_and_joints() -> None:
+    import json
+
+    line = teleop_lean.format_record_line(
+        0.5, {1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600}
+    )
+    assert line.endswith("\n"), "record lines must terminate with newline for JSONL"
+    record = json.loads(line)
+    assert record["t"] == 0.5
+    assert record["joints"] == {
+        "1": 100,
+        "2": 200,
+        "3": 300,
+        "4": 400,
+        "5": 500,
+        "6": 600,
+    }
+
+
+def test_format_record_line_rounds_timestamp_to_milliseconds() -> None:
+    import json
+
+    line = teleop_lean.format_record_line(0.123456789, {1: 100})
+    record = json.loads(line)
+    # 1 ms precision is enough for STS3215's 30-60 Hz update; keeps lines short.
+    assert record["t"] == 0.123

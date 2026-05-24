@@ -35,6 +35,14 @@ The PID is printed at startup. Each capture prints one yaml-ish line
 to stdout — convert from raw ticks to the calibrated frame before
 pasting into configs/so101_arms.yaml.
 
+Record the leader joint stream for later open-loop replay:
+
+    uv run --extra teaching python tools/teleop_lean.py \\
+        --leader=... --follower=... --record=captures/session.jsonl
+
+JSONL format: one `{"t": secs_since_start, "joints": {sid: pos, ...}}`
+line per tick. Replay via `tools/teleop_replay.py` (when added).
+
 STS3215 control table addresses are from the Feetech STS series manual.
 SO-101 has 6 servos addressed 1..6.
 """
@@ -42,11 +50,16 @@ SO-101 has 6 servos addressed 1..6.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import signal
 import sys
 import time
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import IO
 
 # STS3215 control table (Feetech STS series)
 ADDR_TORQUE_ENABLE = 0x28
@@ -164,12 +177,21 @@ def _run_loop(
     follower_reader: object,
     capture: _CaptureState,
     rate_hz: float,
+    record_file: IO[str] | None = None,
 ) -> None:
-    """Mirror leader -> follower forever; drain pending captures between ticks."""
+    """Mirror leader -> follower forever; drain pending captures between ticks.
+
+    When `record_file` is provided, each tick's leader goals are appended
+    as a JSONL line with a session-relative timestamp (seconds since the
+    first tick) for later open-loop replay via tools/teleop_replay.py.
+    """
     period = 1.0 / rate_hz
+    t0 = time.perf_counter()
     while True:
         tick = time.perf_counter()
-        _mirror_tick(reader, writer)
+        goals = _mirror_tick(reader, writer)
+        if record_file is not None and goals:
+            record_file.write(format_record_line(tick - t0, goals))
         line = consume_capture(capture, follower_reader)
         if line is not None:
             print(line)
@@ -178,26 +200,41 @@ def _run_loop(
             time.sleep(period - elapsed)
 
 
-def _mirror_tick(reader: object, writer: object) -> None:
+def _mirror_tick(reader: object, writer: object) -> dict[int, int]:
     """Sync-read all leader positions, sync-write available ones to follower.
 
     One bus exchange per direction instead of 12 sequential transactions —
     raises achievable update rate from ~15-20 Hz to 60+ Hz on the same wire.
     Transient per-servo read failures (isAvailable=False) are skipped; a
     full sync_read failure (non-zero txRxPacket) drops the entire tick.
+
+    Returns the goals that were written this tick (empty dict if nothing
+    was written), so the caller can log them for offline replay.
     """
     if reader.txRxPacket() != 0:  # type: ignore[attr-defined]
-        return
+        return {}
     goals: dict[int, int] = {}
     for sid in SERVO_IDS:
         if reader.isAvailable(sid, ADDR_PRESENT_POSITION, 2):  # type: ignore[attr-defined]
             goals[sid] = reader.getData(sid, ADDR_PRESENT_POSITION, 2)  # type: ignore[attr-defined]
     if not goals:
-        return
+        return {}
     writer.clearParam()  # type: ignore[attr-defined]
     for sid, pos in goals.items():
         writer.addParam(sid, [pos & 0xFF, (pos >> 8) & 0xFF])  # type: ignore[attr-defined]
     writer.txPacket()  # type: ignore[attr-defined]
+    return goals
+
+
+def format_record_line(t: float, joints: dict[int, int]) -> str:
+    """Format one tick as a JSONL line: '{"t": <secs>, "joints": {sid: pos, ...}}\\n'.
+
+    Time is rounded to 1ms — sufficient for 60 Hz cadence, keeps lines
+    short. Joint IDs serialize as JSON string keys (a JSON object
+    constraint); parsers must coerce them back to int.
+    """
+    record = {"t": round(t, 3), "joints": joints}
+    return json.dumps(record) + "\n"
 
 
 def main() -> int:
@@ -214,6 +251,14 @@ def main() -> int:
         type=float,
         default=DEFAULT_HZ,
         help=f"loop rate Hz (default: {DEFAULT_HZ})",
+    )
+    parser.add_argument(
+        "--record",
+        default=None,
+        help=(
+            "append leader joint stream as JSONL to this path (one line per tick)"
+            " for later replay via tools/teleop_replay.py"
+        ),
     )
     args = parser.parse_args()
 
@@ -276,11 +321,18 @@ def main() -> int:
         f"[teleop] capture follower joints: kill -USR1 {os.getpid()} "
         "(prints a yaml-paste line of raw ticks)"
     )
+    record_file = open(args.record, "a") if args.record else None  # noqa: SIM115
+    if record_file is not None:
+        print(f"[teleop] recording leader joint stream to {args.record}")
     try:
-        _run_loop(reader, writer, follower_reader, capture, args.rate)
+        _run_loop(
+            reader, writer, follower_reader, capture, args.rate, record_file=record_file
+        )
     except KeyboardInterrupt:
         print("\n[teleop] stopping; disabling torque on both arms...")
     finally:
+        if record_file is not None:
+            record_file.close()
         _set_torque(packet, leader, 0)
         _set_torque(packet, follower, 0)
         leader.closePort()
