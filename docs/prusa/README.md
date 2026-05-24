@@ -92,7 +92,7 @@ prusa-slicer --printer-profile "Original Prusa MK4 Input Shaper 0.4 nozzle" \
 Pointing at the system bundle with `--datadir
 /usr/share/PrusaSlicer` also fails:
 
-```
+```text
 Error: Configuration wasn't found. Check your 'datadir' value.
 ```
 
