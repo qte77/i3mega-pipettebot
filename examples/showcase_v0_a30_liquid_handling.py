@@ -253,7 +253,15 @@ def main() -> int:
                 print(f"\n[host] ====== cycle {n}/{len(volumes)} ======")
                 transfer_cycle(gantry, bot, source, dest, well_z, travel_z, vol)
 
-            print("\n[host] done — parking at travel altitude over destination")
+            # End-of-run park at the home corner. Z stays at travel_z
+            # (tip lifted above origin) and XY returns to (0, 0) — the
+            # known reference established by safe_home. Mirrors the
+            # "always finish at a known state" pattern in the i3
+            # showcases.
+            print("\n[host] parking at home corner (0, 0) at travel altitude")
+            gantry.move_to(0.0, 0.0, travel_z, feedrate=DEFAULT_TRANSIT_FEEDRATE)
+            gantry.wait_for_moves()
+            print("[host] done")
     finally:
         if isinstance(pipette, DPetteDriver):
             pipette.disconnect()
