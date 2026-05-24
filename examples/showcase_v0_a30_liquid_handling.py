@@ -95,6 +95,13 @@ DEFAULT_TRANSIT_FEEDRATE = 6000  # 100 mm/s
 # this long after the final park so the `with gantry_link:` block doesn't
 # close the port mid-motion. Worst-case bed-diagonal at 100 mm/s ~= 4.5 s.
 PARK_SETTLE_S = 6.0
+# Pre-home Z lift: force safe_home's polled descent to run every demo
+# invocation, even if Z is already at the sensor from a prior home. The
+# lift overrides any earlier G92 Z origin; safe_home re-establishes Z=0
+# at the sensor trigger after descending. 20 mm clears the inductive
+# sensor's detection zone (~1-3 mm) with margin to spare.
+PRE_HOME_LIFT_MM = 20.0
+PRE_HOME_LIFT_FEEDRATE = 1200  # 20 mm/s (at the M203 Z cap)
 
 
 class _LoggingPipette:
@@ -247,6 +254,21 @@ def main() -> int:
             bot = PipetteBot(gantry, pipette)
 
             _apply_motion_profile(gantry)
+            # Force fresh polled descent every run: lift Z so the sensor
+            # reads OPEN at safe_home's pre-loop check, even if Z is at
+            # the trigger from a prior home. Temporary G92 Z0 sets a
+            # local frame (safe_home redeclares it after the descent).
+            # See PRE_HOME_LIFT_* constants for sizing rationale.
+            print(
+                f"[host] lifting Z {PRE_HOME_LIFT_MM:.0f} mm so safe_home runs a "
+                "fresh descent (otherwise pre-loop M119 may short-circuit)"
+            )
+            gantry.send("G92 Z0")
+            gantry.send(f"G1 Z{PRE_HOME_LIFT_MM:.3f} F{PRE_HOME_LIFT_FEEDRATE}")
+            gantry.wait_for_moves()
+            # Smartto M400 race: block for motion time + margin so the lift
+            # is physically complete before safe_home polls M119.
+            time.sleep(PRE_HOME_LIFT_MM / (PRE_HOME_LIFT_FEEDRATE / 60.0) + 1.5)
             safe_home(gantry, policy)
             # Lift to travel altitude before the first XY move so the tip
             # clears any obstacle the operator placed near the Z origin.
