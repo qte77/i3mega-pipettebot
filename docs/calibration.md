@@ -7,7 +7,7 @@ owner: "lambda biolab"
 
 Every i3 Mega has slightly different X/Y home offsets, and a well plate
 is mechanically taped to the bed — there is no idealized origin. Before
-running [`examples/showcase_v0_pipette_sim.py`](../examples/showcase_v0_pipette_sim.py)
+running [`examples/showcase_v0_i3_pipette_sim.py`](../examples/showcase_v0_i3_pipette_sim.py)
 you must measure where the back and front wells actually are on
 **your** build and update the hardcoded constants.
 
@@ -66,7 +66,7 @@ One-shot tip-touch-off procedure:
 6. Lift to a safe travel altitude before any XY motion: `G1 Z40 F1200`.
 
 The tip-touch Z value is the new reference for `WELL_Z` in
-`examples/showcase_v0_pipette_sim.py`. Add ~5 mm so the tip doesn't
+`examples/showcase_v0_i3_pipette_sim.py`. Add ~5 mm so the tip doesn't
 crash into the well bottom on every cycle.
 
 Re-run this procedure whenever you swap pipettes (single-channel ↔
@@ -156,7 +156,7 @@ the plate is rotated relative to X — re-tape and start over from step 2.
 
 ### 5. Update the showcase script
 
-Open [`examples/showcase_v0_pipette_sim.py`](../examples/showcase_v0_pipette_sim.py)
+Open [`examples/showcase_v0_i3_pipette_sim.py`](../examples/showcase_v0_i3_pipette_sim.py)
 and replace the constants near the top:
 
 ```python
@@ -177,7 +177,7 @@ empty B1:
 
 ```bash
 uv run tools/preflight.py
-uv run examples/showcase_v0_pipette_sim.py
+uv run examples/showcase_v0_i3_pipette_sim.py
 ```
 
 The first command confirms ports + firmware before motion.
@@ -190,7 +190,7 @@ in v0.
 
 - A proper `deck.py` with `WellPlate96`, `TipRack`, and named slots
 - An origin-probe routine (`G38.2`-style) that auto-finds A1
-- Persistence to a JSON file so you do not edit `showcase_v0_pipette_sim.py` every time
+- Persistence to a JSON file so you do not edit `showcase_v0_i3_pipette_sim.py` every time
 - Soft-limit `safety.py` module (`MIN_TRAVEL_Z`, `DISPENSE_Z_OFFSET`)
 
 All tracked in [AGENT_REQUESTS.md](../AGENT_REQUESTS.md) and follow-up
