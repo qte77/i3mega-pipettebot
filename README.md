@@ -293,6 +293,7 @@ PC-as-host architecture.
 
 - [Lambda-Biolab/dpette-usb-driver](https://github.com/Lambda-Biolab/dpette-usb-driver) — pipette serial driver (imported as `dpette`); reference pipette for the **dpette+i3** build.
 - [qte77/so101-biolab-automation](https://github.com/qte77/so101-biolab-automation) — dual SO-101 arm controller; optional companion that retrieves the used-tips bin after the i3 homes (issue #120).
+- [xg590/Learn_dPettePlus](https://github.com/xg590/Learn_dPettePlus) — original reverse-engineering of the dPette+ serial protocol (source of the official Chinese protocol document); intellectual lineage for `dpette-usb-driver`.
 
 ## Documentation
 
@@ -305,6 +306,9 @@ PC-as-host architecture.
 - [docs/3d-parts.md](docs/3d-parts.md) — CAD pipeline design rationale, payload + Z envelope math, SBS labware reference
 - [docs/sbc-deployment.md](docs/sbc-deployment.md) — Path 2 (Single-Board Computer on-printer) deployment
 - [docs/research/gantry-firmware-alternatives.md](docs/research/gantry-firmware-alternatives.md) — A30 / Smartto bring-up notes (firmware-broken `G28 Z`, polled-Z descent recipe)
+- [docs/research/aspirate-monitoring.md](docs/research/aspirate-monitoring.md) — aspirate verification technologies (Hamilton MAD / TADM survey, dPette+ reuse verdict)
+- [docs/research/tip-disposal-belt-module.md](docs/research/tip-disposal-belt-module.md) — used-tip disposal mechanisms (conveyor-belt printer landscape, standalone belt module BOM)
+- [docs/research/alternative-pipettes.md](docs/research/alternative-pipettes.md) — candidate pipettes for the `_Pipette` Protocol (dPette+ reference, multichannel, Opentrons GEN2, ac-rad Digital Pipette)
 - [docs/adr/](docs/adr/) — architectural decision records
 - [AGENTS.md](AGENTS.md) — agent rules, decision framework, architecture
 - [AGENT_LEARNINGS.md](AGENT_LEARNINGS.md) — gotchas as we discover them
