@@ -69,6 +69,19 @@ From [docs/UserStory.md](UserStory.md) "Out of scope (v0)":
 - **Multi-deck / multi-plate workflows** — currently single deck per
   session.
 - **GUI** — Python API only for v0.
+- **Aspirate verification (pressure monitoring).** Hamilton's TADM
+  uses a per-channel air-column pressure transducer for clog /
+  dry-well detection. The dPette+ has no exposed sensor port; v0 is
+  fully open-loop with no aspirate verification. A bolt-on inline
+  sensor is conceivable but requires characterization of the
+  dPette+ internal pressure signature first. See
+  [`docs/research/aspirate-monitoring.md`](research/aspirate-monitoring.md).
+- **Active tip-disposal conveyance.** v0 relies on the passive
+  `dpette_tip_release` waste slot. A standalone belt module from
+  commodity parts (~$37–72 BOM) is feasible for high-cycle workflows
+  but requires either a Stage 1+ firmware track or a parallel-MCU
+  side path. See
+  [`docs/research/tip-disposal-belt-module.md`](research/tip-disposal-belt-module.md).
 
 ## Doc improvements
 
