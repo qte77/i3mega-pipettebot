@@ -1,12 +1,12 @@
 ---
-title: "Deck layout — ASCII sketch from showcase_v0_full_pipettebot_rows.py"
+title: "Deck layout — ASCII sketch from showcase_v0_i3_full_pipettebot_rows.py"
 status: "DRAFT"
 updated: "2026-05-17"
 owner: "qte77"
 ---
 
 ASCII top-down view derived from the constants in
-[`examples/showcase_v0_full_pipettebot_rows.py`](../../examples/showcase_v0_full_pipettebot_rows.py).
+[`examples/showcase_v0_i3_full_pipettebot_rows.py`](../../examples/showcase_v0_i3_full_pipettebot_rows.py).
 Captures the geometry the row-tour script actually drives — anchor for
 the eventual SVG version (tracked in the visualization-tool follow-up
 issue).
