@@ -9,7 +9,7 @@ Quick reference for the G/M-codes you actually reach for when bringing up
 or debugging an i3 Mega running MARLIN-AI3M v1.4.6 (Marlin 1.1.9 base).
 Not exhaustive — see the [Marlin G-code index](https://marlinfw.org/meta/gcode/)
 for the full set. The same table is built into
-[`tools/marlin_repl.py`](../tools/marlin_repl.py) under the `?` /
+[`tools/gantry_repl.py`](../tools/gantry_repl.py) under the `?` /
 `help` command.
 
 For project provenance, fork lineage, license posture, and credible OSS
@@ -32,7 +32,7 @@ carriage tab couldn't reach the switch.
 
 Any of:
 
-- Interactive REPL: `I3MEGA_PORT=/dev/ttyUSB0 uv run python tools/marlin_repl.py`
+- Interactive REPL: `I3MEGA_PORT=/dev/ttyUSB0 uv run python tools/gantry_repl.py`
 - Stepped axis motion: `AXIS=X I3MEGA_PORT=/dev/ttyUSB0 uv run python tools/diagnose_axis.py`
 - Port discovery + chaining: `eval "$(uv run python tools/preflight.py --export)" && ...`
 - A serial terminal that handles 250000 baud (e.g. `tio -b 250000 /dev/ttyUSB0`).
