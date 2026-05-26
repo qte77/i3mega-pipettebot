@@ -43,7 +43,7 @@ laptop without changing any cabling on either device.
     or own 5 V brick)
 
    Pi runs pipettebot      ──┐
-                             ├──► same `examples/showcase_v0_pipette_sim.py` workflow
+                             ├──► same `examples/showcase_v0_i3_pipette_sim.py` workflow
                              │    as today, just on the Pi
    SSH from laptop / VS      │
    Code Remote-SSH for       │
@@ -84,7 +84,7 @@ built-in Wi-Fi (add a USB Wi-Fi dongle).
 | Required wait after opening a serial port before first send | ~2.7 s | [Serial port-open latency observations](https://forums.raspberrypi.com/viewtopic.php?t=161922) |
 
 The 2.7 s post-open wait matches the existing `time.sleep(3)` in
-[`examples/showcase_v0_pipette_sim.py`](../examples/showcase_v0_pipette_sim.py)
+[`examples/showcase_v0_i3_pipette_sim.py`](../examples/showcase_v0_i3_pipette_sim.py)
 right after `open_marlin_port` — the showcase already accommodates this.
 
 **Mandatory: powered USB hub.** The Pi 1 B+ supplies limited 5 V on its
@@ -130,7 +130,7 @@ One-time bring-up. After this the Pi runs unattended.
     cd ~/i3mega-pipettebot
     source config.local/pipettebot.env
     uv run tools/preflight.py                       # sanity check
-    uv run examples/showcase_v0_pipette_sim.py
+    uv run examples/showcase_v0_i3_pipette_sim.py
     ```
 
     The env file is host-specific and ignored by git (top-level
@@ -193,7 +193,7 @@ CH340 the older docs assume — see
 ```bash
 cd ~/i3mega-pipettebot
 uv run tools/preflight.py
-uv run examples/showcase_v0_pipette_sim.py
+uv run examples/showcase_v0_i3_pipette_sim.py
 ```
 
 The first command confirms ports + firmware on real hardware; the
@@ -218,7 +218,7 @@ User=pi
 WorkingDirectory=/home/pi/i3mega-pipettebot
 Environment=I3MEGA_PORT=/dev/serial/by-id/...
 Environment=PIPETTE_PORT=/dev/serial/by-id/...
-ExecStart=/home/pi/.local/bin/uv run examples/showcase_v0_pipette_sim.py
+ExecStart=/home/pi/.local/bin/uv run examples/showcase_v0_i3_pipette_sim.py
 Restart=no
 
 [Install]

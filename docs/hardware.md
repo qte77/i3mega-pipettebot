@@ -8,7 +8,7 @@ owner: "qte77"
 This guide covers the **physical and electrical setup** of an Anycubic
 i3 Mega chassis (stripped to a 3-axis motion platform — see "Workspace
 constraints" below) and a DLAB dPette electronic pipette so the v0 demo
-(`examples/showcase_v0_pipette_sim.py`) can run end-to-end. Software
+(`examples/showcase_v0_i3_pipette_sim.py`) can run end-to-end. Software
 install is covered in the [README](../README.md) and contributor setup
 in [CONTRIBUTING](../CONTRIBUTING.md).
 
@@ -213,5 +213,5 @@ Once the topology is wired up:
 1. Run [`python tools/preflight.py`](../tools/preflight.py) to confirm
    firmware versions and port mapping.
 2. Calibrate well-A1 origin: see [`calibration.md`](calibration.md).
-3. Run [`python examples/showcase_v0_pipette_sim.py`](../examples/showcase_v0_pipette_sim.py) — the
+3. Run [`python examples/showcase_v0_i3_pipette_sim.py`](../examples/showcase_v0_i3_pipette_sim.py) — the
    end-to-end aspirate/dispense demo.

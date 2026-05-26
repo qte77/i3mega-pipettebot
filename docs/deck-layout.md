@@ -12,11 +12,11 @@ owner: "lambda biolab"
 
 Physical arrangement of labware on the 220 × 220 mm deck plate that sits
 on the i3 Mega bed. The full-plate tour
-([`examples/showcase_v0_full_plate.py`](../examples/showcase_v0_full_plate.py))
+([`examples/showcase_v0_i3_full_plate.py`](../examples/showcase_v0_i3_full_plate.py))
 addresses this deck directly; the per-axis well-A1 origin and dispense Z
 are still measured per-build in [`calibration.md`](calibration.md). The
 older two-well demo
-([`examples/showcase_v0_pipette_sim.py`](../examples/showcase_v0_pipette_sim.py))
+([`examples/showcase_v0_i3_pipette_sim.py`](../examples/showcase_v0_i3_pipette_sim.py))
 predates this layout and uses its own hardcoded coordinates.
 
 Coordinate convention: `X = 0` at the left edge, `Z = 0` at the
@@ -92,7 +92,7 @@ body during XY travel.
 
 ## Motion constants
 
-Constants encoded in [`examples/showcase_v0_full_plate.py`](../examples/showcase_v0_full_plate.py):
+Constants encoded in [`examples/showcase_v0_i3_full_plate.py`](../examples/showcase_v0_i3_full_plate.py):
 
 | Constant | Value (mm) | Why |
 |---|---|---|
@@ -144,7 +144,7 @@ a new global offset.
 
 ## Tour sequence
 
-The full-plate tour ([`examples/showcase_v0_full_plate.py`](../examples/showcase_v0_full_plate.py))
+The full-plate tour ([`examples/showcase_v0_i3_full_plate.py`](../examples/showcase_v0_i3_full_plate.py))
 runs in four phases (each phase is delimited by a `; ===== phase N =====`
 comment in the tee'd G-code):
 
