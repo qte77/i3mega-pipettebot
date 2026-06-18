@@ -150,3 +150,11 @@ exclude-newer = "2026-05-17T00:00:00Z"
 venvPath = "."
 venv = ".venv"
 extraPaths = ["src"]
+
+[tool.scriv]
+format = "md"
+fragment_directory = "changelog.d"
+categories = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"]
+md_header_level = "2"
+entry_title_template = "[{{ version }}] - {{ date.strftime('%Y-%m-%d') }}"
+md_html_anchors = false
