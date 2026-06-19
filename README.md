@@ -20,6 +20,8 @@ and used-tips bin pickup is delegated to an optional companion SO-101
 arm via [`so101-biolab-automation`](https://github.com/qte77/so101-biolab-automation).
 The library is also pipette-agnostic via the `_Pipette` Protocol.
 
+**Write-up:** [A $150 Pipetting Robot from a Stock 3D Printer](https://qte77.github.io/pipettebot-sub-150-pipetting-robot/) — the full build story. This gantry is also the *motion layer* of a larger [self-driving-lab agent loop](https://qte77.github.io/open-self-driving-lab-agent-loop/).
+
 <details>
 <summary>dpette+i3 in action (animated GIF)</summary>
 <p align="center">
