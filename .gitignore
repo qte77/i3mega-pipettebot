@@ -62,6 +62,10 @@ hardware/svg/
 hardware/gcode/
 diagramforge/
 
+# 3D scan: track raw input (pipette_scan_raw.stl) as canonical source;
+# derived outputs are re-runnable via tools/cad/scan/clean_pipette_scan.py
+hardware/3d-scan/dpette_scan.stl
+
 # Untracked example output
 showcase_v0_pipette_sim.gcode
 showcase_v0_full_plate.gcode
