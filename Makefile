@@ -4,12 +4,14 @@
 	setup_dev \
 	setup_cad \
 	setup_slicer \
+	setup_prusa_presets \
 	setup_freecad \
 	setup_diagramforge \
 	setup_all \
 	lint \
 	lint_fix \
 	test \
+	test_bats \
 	validate \
 	quick_validate \
 	check_complexity \
@@ -98,6 +100,13 @@ setup_slicer:  ## Probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)
 		exit 1
 	fi
 
+# PRUSA_USER_DIR overrides where presets are read/written (default:
+# ~/.config/PrusaSlicer, resolved by tools/slicer/resolve_presets.py and
+# tools/slicer/slice.py themselves). Tests point this at a temp dir so
+# neither recipe ever touches a real user's PrusaSlicer config.
+setup_prusa_presets:  ## Extract MK4 Input-Shaper presets from the system PrusaSlicer bundle into ~/.config/PrusaSlicer/{printer,print,filament}/ (enables `make slice` to reference them by name)
+	$(PY) tools/slicer/resolve_presets.py $(if $(PRUSA_USER_DIR),--user-dir "$(PRUSA_USER_DIR)")
+
 setup_freecad:  ## Probe for FreeCAD (optional — inspect generated STEP files)
 	if command -v freecad > /dev/null 2>&1; then
 		echo "freecad already installed: $$(freecad --version 2>&1 | head -1)"
@@ -160,6 +169,9 @@ lint_fix:  ## ruff format + ruff check --fix (VERBOSE=1 for full output)
 test:  ## pytest (hardware tests excluded by pyproject; VERBOSE=1 for full output)
 	echo "--- test$(if $(PYTEST_QUIET), [quiet])"
 	$(PYTEST) $(if $(PYTEST_QUIET),$(PYTEST_QUIET),-v)
+
+test_bats:  ## bats tests for Makefile recipe wiring (tests/bats/*.bats; not part of CI yet)
+	bats tests/bats/
 
 
 # MARK: QUALITY
