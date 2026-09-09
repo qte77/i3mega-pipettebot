@@ -15,7 +15,10 @@ Imported lazily by callers (showcase reads `SO101_CONFIG` env first); the
 
 from __future__ import annotations
 
-from so101.arms import DualArmConfig, DualArmController
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from so101.arms import DualArmConfig
 
 DEMO_PICKUP_SEQUENCE: tuple[str, ...] = (
     "demo_pickup_approach",
@@ -25,10 +28,24 @@ DEMO_PICKUP_SEQUENCE: tuple[str, ...] = (
 )
 
 
-def load_so101_controller(config_path: str) -> DualArmController:
+class _ArmController(Protocol):
+    """Subset of so101.DualArmController used here (lets tests inject fakes)."""
+
+    config: DualArmConfig
+
+    def connect(self) -> None: ...
+    def disconnect(self) -> None: ...
+    def execute_sequence(self, arm_id: str, position_names: list[str]) -> None: ...
+    def park_all(self) -> None: ...
+    def get_observation(self, arm_id: str) -> dict[str, object]: ...
+
+
+def load_so101_controller(config_path: str) -> _ArmController:
     """Load the so101 arms config and return a connected controller."""
+    from so101.arms import DualArmConfig, DualArmController
+
     config = DualArmConfig.from_yaml(config_path)
-    controller = DualArmController(config)
+    controller: _ArmController = DualArmController(config)
     controller.connect()
     return controller
 
@@ -48,7 +65,7 @@ def validate_sequence_positions(
 
 
 def run_sequence(
-    controller: DualArmController,
+    controller: _ArmController,
     arm_id: str,
     sequence: tuple[str, ...],
 ) -> None:

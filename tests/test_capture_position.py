@@ -1,6 +1,8 @@
 """Tests for `pipettebot-capture-position` CLI.
 
-Skipped entirely when the optional `[orchestrator]` extra (so101) isn't installed.
+`_format_joints_as_yaml_line` is pure and needs no so101 install. Only
+`TestCapture` calls `capture()`, which lazily imports so101 internally, and is
+skipped when the optional `[orchestrator]` extra (so101) isn't installed.
 """
 
 from __future__ import annotations
@@ -8,10 +10,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
-pytest.importorskip("so101")
-
-import yaml
 
 from pipettebot.so101.capture_position import (
     _format_joints_as_yaml_line,
@@ -40,6 +38,9 @@ class TestFormatJointsAsYamlLine:
 class TestCapture:
     @pytest.fixture
     def arms_yaml(self, tmp_path: Path) -> Path:
+        pytest.importorskip("so101")
+        import yaml
+
         cfg = {
             "arm_a": {"arm_id": "arm_a", "port": "/dev/null", "role": "follower"},
             "arm_b": {"arm_id": "arm_b", "port": "/dev/null", "role": "follower"},
