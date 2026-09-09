@@ -219,7 +219,21 @@ prusa-slicer --binary-gcode --export-gcode \
   --output OUT.bgcode INPUT.stl
 ```
 
-Could be packaged as `make setup_prusa_presets` (TODO).
+**Packaged as `make setup_prusa_presets`** (`tools/slicer/resolve_presets.py`,
+issue #129). One caveat found while wrapping it: this repo's installed
+`prusa-slicer` (2.7.2, in the devcontainer used to verify this) doesn't
+recognize `--printer-profile` / `--print-profile` / `--material-profile`
+at all (`Unknown option`) — those flags were confirmed only against
+2.9.4 above. `--load <resolved-preset-file>` (one flag per file) is the
+version-portable equivalent: it loads the exact same flattened preset a
+name lookup would, and a real `--load`×3 + `--binary-gcode
+--export-gcode` slice in that environment produced a valid non-empty
+`.bgcode`. `make slice` (`tools/slicer/slice.py`, issue #128) uses
+`--load` against the files this recipe writes, so the CLI surface
+(`--printer-preset`/`--print-preset`/`--filament-preset`) still reads as
+name-based even though the underlying invocation differs from the one
+shown above. If your PrusaSlicer does support the by-name flags, either
+form produces the same result.
 
 ### Quirk 6 — `start_gcode` empty by default → printer doesn't auto-heat
 
@@ -332,9 +346,9 @@ holding lip walls around openings — labware drops to the heated bed.
   to exist before PASS.
 - `_build_slicer_cmd`: forward `.ini` keys as explicit CLI flags so
   the gate actually validates against the configured profile.
-- `make slice` recipe: produce a tracked `.bgcode` artifact under
-  `hardware/bgcode/<area>/<part>.bgcode` using the working CLI flag
-  pattern documented above.
+- `make slice` recipe (**done**, issue #128): produces a tracked
+  `.bgcode` artifact under `hardware/bgcode/<area>/<part>.bgcode` — see
+  Quirk 5 above for the actual (`--load`-based) invocation it uses.
 
 ## References
 

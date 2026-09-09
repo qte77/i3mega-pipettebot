@@ -20,6 +20,7 @@
 	render_parts \
 	check_prints \
 	render_all \
+	slice \
 	all \
 	clean \
 	help
@@ -210,6 +211,16 @@ check_prints:  ## Headless slice via tools/slicer/validate.py --all
 	$(PY) tools/slicer/validate.py --all
 
 render_all: render_parts check_prints  ## render_parts + check_prints (full CAD-to-slicer gate)
+
+# PARTS_JSON overrides the tools/cad/parts.json manifest path (tests
+# point this at a fixture). PRUSA_USER_DIR overrides where presets are
+# read from (default: ~/.config/PrusaSlicer) — see setup_prusa_presets.
+slice:  ## PrusaSlicer STL -> hardware/bgcode/<area>/<part>.bgcode via named IS presets (PART=<parts.json name>; run setup_prusa_presets first)
+	if [ -z "$(PART)" ]; then
+		echo "Usage: make slice PART=<name>  (see tools/cad/parts.json for names)"
+		exit 1
+	fi
+	$(PY) tools/slicer/slice.py --part "$(PART)" $(if $(PARTS_JSON),--parts-json "$(PARTS_JSON)") $(if $(PRUSA_USER_DIR),--user-dir "$(PRUSA_USER_DIR)")
 
 
 # MARK: META
