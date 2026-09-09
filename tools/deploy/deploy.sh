@@ -56,12 +56,18 @@ log "target: repo=$REPO_URL install_dir=$INSTALL_DIR user=$SERVICE_USER dry_run=
 
 # 1. pull repo (idempotent: clone if missing, else fetch + hard-reset to latest main)
 if [ -d "$INSTALL_DIR/.git" ]; then
-    run sudo -u "$SERVICE_USER" git -C "$INSTALL_DIR" fetch origin main
-    run sudo -u "$SERVICE_USER" git -C "$INSTALL_DIR" reset --hard origin/main
+    run sudo -H -u "$SERVICE_USER" git -C "$INSTALL_DIR" fetch origin main
+    run sudo -H -u "$SERVICE_USER" git -C "$INSTALL_DIR" reset --hard origin/main
 else
-    run sudo -u "$SERVICE_USER" git clone "$REPO_URL" "$INSTALL_DIR"
+    run sudo -H -u "$SERVICE_USER" git clone "$REPO_URL" "$INSTALL_DIR"
 fi
 
+# All `sudo ... -u "$SERVICE_USER"` calls use `-H` so $HOME is
+# pipettebot's own (/opt/pipettebot), not the invoking operator's — without
+# it Debian's sudo leaves $HOME pointed at the operator's home, and pip
+# then fails to write its cache there (EACCES) and limps on with a "cache
+# disabled" warning that looks like a bug.
+#
 # 2. install deps as the service user: plain venv + pip, not uv. uv is
 #    great for an interactive dev bring-up (tools/setup_pi.sh) run as
 #    whoever is logged in, but here it would need to be resolved and
@@ -70,7 +76,7 @@ fi
 #    isn't even readable by another account's 700 $HOME. python3-venv +
 #    pip (installed by bootstrap.sh) sidesteps all of that and is
 #    idempotent to rerun.
-run sudo -u "$SERVICE_USER" bash -c \
+run sudo -H -u "$SERVICE_USER" bash -c \
     "cd '$INSTALL_DIR' && python3 -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -e ."
 
 # 3. symlink the systemd unit + udev rules from the checkout into place

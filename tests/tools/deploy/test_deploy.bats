@@ -13,7 +13,16 @@ SCRIPT="$BATS_TEST_DIRNAME/../../../tools/deploy/deploy.sh"
 @test "deploy.sh --dry-run reports dry_run=1 and does not execute git" {
     run bash "$SCRIPT" --dry-run
     [[ "$output" == *"dry_run=1"* ]]
-    [[ "$output" == *"+ sudo -u pipettebot git clone"* || "$output" == *"+ sudo -u pipettebot git -C"* ]]
+    [[ "$output" == *"+ sudo -H -u pipettebot git clone"* || "$output" == *"+ sudo -H -u pipettebot git -C"* ]]
+}
+
+@test "deploy.sh --dry-run runs as the service user with -H (HOME=its own)" {
+    # Without -H, sudo -u leaves $HOME pointed at the operator's home; pip
+    # then can't write its cache there and limps on with a warning that
+    # looks like a bug on the real Pi. Regression test for that bug.
+    run bash "$SCRIPT" --dry-run
+    [[ "$output" == *"+ sudo -H -u pipettebot"* ]]
+    [[ "$output" != *"+ sudo -u pipettebot"* ]]
 }
 
 @test "deploy.sh --dry-run plans the systemd unit and udev rule symlinks" {
