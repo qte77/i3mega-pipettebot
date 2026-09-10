@@ -219,7 +219,29 @@ prusa-slicer --binary-gcode --export-gcode \
   --output OUT.bgcode INPUT.stl
 ```
 
-Could be packaged as `make setup_prusa_presets` (TODO).
+**Packaged as `make setup_prusa_presets`** (`tools/slicer/resolve_presets.py`,
+issue #129). One caveat found while wrapping it: this repo's installed
+`prusa-slicer` (2.7.2, in the devcontainer used to verify this) doesn't
+recognize `--printer-profile` / `--print-profile` / `--material-profile`
+at all (`Unknown option`, confirmed via `--help-fff`) — those flags were
+confirmed only against 2.9.4 above; whether 2.9.4 CLI behavior differs
+is not verified here. `--load <resolved-preset-file>` (one flag per
+file) is the version-portable equivalent, and it isn't just accepted
+and silently defaulted (the failure mode Quirk 1 describes for this
+repo's own *minimal* `tools/slicer/profiles/*.ini`): a real, non-mocked
+`--load`×3 slice in that environment produced output whose embedded
+metadata carried the resolved preset's own values verbatim
+(`printer_model=MK4IS`, `layer_height=0.2`, `temperature=210`,
+`fill_density=15%`), where a `--load`-free control slice of the same
+STL showed only PrusaSlicer's generic defaults
+(`printer_model=<empty>`, `layer_height=0.3`, 200×200 bed). The
+resolved `binary_gcode` key alone flipped the output to real binary
+`GCDE` bgcode with no `--binary-gcode` flag passed. `make slice`
+(`tools/slicer/slice.py`, issue #128) uses `--load` against the files
+this recipe writes, so the CLI surface
+(`--printer-preset`/`--print-preset`/`--filament-preset`) still reads
+as name-based even though the underlying invocation differs from the
+one shown above.
 
 ### Quirk 6 — `start_gcode` empty by default → printer doesn't auto-heat
 
@@ -332,9 +354,9 @@ holding lip walls around openings — labware drops to the heated bed.
   to exist before PASS.
 - `_build_slicer_cmd`: forward `.ini` keys as explicit CLI flags so
   the gate actually validates against the configured profile.
-- `make slice` recipe: produce a tracked `.bgcode` artifact under
-  `hardware/bgcode/<area>/<part>.bgcode` using the working CLI flag
-  pattern documented above.
+- `make slice` recipe (**done**, issue #128): produces a tracked
+  `.bgcode` artifact under `hardware/bgcode/<area>/<part>.bgcode` — see
+  Quirk 5 above for the actual (`--load`-based) invocation it uses.
 
 ## References
 
