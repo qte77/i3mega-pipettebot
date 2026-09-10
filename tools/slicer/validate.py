@@ -15,6 +15,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import configparser
 import shutil
 import struct
 import subprocess
@@ -40,6 +41,27 @@ OVERHANG_KEYWORDS = (
     "long bridging extrusions",
     "empty layer",
     "could not slice",
+)
+
+# PrusaSlicer 2.9.4 prints one of these and exits 0 with no output written
+# when the STL's bounding box falls outside the bed (docs/prusa/README.md
+# Quirk 3). Checked independently of OVERHANG_KEYWORDS: this is a hard FAIL,
+# never a WARN, and must be caught despite the zero exit code. Both the
+# documented real message and issue #127's shorter phrasing are matched —
+# they are not substrings of each other.
+OUTSIDE_VOLUME_KEYWORDS = (
+    "outside of the print volume",
+    "objects outside the print volume",
+)
+
+# .ini keys whose CLI flag is a bare boolean switch (present = true, absent
+# = false) rather than `--key value`. Confirmed via docs/prusa/README.md
+# Quirk 1's working invocation (`--binary-gcode`, no argument) and the
+# profiles/pla_prototype_03mm.ini comment. Not independently verified
+# against a live PrusaSlicer binary for support_material / detect_thin_wall
+# / overhangs — extrapolated from the one confirmed example.
+BOOLEAN_INI_KEYS = frozenset(
+    {"support_material", "detect_thin_wall", "overhangs", "binary_gcode"}
 )
 
 # Probe order: OrcaSlicer first, PrusaSlicer fallback. Names cover the
@@ -74,6 +96,35 @@ def detect_slicer() -> tuple[str, str] | None:
     return None
 
 
+def _ini_to_cli_flags(profile: Path) -> list[str]:
+    """Translate a `.ini` profile's keys into explicit CLI flags.
+
+    PrusaSlicer 2.9.4's `--load <ini>` silently falls back to defaults for
+    most keys (docs/prusa/README.md Quirk 1), so `--load` alone doesn't
+    reliably apply a profile. Forwarding every key as an explicit
+    `--key-with-hyphens value` flag makes the CLI slice actually honor it.
+    The `.ini` file stays the single source of truth (per
+    `.claude/rules/slicer-profile-source-of-truth.md`) — this only
+    translates its existing keys into the equivalent CLI syntax, it does
+    not add or hardcode any tuning values of its own.
+
+    `interpolation=None` is required: plain `ConfigParser` raises on a
+    bare `%` (e.g. `fill_density = 15%`), which every profile uses.
+    """
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.read(profile)
+    flags: list[str] = []
+    for section in parser.sections():
+        for key, value in parser.items(section):
+            flag = f"--{key.replace('_', '-')}"
+            if key in BOOLEAN_INI_KEYS:
+                if value.strip() == "1":
+                    flags.append(flag)
+            else:
+                flags.extend([flag, value])
+    return flags
+
+
 def _build_slicer_cmd(
     binary: str, stl_path: Path, profile: Path, gcode_out: Path
 ) -> list[str]:
@@ -81,13 +132,20 @@ def _build_slicer_cmd(
 
     Both accept `--export-gcode --load <ini> --output <gcode> <stl>` for
     headless slicing of an `.ini` profile; OrcaSlicer inherits this from
-    its PrusaSlicer/SuperSlicer ancestry.
+    its PrusaSlicer/SuperSlicer ancestry. `--load` is kept (harmless, and
+    OrcaSlicer honors it) but the profile's keys are also forwarded as
+    explicit flags afterward so PrusaSlicer 2.9.4 actually applies them
+    (see `_ini_to_cli_flags`). Not independently verified whether
+    PrusaSlicer treats a `--load`-sourced key plus a later explicit
+    same-name flag as a conflict; docs/prusa/README.md's tested workaround
+    used explicit flags alone.
     """
     return [
         binary,
         "--export-gcode",
         "--load",
         str(profile),
+        *_ini_to_cli_flags(profile),
         "--output",
         str(gcode_out),
         str(stl_path),
@@ -97,6 +155,11 @@ def _build_slicer_cmd(
 def _scan_warnings(text: str) -> list[str]:
     """Pick known printability warnings out of slicer output."""
     return [kw for kw in OVERHANG_KEYWORDS if kw in text]
+
+
+def _has_outside_volume(text: str) -> bool:
+    """Detect PrusaSlicer's exit-0 'outside print volume' failure (Quirk 3)."""
+    return any(kw in text for kw in OUTSIDE_VOLUME_KEYWORDS)
 
 
 def validate_stl(stl_path: Path, backend: str, binary: str, profile: Path) -> dict:
@@ -121,6 +184,13 @@ def validate_stl(stl_path: Path, backend: str, binary: str, profile: Path) -> di
             if proc.returncode != 0:
                 result["status"] = "FAIL"
                 result["error"] = proc.stderr.strip()[:200]
+            elif _has_outside_volume(output):
+                # PrusaSlicer 2.9.4 exits 0 for this — must not be a PASS/WARN.
+                result["status"] = "FAIL"
+                result["error"] = "Objects outside print volume"
+            elif not gcode_out.exists():
+                result["status"] = "FAIL"
+                result["error"] = "Slicer exited 0 but produced no output file"
             elif result["warnings"]:
                 result["status"] = "WARN"
         except subprocess.TimeoutExpired:
