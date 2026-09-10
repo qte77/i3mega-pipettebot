@@ -53,8 +53,7 @@ def _is_non_empty_shape(shape) -> bool:
 @pytest.mark.parametrize(
     ("rel", "func"),
     [
-        ("labware/tip_rack_holder.py", "build_tip_rack_holder"),
-        ("labware/plate_holder.py", "build_plate_holder"),
+        ("labware/deck_plate.py", "build_deck_plate_assembly"),
         ("dpette/tip_ejection_bar.py", "build_tip_ejection_bar"),
         ("dpette/dpette_cradle.py", "build_dpette_single_cradle"),
         ("dpette/dpette_cradle.py", "build_dpette_multi_cradle"),
