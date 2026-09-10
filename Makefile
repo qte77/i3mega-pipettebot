@@ -4,12 +4,14 @@
 	setup_dev \
 	setup_cad \
 	setup_slicer \
+	setup_prusa_presets \
 	setup_freecad \
 	setup_diagramforge \
 	setup_all \
 	lint \
 	lint_fix \
 	test \
+	test_bats \
 	validate \
 	quick_validate \
 	check_complexity \
@@ -18,6 +20,8 @@
 	render_parts \
 	check_prints \
 	render_all \
+	slice \
+	check_deploy \
 	all \
 	clean \
 	dev_diagram \
@@ -99,6 +103,13 @@ setup_slicer:  ## Probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)
 		exit 1
 	fi
 
+# PRUSA_USER_DIR overrides where presets are read/written (default:
+# ~/.config/PrusaSlicer, resolved by tools/slicer/resolve_presets.py and
+# tools/slicer/slice.py themselves). Tests point this at a temp dir so
+# neither recipe ever touches a real user's PrusaSlicer config.
+setup_prusa_presets:  ## Extract MK4 Input-Shaper presets from the system PrusaSlicer bundle into ~/.config/PrusaSlicer/{printer,print,filament}/ (enables `make slice` to reference them by name)
+	$(PY) tools/slicer/resolve_presets.py $(if $(PRUSA_USER_DIR),--user-dir "$(PRUSA_USER_DIR)")
+
 setup_freecad:  ## Probe for FreeCAD (optional — inspect generated STEP files)
 	if command -v freecad > /dev/null 2>&1; then
 		echo "freecad already installed: $$(freecad --version 2>&1 | head -1)"
@@ -162,6 +173,9 @@ test:  ## pytest (hardware tests excluded by pyproject; VERBOSE=1 for full outpu
 	echo "--- test$(if $(PYTEST_QUIET), [quiet])"
 	$(PYTEST) $(if $(PYTEST_QUIET),$(PYTEST_QUIET),-v)
 
+test_bats:  ## bats tests for Makefile recipe wiring (tests/bats/*.bats; not part of CI yet)
+	bats tests/bats/
+
 
 # MARK: QUALITY
 
@@ -199,6 +213,37 @@ check_prints:  ## Headless slice via tools/slicer/validate.py --all
 	$(PY) tools/slicer/validate.py --all
 
 render_all: render_parts check_prints  ## render_parts + check_prints (full CAD-to-slicer gate)
+
+# PARTS_JSON overrides the tools/cad/parts.json manifest path (tests
+# point this at a fixture). PRUSA_USER_DIR overrides where presets are
+# read from (default: ~/.config/PrusaSlicer) — see setup_prusa_presets.
+slice:  ## PrusaSlicer STL -> hardware/bgcode/<area>/<part>.bgcode via named IS presets (PART=<parts.json name>; run setup_prusa_presets first)
+	if [ -z "$(PART)" ]; then
+		echo "Usage: make slice PART=<name>  (see tools/cad/parts.json for names)"
+		exit 1
+	fi
+	$(PY) tools/slicer/slice.py --part "$(PART)" $(if $(PARTS_JSON),--parts-json "$(PARTS_JSON)") $(if $(PRUSA_USER_DIR),--user-dir "$(PRUSA_USER_DIR)")
+
+
+# MARK: DEPLOY
+
+
+check_deploy:  ## shellcheck + bats + systemd-analyze verify for tools/deploy/ (best-effort udevadm)
+	echo "--- check_deploy"
+	shellcheck tools/deploy/*.sh
+	bats tests/tools/deploy/
+	# ExecStart's venv binary only exists post-deploy on the real Pi (see
+	# tools/deploy/deploy.sh) — `systemd-analyze verify` correctly reports
+	# it missing on any other host, including CI and this dev container.
+	# Non-fatal here by design; read the output for anything else (a real
+	# unit-syntax mistake reports a different message).
+	systemd-analyze verify tools/deploy/orchestrator.service || true
+	if command -v udevadm > /dev/null 2>&1; then \
+		echo "udevadm found — syntax-checking tools/deploy/99-pipettebot.rules"; \
+		udevadm verify tools/deploy/99-pipettebot.rules || true; \
+	else \
+		echo "udevadm not installed on this host — skipping (verify on real Pi hardware; see docs/sbc-deployment.md)"; \
+	fi
 
 
 # MARK: META

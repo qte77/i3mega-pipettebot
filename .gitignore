@@ -60,6 +60,7 @@ captures/*.txt
 hardware/stl/
 hardware/svg/
 hardware/gcode/
+hardware/bgcode/
 diagramforge/
 
 # Untracked example output

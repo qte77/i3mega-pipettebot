@@ -1,8 +1,10 @@
 """Capture follower joint vector as a yaml-paste line for configs/so101_arms.yaml.
 
 Composition-only wrapper over `so101.DualArmController` (no subclassing, no
-override). Imported only when the `[orchestrator]` extra is installed; the
-console script `pipettebot-capture-position` is the user-facing entry point.
+override). The module itself needs no extra — `capture()` imports so101
+lazily, so only running it (not importing this module) requires the
+`[orchestrator]` extra installed. The console script
+`pipettebot-capture-position` is the user-facing entry point.
 
 Workflow:
     Terminal A (in so101-biolab-automation/):  make start_teleop
@@ -21,8 +23,6 @@ from __future__ import annotations
 
 import argparse
 
-from so101.arms import DualArmConfig, DualArmController
-
 
 def _format_joints_as_yaml_line(name: str, joints: list[float]) -> str:
     """Format a joint vector as a yaml-paste line for the `positions:` mapping."""
@@ -32,6 +32,8 @@ def _format_joints_as_yaml_line(name: str, joints: list[float]) -> str:
 
 def capture(config_path: str, arm: str, name: str) -> str:
     """Read the follower's current joint vector and return a yaml-paste line."""
+    from so101.arms import DualArmConfig, DualArmController
+
     config = DualArmConfig.from_yaml(config_path)
     controller = DualArmController(config)
     controller.connect()

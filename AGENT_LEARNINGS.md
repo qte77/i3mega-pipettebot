@@ -4,6 +4,57 @@ Gotchas and non-obvious lessons we hit. Keep entries short, dated, and
 actionable. Add a new entry every time you'd say "I wish someone had told me
 that earlier."
 
+## 2026-09-09 — `systemd-analyze verify` always fails pre-deploy on a unit whose ExecStart lives in the deploy target
+
+Hit writing `tools/deploy/orchestrator.service` (issue #126). Its
+`ExecStart=` points at `/opt/pipettebot/.venv/bin/python`, a path that only
+exists after `tools/deploy/deploy.sh` has actually run on the target host.
+`systemd-analyze verify` checks that the `ExecStart=` binary exists and is
+executable, so it reports `Command ... is not executable: No such file or
+directory` in every environment that hasn't deployed yet — CI, a dev
+container, a fresh clone before first deploy. This is expected, not a unit
+bug.
+
+**Diagnostic**: to confirm the REST of a unit file is valid despite this,
+copy it to a scratch path and swap `ExecStart=` for a binary that already
+exists (e.g. `/bin/true`), then `systemd-analyze verify` the scratch copy —
+a clean run there means only the not-yet-deployed path is at fault.
+
+**Also found in the same pass**: this sandbox's `udevadm` binary is
+genuinely absent by default (containers don't run a live udev daemon), not
+merely lacking a mock sysfs tree. `apt-get install udev` does provide a
+working standalone binary — `udevadm verify <rules-file>` syntax-checks a
+rules file with no daemon needed, and `udevadm test <sysfs-devpath>`
+parses the full installed ruleset (including a temporarily-copied custom
+rules file) against a real `/sys/class/tty/*` path — but neither exercises
+an actual VID:PID match without real USB-serial hardware attached.
+`Makefile`'s `check_deploy` target treats both `systemd-analyze verify` and
+`udevadm` as best-effort/non-fatal for exactly this reason.
+
+## 2026-09-09 — floating `@main` git dependency + no `uv.lock` breaks CI on every upstream bump
+
+`pyproject.toml`'s `orchestrator` extra pinned `so101-biolab-automation` to
+`@main` (a floating ref) instead of a commit SHA. `uv.lock` is deliberately
+gitignored (library project — see the `.gitignore` comment), so every CI run
+re-resolves dependencies from scratch. When so101's `main` bumped its
+`fastapi` floor past `[tool.uv] exclude-newer`, then bumped `numpy` too days
+later, `uv sync` failed universally on `main` for ~2 months — even the 3.11
+job, because uv resolves one universal lockfile across all `requires-python`
+markers, so an unsatisfiable split for `python_full_version >= '3.12'` fails
+the whole sync regardless of which interpreter actually runs.
+
+**Solution**: pin `so101-biolab-automation` to a commit SHA (mirrors the
+`dpette` pin two lines above it in the same file) instead of `@main`, and
+bump `[tool.uv] exclude-newer` forward to cover that commit's own floor.
+`exclude-newer-package` per-dependency overrides are whack-a-mole here — the
+next transitive dep so101 bumps just breaks a different package.
+
+**Still open**: the no-`uv.lock` policy is what let this recur silently;
+committing it would freeze CI reproducibility without affecting the
+published wheel (uv.lock is never included in sdists/wheels), but that
+reverses a deliberate decision — flagged for the repo owner, not changed
+here.
+
 ## 2026-05-17 — Marlin Y vs CAD top-view Y point opposite directions
 
 Hit in `tools/cad/labware/deck_plate.py::build_deck_plate_assembly`.

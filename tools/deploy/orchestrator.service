@@ -1,0 +1,31 @@
+[Unit]
+Description=pipettebot row-tour orchestrator (i3 Mega gantry + dPette, optional SO-101 pickup)
+Documentation=https://github.com/qte77/i3mega-pipettebot/blob/main/docs/sbc-deployment.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pipettebot
+Group=pipettebot
+WorkingDirectory=/opt/pipettebot
+# KEY=VALUE lines (PRINTER_PORT, PIPETTE_PORT, and optionally NUM_CYCLES,
+# MOTION_PROFILE, SO101_CONFIG, SO101_ARM_ID, ...). Leading "-" makes a
+# missing file non-fatal so `systemd-analyze verify` passes before deploy.sh
+# has populated it on the real host. See tools/deploy/deploy.sh.
+EnvironmentFile=-/etc/pipettebot/orchestrator.env
+# examples/showcase_v0_i3_full_pipettebot_rows.py is the existing row-tour
+# entry point (aspirate/dispense over the i3 Mega + dPette; SO-101 used-tips
+# pickup is opt-in via SO101_CONFIG — see issue #120, not implemented by
+# this unit). Absolute paths: systemd does not resolve ExecStart relative to
+# WorkingDirectory.
+ExecStart=/opt/pipettebot/.venv/bin/python /opt/pipettebot/examples/showcase_v0_i3_full_pipettebot_rows.py
+# No restart-into-hardware after a crash/error — physical motion (gantry +
+# pipette) should not resume unattended. See docs/sbc-deployment.md and
+# issue #11 (soft-limit / crash-guard interlocks, not yet landed).
+Restart=no
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
