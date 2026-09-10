@@ -1,0 +1,51 @@
+# tools/deploy/99-pipettebot.rules — stable /dev/i3mega and /dev/dpette
+# symlinks for the pipettebot orchestrator (Pi 3 B+ deploy, issue #126).
+#
+# VID:PID values below are sourced from docs/hardware.md's "Distinguishing
+# the two ports" table (real-hardware measurements), not invented:
+#   - Anycubic i3 Mega, older boards (CH340 bridge):        1a86:7523
+#   - Anycubic i3 Mega, newer / MARLIN-AI3M (CP2102N):      10c4:ea60
+#   - DLAB dPette, all units (CP2102 bridge):                10c4:ea60
+#
+# IMPORTANT — VID:PID collision: a CP2102N-equipped i3 Mega and the dPette
+# enumerate with the SAME VID:PID (10c4:ea60). docs/hardware.md documents
+# this explicitly and falls back to the USB chip's serial number
+# (ATTRS{serial}) to tell them apart — there is no VID:PID-only rule that
+# disambiguates that combination, and this file does not pretend otherwise.
+# Two rule tiers follow:
+#
+#   1. CH340 i3 Mega (1a86:7523) — VID:PID is unique to it, active as-is.
+#   2. CP210x i3 Mega / dPette (10c4:ea60) — PLACEHOLDER rules matched on
+#      ATTRS{serial}. The placeholder strings below never match a real
+#      device, so these two rules are inert until a per-unit operator edits
+#      them. Read each device's serial after plugging it in:
+#
+#        udevadm info --query=property /dev/ttyUSB0 | grep ID_SERIAL_SHORT
+#
+#      (see docs/sbc-deployment.md "Identifying the two serial ports on the
+#      Pi"), then replace <I3MEGA_SERIAL> / <DPETTE_SERIAL> below with the
+#      values read back, one per device.
+#
+# GROUP="dialout", MODE="0660" set the underlying device node's ownership
+# explicitly (a symlink has no permissions of its own — access is governed
+# by the node it points at). Debian/Raspberry Pi OS's own
+# 50-udev-default.rules already assigns tty devices to group `dialout`, so
+# this is defense-in-depth / self-documenting rather than a fix for an
+# otherwise-root-only node — but it matches orchestrator.service's `User=
+# pipettebot` (tools/deploy/bootstrap.sh adds that user to the dialout
+# group) explicitly rather than relying on the distro default.
+#
+# Reload after editing:
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# Verify a rule matches (needs a real device path; not exercisable in a
+# container with no udev daemon / sysfs USB tree — see PR notes):
+#   udevadm test "$(udevadm info -q path -n /dev/ttyUSB0)"
+
+# --- Tier 1: CH340 i3 Mega — unambiguous VID:PID -------------------------
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="i3mega", GROUP="dialout", MODE="0660"
+
+# --- Tier 2: CP210x i3 Mega / dPette — same VID:PID, disambiguate by serial
+# Per-unit: replace the placeholder ATTRS{serial} value for your hardware.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{serial}=="<I3MEGA_SERIAL>", SYMLINK+="i3mega", GROUP="dialout", MODE="0660"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{serial}=="<DPETTE_SERIAL>", SYMLINK+="dpette", GROUP="dialout", MODE="0660"

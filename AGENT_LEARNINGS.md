@@ -4,6 +4,33 @@ Gotchas and non-obvious lessons we hit. Keep entries short, dated, and
 actionable. Add a new entry every time you'd say "I wish someone had told me
 that earlier."
 
+## 2026-09-09 — `systemd-analyze verify` always fails pre-deploy on a unit whose ExecStart lives in the deploy target
+
+Hit writing `tools/deploy/orchestrator.service` (issue #126). Its
+`ExecStart=` points at `/opt/pipettebot/.venv/bin/python`, a path that only
+exists after `tools/deploy/deploy.sh` has actually run on the target host.
+`systemd-analyze verify` checks that the `ExecStart=` binary exists and is
+executable, so it reports `Command ... is not executable: No such file or
+directory` in every environment that hasn't deployed yet — CI, a dev
+container, a fresh clone before first deploy. This is expected, not a unit
+bug.
+
+**Diagnostic**: to confirm the REST of a unit file is valid despite this,
+copy it to a scratch path and swap `ExecStart=` for a binary that already
+exists (e.g. `/bin/true`), then `systemd-analyze verify` the scratch copy —
+a clean run there means only the not-yet-deployed path is at fault.
+
+**Also found in the same pass**: this sandbox's `udevadm` binary is
+genuinely absent by default (containers don't run a live udev daemon), not
+merely lacking a mock sysfs tree. `apt-get install udev` does provide a
+working standalone binary — `udevadm verify <rules-file>` syntax-checks a
+rules file with no daemon needed, and `udevadm test <sysfs-devpath>`
+parses the full installed ruleset (including a temporarily-copied custom
+rules file) against a real `/sys/class/tty/*` path — but neither exercises
+an actual VID:PID match without real USB-serial hardware attached.
+`Makefile`'s `check_deploy` target treats both `systemd-analyze verify` and
+`udevadm` as best-effort/non-fatal for exactly this reason.
+
 ## 2026-09-09 — floating `@main` git dependency + no `uv.lock` breaks CI on every upstream bump
 
 `pyproject.toml`'s `orchestrator` extra pinned `so101-biolab-automation` to

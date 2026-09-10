@@ -21,6 +21,7 @@
 	check_prints \
 	render_all \
 	slice \
+	check_deploy \
 	all \
 	clean \
 	help
@@ -221,6 +222,27 @@ slice:  ## PrusaSlicer STL -> hardware/bgcode/<area>/<part>.bgcode via named IS 
 		exit 1
 	fi
 	$(PY) tools/slicer/slice.py --part "$(PART)" $(if $(PARTS_JSON),--parts-json "$(PARTS_JSON)") $(if $(PRUSA_USER_DIR),--user-dir "$(PRUSA_USER_DIR)")
+
+
+# MARK: DEPLOY
+
+
+check_deploy:  ## shellcheck + bats + systemd-analyze verify for tools/deploy/ (best-effort udevadm)
+	echo "--- check_deploy"
+	shellcheck tools/deploy/*.sh
+	bats tests/tools/deploy/
+	# ExecStart's venv binary only exists post-deploy on the real Pi (see
+	# tools/deploy/deploy.sh) — `systemd-analyze verify` correctly reports
+	# it missing on any other host, including CI and this dev container.
+	# Non-fatal here by design; read the output for anything else (a real
+	# unit-syntax mistake reports a different message).
+	systemd-analyze verify tools/deploy/orchestrator.service || true
+	if command -v udevadm > /dev/null 2>&1; then \
+		echo "udevadm found — syntax-checking tools/deploy/99-pipettebot.rules"; \
+		udevadm verify tools/deploy/99-pipettebot.rules || true; \
+	else \
+		echo "udevadm not installed on this host — skipping (verify on real Pi hardware; see docs/sbc-deployment.md)"; \
+	fi
 
 
 # MARK: META

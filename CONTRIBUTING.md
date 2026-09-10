@@ -25,14 +25,27 @@ the requested extras.
 The Makefile is the single quality gate (`make validate` runs ruff format
 check + lint, mypy strict, and pytest mocked). Each recipe prefers the
 local `.venv/bin/<tool>` binary, falling back to `uv run` if the venv
-is missing. No pre-commit hooks; CI runs the same recipes.
+is missing. CI runs the same recipes — run `make validate` before every
+`git push` to keep round-trips short.
 
 ## Branching and PRs
 
 - Branch from `main`. Branch protection rejects merge commits — use **squash merges** only.
 - Topical commits: one logical change per commit, descriptive message.
 - **Sign your commits.** Every commit on a PR branch must carry a verified GPG or SSH signature — see [GitHub's signed-commits docs](https://docs.github.com/en/authentication/managing-commit-signature-verification) for setup. Unsigned commits will be asked to amend and re-push before merge; branch protection enforces this at the source-branch level.
-- Open a PR; ensure CI is green; squash-merge. Squash-merge preserves the author attribution on `main` (your name stays on the commit) — signing is about chain-of-custody for the source commits, not credit.
+- Run `make validate`, push, open PR, ensure CI is green, squash-merge. Squash-merge preserves the author attribution on `main` (your name stays on the commit) — signing is about chain-of-custody for the source commits, not credit.
+
+## Pre-push hook (optional)
+
+Catch `make validate` failures locally instead of spending a CI round-trip.
+Per clone, once:
+
+```bash
+printf '#!/usr/bin/env bash\nmake validate\n' > .git/hooks/pre-push
+chmod +x .git/hooks/pre-push
+```
+
+Skip it for one push in an emergency: `git push --no-verify`.
 
 ## Code conventions
 

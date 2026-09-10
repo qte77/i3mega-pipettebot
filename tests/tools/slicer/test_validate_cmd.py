@@ -95,6 +95,103 @@ def test_slicer_candidates_order_orca_before_prusa():
     assert first_orca < first_prusa
 
 
+def test_has_outside_volume_detects_real_prusa_message():
+    """Real PrusaSlicer 2.9.4 message (docs/prusa/README.md Quirk 3).
+
+    PrusaSlicer exits 0 and prints this to stdout with no output file
+    written — the exact case the exit-code-only gate used to miss.
+    """
+    output = "all objects are outside of the print volume.\n"
+    assert validate._has_outside_volume(output) is True
+
+
+def test_has_outside_volume_detects_issue_phrasing():
+    """Also match the shorter phrasing named in issue #127, for safety."""
+    output = "3 objects outside the print volume were skipped\n"
+    assert validate._has_outside_volume(output) is True
+
+
+def test_has_outside_volume_ignores_clean_output():
+    output = "slicing complete, no issues found\n"
+    assert validate._has_outside_volume(output) is False
+
+
+def test_ini_to_cli_flags_forwards_scalar_keys(tmp_path: Path):
+    """Scalar .ini keys become explicit `--key value` CLI flags.
+
+    Needed because PrusaSlicer 2.9.4's `--load <ini>` silently falls back
+    to defaults for most keys (docs/prusa/README.md Quirk 1).
+    """
+    ini = tmp_path / "profile.ini"
+    ini.write_text(
+        "[print]\n"
+        "layer_height = 0.2\n"
+        "fill_density = 15%\n"
+        "\n"
+        "[filament]\n"
+        "filament_type = PLA\n"
+    )
+    flags = validate._ini_to_cli_flags(ini)
+    assert "--layer-height" in flags
+    assert flags[flags.index("--layer-height") + 1] == "0.2"
+    assert "--fill-density" in flags
+    assert flags[flags.index("--fill-density") + 1] == "15%"
+    assert "--filament-type" in flags
+    assert flags[flags.index("--filament-type") + 1] == "PLA"
+
+
+def test_ini_to_cli_flags_forwards_true_booleans_as_bare_switches(tmp_path: Path):
+    """Known boolean keys become bare switches (e.g. `--binary-gcode`).
+
+    Confirmed via docs/prusa/README.md Quirk 1's working invocation and
+    the profiles/pla_prototype_03mm.ini comment: PrusaSlicer's boolean
+    CLI options take no value.
+    """
+    ini = tmp_path / "profile.ini"
+    ini.write_text("[printer]\nbinary_gcode = 1\n")
+    flags = validate._ini_to_cli_flags(ini)
+    assert flags == ["--binary-gcode"]
+
+
+def test_ini_to_cli_flags_omits_false_booleans(tmp_path: Path):
+    """A `0`-valued boolean key is omitted (absent = false is the default)."""
+    ini = tmp_path / "profile.ini"
+    ini.write_text("[print]\nsupport_material = 0\n")
+    flags = validate._ini_to_cli_flags(ini)
+    assert flags == []
+
+
+def test_ini_to_cli_flags_tolerates_percent_values(tmp_path: Path):
+    """`fill_density = 15%` must not trip ConfigParser's interpolation.
+
+    Plain `configparser.ConfigParser()` raises InterpolationSyntaxError on
+    a bare `%` — every profile in tools/slicer/profiles/*.ini uses this
+    syntax, so this is a real bug, not a hypothetical.
+    """
+    ini = tmp_path / "profile.ini"
+    ini.write_text("[print]\nfill_density = 15%\n")
+    flags = validate._ini_to_cli_flags(ini)
+    assert flags == ["--fill-density", "15%"]
+
+
+def test_ini_to_cli_flags_missing_file_returns_empty(tmp_path: Path):
+    """A profile path that doesn't exist yields no flags (no crash)."""
+    flags = validate._ini_to_cli_flags(tmp_path / "does_not_exist.ini")
+    assert flags == []
+
+
+def test_build_slicer_cmd_forwards_ini_flags(tmp_path: Path):
+    """`_build_slicer_cmd` includes the forwarded flags after `--load`."""
+    ini = tmp_path / "profile.ini"
+    ini.write_text("[print]\nlayer_height = 0.2\n")
+    cmd = validate._build_slicer_cmd(
+        "prusa-slicer", Path("a.stl"), ini, tmp_path / "o.gcode"
+    )
+    assert "--load" in cmd
+    assert "--layer-height" in cmd
+    assert cmd.index("--layer-height") > cmd.index("--load")
+
+
 def test_check_mesh_integrity_rejects_truncated():
     """A 10-byte file is too short for an STL header."""
     import tempfile
