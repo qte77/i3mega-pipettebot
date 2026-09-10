@@ -24,6 +24,7 @@
 	check_deploy \
 	all \
 	clean \
+	dev_diagram \
 	help
 .DEFAULT_GOAL := help
 
@@ -253,6 +254,17 @@ all: lint test  ## lint + test
 clean:  ## Remove caches and build artifacts
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	rm -rf .mypy_cache .pytest_cache .ruff_cache dist build *.egg-info
+
+
+# MARK: DIAGRAM
+
+
+dev_diagram:  ## Run diagramforge's dev server (npm run dev) for the architecture-diagram editing loop (run setup_diagramforge first)
+	if [ ! -d diagramforge ]; then
+		echo "diagramforge not found. Run: make setup_diagramforge"
+		exit 1
+	fi
+	npm --prefix diagramforge run dev
 
 
 # MARK: HELP
