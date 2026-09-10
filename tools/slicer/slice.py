@@ -9,10 +9,18 @@ Verified locally: this repo's installed PrusaSlicer (2.7.2) doesn't
 recognize the docs' `--printer-profile`/`--print-profile`/
 `--material-profile` flags at all ("Unknown option") — those were
 confirmed against PrusaSlicer 2.9.4 (see docs' header note). `--load
-<resolved-preset-file>` is the version-portable equivalent: it loads
-the exact same flattened preset a name lookup would, and a real
-`--load`x3 + `--binary-gcode --export-gcode` slice against this
-environment's PrusaSlicer produced a valid non-empty .bgcode. This
+<resolved-preset-file>` is the version-portable equivalent, and it
+does not just accept the files silently and fall back to defaults
+(the failure mode Quirk 1 warns about for this repo's own *minimal*
+`tools/slicer/profiles/*.ini`): a real, non-mocked `--load`x3 slice
+against this environment's PrusaSlicer produced output whose embedded
+metadata carried the resolved preset's own values verbatim
+(`printer_model=MK4IS`, `layer_height=0.2`, `temperature=210`,
+`fill_density=15%` — none of them PrusaSlicer's generic defaults,
+which a `--load`-free control slice of the same STL confirmed are
+`printer_model=<empty>`/`layer_height=0.3`/200×200 bed). One resolved
+key (`binary_gcode`) even flipped the output format to real binary
+`GCDE` bgcode without `--binary-gcode` being passed at all. This
 module resolves preset *names* to the file paths `resolve_presets.py`
 writes, so the CLI surface (`--printer-preset ...`) stays name-based
 while the actual slicer invocation uses `--load`.

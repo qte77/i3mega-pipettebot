@@ -223,17 +223,25 @@ prusa-slicer --binary-gcode --export-gcode \
 issue #129). One caveat found while wrapping it: this repo's installed
 `prusa-slicer` (2.7.2, in the devcontainer used to verify this) doesn't
 recognize `--printer-profile` / `--print-profile` / `--material-profile`
-at all (`Unknown option`) — those flags were confirmed only against
-2.9.4 above. `--load <resolved-preset-file>` (one flag per file) is the
-version-portable equivalent: it loads the exact same flattened preset a
-name lookup would, and a real `--load`×3 + `--binary-gcode
---export-gcode` slice in that environment produced a valid non-empty
-`.bgcode`. `make slice` (`tools/slicer/slice.py`, issue #128) uses
-`--load` against the files this recipe writes, so the CLI surface
-(`--printer-preset`/`--print-preset`/`--filament-preset`) still reads as
-name-based even though the underlying invocation differs from the one
-shown above. If your PrusaSlicer does support the by-name flags, either
-form produces the same result.
+at all (`Unknown option`, confirmed via `--help-fff`) — those flags were
+confirmed only against 2.9.4 above; whether 2.9.4 CLI behavior differs
+is not verified here. `--load <resolved-preset-file>` (one flag per
+file) is the version-portable equivalent, and it isn't just accepted
+and silently defaulted (the failure mode Quirk 1 describes for this
+repo's own *minimal* `tools/slicer/profiles/*.ini`): a real, non-mocked
+`--load`×3 slice in that environment produced output whose embedded
+metadata carried the resolved preset's own values verbatim
+(`printer_model=MK4IS`, `layer_height=0.2`, `temperature=210`,
+`fill_density=15%`), where a `--load`-free control slice of the same
+STL showed only PrusaSlicer's generic defaults
+(`printer_model=<empty>`, `layer_height=0.3`, 200×200 bed). The
+resolved `binary_gcode` key alone flipped the output to real binary
+`GCDE` bgcode with no `--binary-gcode` flag passed. `make slice`
+(`tools/slicer/slice.py`, issue #128) uses `--load` against the files
+this recipe writes, so the CLI surface
+(`--printer-preset`/`--print-preset`/`--filament-preset`) still reads
+as name-based even though the underlying invocation differs from the
+one shown above.
 
 ### Quirk 6 — `start_gcode` empty by default → printer doesn't auto-heat
 
