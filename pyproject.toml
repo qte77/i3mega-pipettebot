@@ -58,7 +58,11 @@ orchestrator = [
     # so101 requires Python 3.12+; gate the marker so `uv sync --extra
     # orchestrator` is a no-op on 3.11. Distribution name in so101's
     # pyproject is `so101-biolab-automation`; the import root is `so101`.
-    "so101-biolab-automation @ git+https://github.com/qte77/so101-biolab-automation.git@main ; python_version >= '3.12'",
+    # Pinned to a commit SHA (mirrors the dpette pin above) rather than a
+    # floating `@main` ref: `@main` bumped its fastapi/numpy floors twice in
+    # one CI cycle, breaking resolution universally on every push to this
+    # repo's main (no uv.lock — see AGENT_LEARNINGS.md). Bump deliberately.
+    "so101-biolab-automation @ git+https://github.com/qte77/so101-biolab-automation.git@fab9acc24d5ad69633a352eefa8a0670e91b981c ; python_version >= '3.12'",
 ]
 teaching = [
     # feetech-servo-sdk: STS3215 SDK (provides the `scservo_sdk` Python
@@ -144,7 +148,7 @@ markers = [
 # Cap the resolver to releases published on or before this date so CI and
 # fresh clones get the same versions regardless of when they run. Bump this
 # when you want to take newer wheels.
-exclude-newer = "2026-05-17T00:00:00Z"
+exclude-newer = "2026-09-09T00:00:00Z"
 
 [tool.pyright]
 venvPath = "."
