@@ -289,7 +289,9 @@ Marlin runs unmodified. Pipetting cycles are slow (seconds per move,
 seconds per aspirate); USB-serial round-trip latency (~20–50 ms) is
 inconsequential. Firmware integration (Stage 1 config patch, Stage 2
 UART tap to dPette) is deliberately **out of scope** for the current
-PC-as-host architecture.
+PC-as-host architecture. See [ADR 0005](docs/adr/0005-pc-as-host.md)
+for the full Stage 0–2c breakdown and what would trigger moving past
+Stage 0.
 
 ## Related repositories
 
