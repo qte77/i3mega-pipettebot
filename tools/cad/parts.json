@@ -70,5 +70,32 @@
     "svg": "i3/carriage_dpette_mount_main_lbracket.svg",
     "status": "active",
     "notes": "Scheme b — main piece + L-bracket reinforcement. Adds a web rising from the back of the top plate to a flange at z = 27.5 mm with 2× M4 clearance holes (28 mm pitch) that thread down into the carriage vertical-plate top. Resists pitch torque under XY acceleration. Pairs with the same cap as scheme a."
+  },
+  {
+    "name": "i3_carriage_dpette_mount_main_frictionfit",
+    "cad": "i3/carriage_dpette_mount_frictionfit.py",
+    "build_func": "build_carriage_dpette_mount_main_frictionfit",
+    "stl": "i3/carriage_dpette_mount_main_frictionfit.stl",
+    "svg": "i3/carriage_dpette_mount_main_frictionfit.svg",
+    "status": "testing",
+    "notes": "TESTING variant, not the production target (see i3_carriage_dpette_mount_main for that). Glue/friction-fit upper clamp instead of M3 bolts; horseshoe lower clamp gains J-hooks against yaw. Built against this iteration's own re-measured Ø24.5 mm bore + 80.5 mm axis separation, not the shared production measurements. Reached through four rounds of physical dry-fit testing (v1-v4 cap depth), then abandoned per issue #75 (bore still didn't converge; glue fails under vibration and isn't serviceable) — see tools/cad/i3/carriage_dpette_mount_frictionfit.py module docstring."
+  },
+  {
+    "name": "i3_carriage_dpette_mount_cap_frictionfit",
+    "cad": "i3/carriage_dpette_mount_frictionfit.py",
+    "build_func": "build_carriage_dpette_mount_cap_frictionfit",
+    "stl": "i3/carriage_dpette_mount_cap_frictionfit.stl",
+    "svg": "i3/carriage_dpette_mount_cap_frictionfit.svg",
+    "status": "testing",
+    "notes": "TESTING variant, not the production target (see i3_carriage_dpette_mount_cap for that). Friction/glue-fit horseshoe cap with a capsule-slot bore (no bolts, no bolt holes) — pairs only with i3_carriage_dpette_mount_main_frictionfit, not the bolted main piece."
+  },
+  {
+    "name": "i3_carriage_dpette_mount_main_lbracket_frictionfit",
+    "cad": "i3/carriage_dpette_mount_frictionfit.py",
+    "build_func": "build_carriage_dpette_mount_main_lbracket_frictionfit",
+    "stl": "i3/carriage_dpette_mount_main_lbracket_frictionfit.stl",
+    "svg": "i3/carriage_dpette_mount_main_lbracket_frictionfit.svg",
+    "status": "testing",
+    "notes": "TESTING variant — friction-fit main piece + L-bracket reinforcement. Pairs with i3_carriage_dpette_mount_cap_frictionfit."
   }
 ]
