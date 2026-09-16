@@ -86,7 +86,14 @@ Two-clamp design:
   around the dPette+ body, above the ejector lever. Maximum mechanical
   stability (zero vertical lever arm to the screws).
 - **Upper clamp** ≈ 100 mm above carriage face — Ø 27 mm round around
-  the upper barrel. Prevents tilt under XY acceleration.
+  the upper barrel. Prevents tilt under XY acceleration. Attachment is
+  a bolted two-piece cap (production); a glue/friction-fit variant was
+  tried and abandoned mid-iteration — see
+  [#75](https://github.com/qte77/i3mega-pipettebot/issues/75) and
+  `tools/cad/i3/carriage_dpette_mount_frictionfit.py`'s module
+  docstring. #75 is only half-resolved: bolts were reintroduced, but
+  its bore re-measurement request (down to Ø24.5 mm) was not — the
+  bolted design still uses the original Ø27 mm bore.
 
 Forward projection: the lower clamp sits 15–25 mm in front (-Y) of the
 carriage face so the pipette body clears the X-frame in spatial Y.
@@ -139,3 +146,6 @@ dPette+ 8-channel product page is in [`hardware.md`](hardware.md).
 | [#43](https://github.com/qte77/i3mega-pipettebot/issues/43) | Vendor real dPette barrel scan |
 | [#44](https://github.com/qte77/i3mega-pipettebot/issues/44) | Confirm OrcaSlicer install method |
 | [#45](https://github.com/qte77/i3mega-pipettebot/issues/45) | ADR: Arduino host architecture |
+| [#75](https://github.com/qte77/i3mega-pipettebot/issues/75) | Upper-clamp cap: bore re-measurement still open (bolts reintroduced; sizing not) |
+
+Note: #40, #41, #42 are closed — left off this table. #43/#44 remain open.

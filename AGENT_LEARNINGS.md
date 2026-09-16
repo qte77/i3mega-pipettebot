@@ -4,6 +4,39 @@ Gotchas and non-obvious lessons we hit. Keep entries short, dated, and
 actionable. Add a new entry every time you'd say "I wish someone had told me
 that earlier."
 
+## 2026-09-16 — Two carriage-mount designs coexist on purpose: don't "fix" the duplication
+
+`tools/cad/i3/carriage_dpette_mount.py` (production, M3-bolted upper clamp)
+and `tools/cad/i3/carriage_dpette_mount_frictionfit.py` (testing, glue/
+friction-fit upper clamp) both build a main+cap+lbracket mount for the same
+physical joint. This is deliberate, not accidental duplication — PR #78's
+branch had diverged 75 commits from `main` and reached a fundamentally
+different design (different bore diameter, axis separation, lower-clamp
+geometry with J-hooks, hole placement) through real physical dry-fit
+iteration, while `main`'s bolted design shipped independently in the
+meantime. The two designs are NOT interchangeable variants of shared
+constants — they need different pipette bore/separation measurements, so
+the friction-fit module keeps its own local `FRICTIONFIT_*` constants
+rather than sharing `measurements.py`'s `UPPER_CLAMP_BORE_D_MM` /
+`UPPER_TO_LOWER_SEPARATION_MM` (which the production bolted design is
+built and validated against).
+
+Issue #75 (filed from the same branch) explains *why* friction-fit was
+abandoned: the bore size never converged after 5 dry-fit rounds, and
+glue/friction isn't robust under vibration or serviceable. #75 asks for
+M3 bolts back — which matches `carriage_dpette_mount.py`'s production
+constants exactly — but its bore re-measurement (Ø27 -> Ø24.5 mm) was
+never carried over. **#75 is still open and only half-resolved**: don't
+close it without either re-measuring the bolted design's bore on real
+hardware or explicitly deciding Ø27 mm is correct after all.
+
+**Rule**: before touching either file, check which one you mean to change.
+`parts.json`'s `"status": "testing"` on the frictionfit entries is the only
+marker distinguishing "the one being physically validated" from "the
+production target" — don't delete the testing variant as "dead code," and
+don't silently merge its constants into the shared production ones without
+physical dry-fit confirmation on the bolted design.
+
 ## 2026-09-09 — `systemd-analyze verify` always fails pre-deploy on a unit whose ExecStart lives in the deploy target
 
 Hit writing `tools/deploy/orchestrator.service` (issue #126). Its

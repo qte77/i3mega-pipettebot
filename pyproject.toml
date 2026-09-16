@@ -53,6 +53,7 @@ dev = [
 ]
 cad = [
     "build123d>=0.10",
+    "ocp-vscode>=2.5",  # tools/cad/view.py — push a part to the ocp-vscode browser viewer
 ]
 orchestrator = [
     # so101 requires Python 3.12+; gate the marker so `uv sync --extra
