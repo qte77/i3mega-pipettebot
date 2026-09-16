@@ -3,6 +3,7 @@
 	setup_prod \
 	setup_dev \
 	setup_cad \
+	setup_viz \
 	setup_slicer \
 	setup_prusa_presets \
 	setup_freecad \
@@ -20,6 +21,7 @@
 	render_parts \
 	check_prints \
 	render_all \
+	render_motion_profile \
 	slice \
 	check_deploy \
 	all \
@@ -47,6 +49,7 @@ MYPY   := $(shell test -x .venv/bin/mypy   && echo .venv/bin/mypy   || echo "uv 
 PYTEST := $(shell test -x .venv/bin/pytest && echo .venv/bin/pytest || echo "uv run pytest")
 PY     := $(shell test -x .venv/bin/python && echo .venv/bin/python || echo "uv run python")
 PY_CAD := $(shell test -x .venv/bin/python && echo .venv/bin/python || echo "uv run --extra cad python")
+PY_VIZ := $(shell test -x .venv/bin/python && echo .venv/bin/python || echo "uv run --extra viz python")
 
 # Quiet mode (default: quiet; set VERBOSE=1 for full tool output).
 # Each recipe echoes a `--- <name>` header so the active step stays visible.
@@ -56,6 +59,9 @@ ifndef VERBOSE
   PYTEST_QUIET := -q --tb=short --no-header
   CPLX_QUIET   := -q
 endif
+
+# Default MotionProfile for `make render_motion_profile` (slow|mid|fast).
+MOTION_PROFILE ?= mid
 
 
 # MARK: SETUP
@@ -86,6 +92,9 @@ setup_dev:  ## uv sync --extra dev (runtime + ruff/mypy/pytest/complexipy/hypoth
 
 setup_cad:  ## uv sync --extra cad (build123d for CAD parts pipeline)
 	uv sync --inexact --extra cad
+
+setup_viz:  ## uv sync --extra viz (matplotlib for tools/motion_profile_plot.py)
+	uv sync --inexact --extra viz
 
 setup_slicer:  ## Probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)
 	if command -v orca-slicer > /dev/null 2>&1; then
@@ -223,6 +232,14 @@ slice:  ## PrusaSlicer STL -> hardware/bgcode/<area>/<part>.bgcode via named IS 
 		exit 1
 	fi
 	$(PY) tools/slicer/slice.py --part "$(PART)" $(if $(PARTS_JSON),--parts-json "$(PARTS_JSON)") $(if $(PRUSA_USER_DIR),--user-dir "$(PRUSA_USER_DIR)")
+
+
+# MARK: VISUALIZATION
+
+
+render_motion_profile:  ## Render motion-profile kinematics + 3-view path + deck-layout SVGs to hardware/svg/motion-profile/ (MOTION_PROFILE=slow|mid|fast, default mid; needs `make setup_viz`)
+	echo "--- render_motion_profile [$(MOTION_PROFILE)]"
+	MOTION_PROFILE="$(MOTION_PROFILE)" $(PY_VIZ) tools/motion_profile_plot.py
 
 
 # MARK: DEPLOY
