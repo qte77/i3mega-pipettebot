@@ -1,6 +1,6 @@
 """pipettebot — i3 Mega gantry + dPette pipette composition layer."""
 
-from pipettebot.bot import PipetteBot
+from pipettebot.bot import COLUMN_PITCH_MM, PipetteBot
 from pipettebot.cli_profile import build_volumes, resolve_profile
 from pipettebot.devices import (
     FIRMWARE_POLICIES,
@@ -24,6 +24,7 @@ from pipettebot.gantry import (
 from pipettebot.motion_profile import MotionProfile, select_profile
 
 __all__ = [
+    "COLUMN_PITCH_MM",
     "FIRMWARE_POLICIES",
     "PRINTER_PORT_ENV",
     "DiscoveredDevice",

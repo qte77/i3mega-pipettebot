@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pipettebot.bot import PipetteBot
+from pipettebot.bot import COLUMN_PITCH_MM, PipetteBot
 from pipettebot.gantry import GantryConfig, GcodeGantry
 from tests.conftest import FakePipette, FakeSerial
 
@@ -40,3 +40,8 @@ def test_home_sends_g28_then_m400(
 ) -> None:
     _bot(fake_serial, fake_pipette).home()
     assert fake_serial.written == [b"G28\n", b"M400\n"]
+
+
+def test_column_pitch_matches_sbs_row_spacing() -> None:
+    """dPette+ 8-channel pitch matches SBS row pitch — see docs/3d-parts.md."""
+    assert COLUMN_PITCH_MM == 9.0
