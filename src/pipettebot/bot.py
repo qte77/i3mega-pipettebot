@@ -7,6 +7,14 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     from pipettebot.gantry import GcodeGantry
 
+# dPette+ 8-channel: channel spacing matches SBS row pitch (see docs/3d-parts.md
+# "SBS labware reference"). The 8 channels share one physical piston bar, so a
+# single aspirate/dispense call always applies the same volume to all 8 — there
+# is no independent per-channel addressing. This constant exists for callers
+# computing well-column XY offsets by hand; it is not consumed by PipetteBot
+# itself (deck/well geometry is deferred, see AGENT_REQUESTS.md and issue #10).
+COLUMN_PITCH_MM = 9.0
+
 
 class _Pipette(Protocol):
     """Subset of dpette.DPetteDriver used by PipetteBot (lets tests inject fakes)."""
