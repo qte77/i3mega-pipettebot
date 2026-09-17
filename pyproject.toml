@@ -56,6 +56,11 @@ cad = [
     "build123d>=0.10",
     "ocp-vscode>=2.5",  # tools/cad/view.py — push a part to the ocp-vscode browser viewer
 ]
+viz = [
+    # tools/motion_profile_plot.py: kinematics + deck-layout SVG rendering.
+    # Optional so `pyserial`/`dpette`-only consumers never pull it in.
+    "matplotlib>=3.8,<4",
+]
 orchestrator = [
     # so101 requires Python 3.12+; gate the marker so `uv sync --extra
     # orchestrator` is a no-op on 3.11. Distribution name in so101's
@@ -116,6 +121,7 @@ max-complexity = 10
 "tools/**" = ["D", "ANN", "RUF001", "RUF002", "RUF003"]
 "tools/cad/**" = ["E501", "S603"]      # CAD: dynamic build123d imports, subprocess calls
 "tools/slicer/**" = ["S603"]           # subprocess calls run trusted slicer binaries
+"tools/motion_profile_plot.py" = ["S603"]  # invokes tools/cad/util/theme_svgs.py (trusted, in-repo)
 
 [tool.ruff.lint.isort]
 known-first-party = ["pipettebot", "tests"]
@@ -144,6 +150,7 @@ addopts = "-m \"not hardware\""
 markers = [
     "hardware: requires physical i3 Mega + dPette hookup",
     "cad: requires build123d installed (uv sync --extra cad)",
+    "viz: requires matplotlib installed (uv sync --extra viz)",
 ]
 
 [tool.uv]
