@@ -65,6 +65,7 @@ from __future__ import annotations
 import importlib.util
 import math
 import os
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -470,15 +471,30 @@ def render_deck_layout_svg(sc: ModuleType, out_path: Path) -> Path:
     return out_path
 
 
+def run_theme() -> None:
+    """Inject dark-mode CSS into the rendered SVGs (shared with the CAD pipeline).
+
+    `tools/cad/util/theme_svgs.py` globs the whole `hardware/svg/` tree, so
+    this reuses the same script `tools/cad/render.py` calls after CAD parts
+    -- one canonical dark-mode pass for every SVG this repo produces,
+    matplotlib or build123d alike (it content-sniffs which dialect it's
+    looking at).
+    """
+    theme_script = REPO_ROOT / "tools" / "cad" / "util" / "theme_svgs.py"
+    subprocess.run([sys.executable, str(theme_script)], check=True)
+
+
 def render_all(profile: MotionProfile, output_dir: Path) -> list[Path]:
     """Render all three motion-profile SVGs into `output_dir`. Returns written paths."""
     sc = _load_showcase()
     spans = _axis_spans(sc)
-    return [
+    paths = [
         render_kinematics_svg(profile, spans, output_dir / "kinematics_per_axis.svg"),
         render_three_view_path_svg(sc, output_dir / "three_view_path.svg"),
         render_deck_layout_svg(sc, output_dir / "deck_layout_top_view.svg"),
     ]
+    run_theme()
+    return paths
 
 
 def main() -> int:

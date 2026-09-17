@@ -119,6 +119,7 @@ max-complexity = 10
 "tools/**" = ["D", "ANN", "RUF001", "RUF002", "RUF003"]
 "tools/cad/**" = ["E501", "S603"]      # CAD: dynamic build123d imports, subprocess calls
 "tools/slicer/**" = ["S603"]           # subprocess calls run trusted slicer binaries
+"tools/motion_profile_plot.py" = ["S603"]  # invokes tools/cad/util/theme_svgs.py (trusted, in-repo)
 
 [tool.ruff.lint.isort]
 known-first-party = ["pipettebot", "tests"]
