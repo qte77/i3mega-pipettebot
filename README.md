@@ -254,18 +254,23 @@ calibration yet — the caller passes raw `(x, y, z)`.
 | `make setup_dev`        | `uv sync --extra dev` (runtime + ruff/mypy/pytest/complexipy/hypothesis) |
 | `make setup_cad`        | `uv sync --extra cad` (build123d)                             |
 | `make setup_slicer`     | probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)    |
+| `make setup_prusa_presets` | extract MK4 Input Shaper presets into `~/.config/PrusaSlicer/` (enables `make slice` to reference them by name) |
 | `make setup_all`        | `setup_dev` + `setup_cad` + best-effort slicer/diagramforge   |
 | `make validate`         | `ruff format --check` + `ruff check` + `mypy --strict` + `pytest -m "not hardware"` |
 | `make quick_validate`   | `ruff check` + `mypy` only (no tests)                         |
 | `make lint`             | `ruff check` + `mypy --strict`                                |
 | `make lint_fix`         | `ruff format` + `ruff check --fix`                            |
 | `make test`             | `pytest -v` (hardware tests excluded via `pyproject.toml`)    |
+| `make test_bats`        | bats tests for Makefile recipe wiring (`tests/bats/*.bats`)   |
 | `make check_complexity` | `complexipy src/pipettebot/` (max 15)                         |
 | `make check_links`      | `lychee` against the repo (config in `.lychee.toml`)          |
 | `make check_docs`       | `markdownlint-cli2 "**/*.md"`                                 |
-| `make render_parts`     | build123d → STL/SVG (driven by `tools/cad/parts.json`)        |
+| `make check_deploy`     | shellcheck + bats + `systemd-analyze verify` for `tools/deploy/` (best-effort `udevadm`) |
+| `make render_parts`     | build123d → STL/STEP/SVG (driven by `tools/cad/parts.json`)   |
 | `make check_prints`     | headless slice via `tools/slicer/validate.py --all`           |
 | `make render_all`       | `render_parts` + `check_prints` (full CAD-to-slicer gate)     |
+| `make slice PART=<name>` | PrusaSlicer STL → tracked `hardware/bgcode/<area>/<part>.bgcode` via named Input Shaper presets (run `setup_prusa_presets` first) |
+| `make dev_diagram`      | run diagramforge's dev server for architecture-diagram editing (run `setup_diagramforge` first) |
 
 Recipes prefer the local `.venv/bin/<tool>` binary if installed, else fall
 back to `uv run`. On read-only hosts where `uv run` can't write to

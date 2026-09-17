@@ -50,6 +50,7 @@ dev = [
     "types-pyserial>=3.5",
     "complexipy>=0.8",
     "hypothesis>=6.100,<7",
+    "scriv>=1.5,<2",  # changelog.d/ fragment CLI ([tool.scriv] config already present)
 ]
 cad = [
     "build123d>=0.10",

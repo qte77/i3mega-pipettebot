@@ -42,20 +42,25 @@ modifies firmware needs an ADR before landing on `main`.
   documents the requirement; enabling the GitHub setting enforces it
   mechanically (currently honor-system at review time).
 
-## Deferred to Stage 1+ (firmware track — needs ADR)
+## Deferred to Stage 1+ (firmware track — ADR now exists, trigger not yet met)
 
-Per [README's PC-as-host architecture decision](../README.md#architecture-decision-why-pc-as-host-no-firmware-mods)
-and AGENTS rule #4:
+[ADR 0005](adr/0005-pc-as-host.md) now documents this decision and the
+Stage 0-2c escalation path in full (superseding the summary that used
+to live only in README). Per AGENTS rule #4, any Stage 1+ work still
+needs its own follow-up ADR before merging — 0005 sets the bar, it
+doesn't pre-approve a specific patch.
 
-- **Stage 1 — Marlin config patch** for the i3 Mega. Tuned
-  feedrate/accel/jerk floors, raised soft endstops, optionally an
-  on-printer welcome banner.
+- **Stage 1 — Marlin config patch** for the i3 Mega. Closed as issues
+  #7/#9: ADR 0005 found every currently-needed parameter is already
+  runtime-settable over G-code, so there's no live trigger. Reopen if
+  a genuinely G-code-unreachable need appears (see ADR 0005's trigger
+  conditions table).
 - **Stage 2 — UART tap to dPette.** Direct firmware-side pipette
-  command stream, eliminating the host-as-relay round-trip. Tracked in
-  issues + the architecture-decision section of README.
+  command stream, eliminating the host-as-relay round-trip. Same
+  no-current-trigger status as Stage 1; see ADR 0005.
 - **Smartto firmware patches** (A30 family). `G28 Z` is broken on
-  stock; ADR would need to cover the patched version + downstream
-  delivery path before any merge.
+  stock; a follow-up ADR would need to cover the patched version +
+  downstream delivery path before any merge.
 
 ## Deferred to a future API tier
 

@@ -32,12 +32,13 @@ Single source of truth for agents working in this repo. `CLAUDE.md` and
 | Question                                        | Answer for v0                                                    |
 |-------------------------------------------------|------------------------------------------------------------------|
 | Where does new code go?                         | `src/pipettebot/`. Seven modules: `gantry`, `bot`, `devices`, `experiment_profile`, `motion_profile`, `cli_profile`, `__init__`. |
-| Where do experiment profiles live?              | `examples/experiment_profiles/*.toml`; loader in `src/pipettebot/experiment_profile.py`. See issue #79. |
+| Where do experiment profiles live?              | `examples/experiment_profiles/*.toml`; loader in `src/pipettebot/experiment_profile.py`. Per-column volumes + reservoir gradients shipped (issue #79, closed). |
 | Where do motion profiles live?                  | Bundled Python constants in `src/pipettebot/motion_profile.py` (slow/mid/fast). `MOTION_PROFILE` env selects; default `mid`; `''` or `off` opts out. See [ADR 0003](docs/adr/0003-motion-profile-bundled-constants.md). |
 | Where does deck geometry live?                  | Deferred. Caller passes raw `(x, y, z)` in v0.                   |
 | How is dpette imported?                         | Git dep, pinned to a commit SHA before v0.0.1 tag.               |
 | Where do hardware experiments go?               | `tools/` — diagnostics (`preflight.py`, `diagnose_axis.py`, `gantry_repl.py`, `gantry_probe.py`), CAD (`tools/cad/`), slicer (`tools/slicer/`). Logs to `captures/`. `gantry_repl` and `gantry_probe` auto-detect firmware via `pipettebot.devices.discover`; replace the older `marlin_repl` / `smartto_repl` / `smartto_probe` trio. |
-| Where does SO-101 orchestration live?           | `src/pipettebot/so101/` — `orchestrator.py` (named-position playback after the i3 homes) + `capture_position.py` (teaching CLI). Composition over `so101.DualArmController`; opt-in via `SO101_CONFIG` env. Optional `[orchestrator]` extra; sequence constant hardcoded for v0. See issue #120 and the `_ArmController` Protocol refactor in #133. |
+| Where does SO-101 orchestration live?           | `src/pipettebot/so101/` — `orchestrator.py` (named-position playback after the i3 homes) + `capture_position.py` (teaching CLI). Composition via an `_ArmController` Protocol (issue #133, closed) rather than a direct `so101.DualArmController` import, so type-checking doesn't require the optional `[orchestrator]` extra. Opt-in via `SO101_CONFIG` env; sequence constant hardcoded for v0. See issue #120 (row-tour orchestrator, still open — blocked on #118 + an upstream so101 change). |
+| Where does Pi 3 B+ runtime deploy live?         | `tools/deploy/` — `bootstrap.sh` (apt deps, service user, dirs) + `deploy.sh` (clone/update, venv install, symlink unit+rules) + `orchestrator.service` (systemd) + `99-pipettebot.rules` (udev, VID:PID device symlinks — CH340 unambiguous, CP2102N collides with dPette, needs per-unit `ATTRS{serial}`). Both scripts support `--dry-run`. Gated by `make check_deploy`. See issue #126 (closed) and [`docs/sbc-deployment.md`](docs/sbc-deployment.md). |
 | What goes in AGENT_REQUESTS.md?                 | Anything deferred — features, ADRs, hardware photos, firmware tracks. |
 
 ## Architecture Overview
@@ -98,18 +99,21 @@ cover both layers without hardware.
 | Add an experiment profile                | Drop a TOML under `examples/experiment_profiles/`; loader is `src/pipettebot/experiment_profile.py`. |
 | Add a deck or calibration feature        | Don't yet — file under AGENT_REQUESTS.md. v0 stays raw `(x,y,z)`. |
 | Send a raw dPette packet                 | Don't. Use `dpette.DPetteDriver` methods.                        |
-| Modify Marlin firmware                   | Don't yet. Open an ADR in AGENT_REQUESTS.md.                     |
+| Modify Marlin firmware                   | Don't yet. [ADR 0005](docs/adr/0005-pc-as-host.md) has the trigger conditions for Stage 1+; a genuine hit still needs its own follow-up ADR before merging. |
 | Add a 3D-printable part                  | Add `build_*()` to a script under `tools/cad/<area>/`, register it in `tools/cad/parts.json`, run `make render_all`. See `.claude/rules/cad-script-conventions.md`. |
+| Add a **testing/experimental** CAD variant | Separate module + function names (don't overload an existing `build_*()`), `"status": "testing"` in `parts.json` so it's clearly not the production target. See `tools/cad/i3/carriage_dpette_mount_frictionfit.py` for the pattern. |
 | Tune slicer settings                     | Edit a profile in `tools/slicer/profiles/*.ini` — never inline. See `.claude/rules/slicer-profile-source-of-truth.md`. |
-| Mount something on the i3 print head     | Add to `tools/cad/i3/`, annotate the `build_*()` with `# Mass:`, keep total payload &lt; 300 g. See `.claude/rules/i3-carriage-payload-budget.md`. |
+| Mount something on the i3 print head     | Add to `tools/cad/i3/`, annotate the `build_*()` with `# Mass:` (measured via `shape.volume * PLA_DENSITY_G_PER_CC`, not copied from an old estimate), keep total payload &lt; 300 g. See `.claude/rules/i3-carriage-payload-budget.md`. |
+| Deploy to a Pi 3 B+                      | `tools/deploy/bootstrap.sh` then `deploy.sh` (both support `--dry-run`); verify with `make check_deploy`. See `docs/sbc-deployment.md`. |
 | Track a deferred feature                 | AGENT_REQUESTS.md.                                               |
 | Record a gotcha you hit                  | AGENT_LEARNINGS.md.                                              |
 
 ## 3D Parts Pipeline
 
-`tools/cad/` (build123d) generates STL+SVG; `tools/slicer/` (OrcaSlicer-first,
-PrusaSlicer fallback) gates printability. Outputs land in top-level
-`hardware/{stl,svg,gcode}/` (gitignored).
+`tools/cad/` (build123d) generates STL+STEP+SVG; `tools/slicer/` (OrcaSlicer-first,
+PrusaSlicer fallback) gates printability, and can also produce a tracked
+`.bgcode` via `make slice`. Outputs land in top-level
+`hardware/{stl,step,svg,gcode,bgcode}/` (gitignored).
 
 ```text
 tools/cad/parts.json                ── manifest: name, cad path, build_func, status
