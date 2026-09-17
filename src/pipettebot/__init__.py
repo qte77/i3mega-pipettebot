@@ -47,4 +47,4 @@ __all__ = [
     "select_profile",
     "send_and_wait_for_ok",
 ]
-__version__ = "0.1.0"
+__version__ = "0.2.0"
