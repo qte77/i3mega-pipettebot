@@ -55,14 +55,33 @@ OUTSIDE_VOLUME_KEYWORDS = (
 )
 
 # .ini keys whose CLI flag is a bare boolean switch (present = true, absent
-# = false) rather than `--key value`. Confirmed via docs/prusa/README.md
-# Quirk 1's working invocation (`--binary-gcode`, no argument) and the
-# profiles/pla_prototype_03mm.ini comment. Not independently verified
-# against a live PrusaSlicer binary for support_material / detect_thin_wall
-# / overhangs — extrapolated from the one confirmed example.
+# = false) rather than `--key value`. All four confirmed directly against
+# `prusa-slicer --help-fff` (2.7.2): `--support-material`, `--overhangs`,
+# `--binary-gcode`, and `--thin-walls` (detect_thin_wall's real flag name,
+# see INI_KEY_OVERRIDES below) each list no value placeholder.
 BOOLEAN_INI_KEYS = frozenset(
     {"support_material", "detect_thin_wall", "overhangs", "binary_gcode"}
 )
+
+# .ini key -> CLI flag name for keys where a naive underscore-to-hyphen
+# rename doesn't match PrusaSlicer's actual flag (confirmed via
+# `prusa-slicer --help-fff`, PrusaSlicer 2.7.2). `detect_thin_wall` is the
+# one that broke `make check_prints` for every part (issue #218) — the
+# real flag is `--thin-walls`, not a renamed `--detect-thin-wall`. Audited
+# every other key currently used across tools/slicer/profiles/*.ini
+# against the same --help-fff output while fixing that; no other active
+# mismatches found.
+INI_KEY_OVERRIDES: dict[str, str] = {
+    "detect_thin_wall": "--thin-walls",
+}
+
+# .ini keys with no CLI flag at all in this PrusaSlicer version (absent
+# from --help-fff) — consumed only as metadata inside a real preset file
+# loaded via --load, not forwardable as a standalone flag. Not reachable
+# today via get_profile() (only lw_pla_prototype_03mm.ini sets this, and
+# no STL currently maps to it), but would fail the same way
+# detect_thin_wall did if that profile were ever wired in.
+INI_KEYS_WITHOUT_CLI_FLAG: frozenset[str] = frozenset({"printer_model"})
 
 # Probe order: OrcaSlicer first, PrusaSlicer fallback. Names cover the
 # common install methods (native package, AppImage extraction, brew).
@@ -116,7 +135,9 @@ def _ini_to_cli_flags(profile: Path) -> list[str]:
     flags: list[str] = []
     for section in parser.sections():
         for key, value in parser.items(section):
-            flag = f"--{key.replace('_', '-')}"
+            if key in INI_KEYS_WITHOUT_CLI_FLAG:
+                continue
+            flag = INI_KEY_OVERRIDES.get(key, f"--{key.replace('_', '-')}")
             if key in BOOLEAN_INI_KEYS:
                 if value.strip() == "1":
                     flags.append(flag)
