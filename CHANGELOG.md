@@ -6,12 +6,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-17
+
+Third tagged release. Adds an ADR for the firmware-modification escalation
+path, Pi 3 B+ deploy infrastructure, motion-profile + deck-layout SVG
+visualization with dark-mode theming shared across the CAD and viz
+pipelines, a dPette+ 8-channel column-pitch constant, and a substantial
+doc/governance sync — on top of the A30/Smartto bring-up and CAD/slicer
+pipeline work accumulated below since 0.1.0.
+
 ### Changed
 
 - `pipettebot.gantry.open_marlin_port` renamed to `open_gcode_port` (the helper is firmware-agnostic — a Linux baud helper, not a Marlin-protocol thing). The old name is preserved for one release cycle as a one-line alias that emits `DeprecationWarning` on call, so downstream scripts keep working while operators migrate. All in-tree callers (`pipettebot.devices.discover`, `tools/gantry_repl.py`, `tools/gantry_probe.py`, `tools/diagnose_axis.py`, `examples/home_G28_fast.py`) updated to the new name. Both names re-exported from `pipettebot.__init__`.
 - **Single `PRINTER_PORT` env across the project.** `FirmwarePolicy.port_env_aliases` field removed; per-model `I3MEGA_PORT` / `SMARTTO_PORT` / generic `GANTRY_PORT` collapsed into one `PRINTER_PORT_ENV` constant in `pipettebot.devices`. Firmware family is identified by `discover()` after open, not by which env var the operator set. `tools/preflight.py --export` emits `export PRINTER_PORT=...` regardless of detected family; `tools/gantry_repl.py` and `tools/gantry_probe.py` read `PRINTER_PORT` only. Existing `_i3` example scripts updated to read `PRINTER_PORT` / `PRINTER_BAUD` in lockstep.
 - **Existing showcase scripts renamed with `_i3` infix** (`home_G28_fast_i3`, `showcase_v0_i3_pipette_sim`, `showcase_v0_i3_full_dpette_cycles`, `showcase_v0_i3_full_pipettebot`, `showcase_v0_i3_full_pipettebot_rows`, `showcase_v0_i3_full_plate`, `showcase_v0_i3_tip_pickup_release`). They're hardcoded to i3-Mega deck coords (210×210 bed) and plain `G28`, which would crash Z on Smartto/A30 builds. Same directory now hosts A30 scripts alongside without naming ambiguity.
 - **Motion profiles retuned to exact 3x ratio** — SLOW (accel_x/y/z 200/267/67, jerk 1.0/1.67/0.07, accel_default 200) → MID (600/800/200, 3/5/0.2, 600) → FAST (1800/2400/600, 9/15/0.6, 1800). Earlier values had non-uniform spacing (FAST was 1.67x MID on accel_x, 1.5x on accel_y); third/triple around the operator-validated MID anchor makes the per-profile difference obvious on the bench and predictable when tuning per-leg feedrates inside these caps. Accel rounded to integer mm/s² (M201/M204 want integers); jerk to two decimals. ADR 0003 example block + motion_profile.py docstring comparison table both updated to match.
+- **`so101-biolab-automation` pinned to a commit SHA** instead of a floating `@main` ref (mirrors the existing `dpette` pin), and `[tool.uv] exclude-newer` bumped forward. Root-cause fix for `main`'s CI (`lint-and-test`) failing on every push for roughly two months: the floating ref bumped its `fastapi`/`numpy` floors past the resolver's cutoff, and this project's `uv.lock` is deliberately gitignored (library project), so every CI run re-resolved from scratch and hit the same failure.
+- **`tools/slicer/validate.py`**: now detects PrusaSlicer's silent `"objects outside the print volume"` exit-0 case as a real failure, requires the output file to actually exist before declaring PASS, and forwards `tools/slicer/profiles/*.ini` keys as explicit CLI flags (PrusaSlicer 2.9.4's `--load` silently drops most profile keys).
+- **`tools/slicer/profiles/pla_plus_02mm.ini`**: added `first_layer_temperature`, `first_layer_bed_temperature`, and a `start_gcode`/`end_gcode` pair that actually heats the bed before printing (previously the slicer emitted nozzle heat only, and PLA wouldn't stick).
+- **`docs/3d-parts.md`**, **`AGENT_LEARNINGS.md`**: cross-referenced issue #75 (upper-clamp cap history) and corrected a stale "Open issues" table that still listed several already-closed issues.
 
 ### Added
 
@@ -29,6 +42,23 @@ All notable changes to this project will be documented in this file.
 - **`tools/gantry_repl.py`** — interactive G-code REPL with per-firmware cheat-sheet dispatch. Auto-detects firmware via `pipettebot.devices.discover()`; `--device {marlin,smartto,unknown}` overrides the auto-detect. Reads `PRINTER_PORT`. Replaces `tools/marlin_repl.py` + `tools/smartto_repl.py`.
 - **`tools/gantry_probe.py`** — read-only diagnostic + capability probe for any G-code firmware. Same auto-detect via `discover()`. Nine non-motion candidates (six original — `M503`/`M400`/`M203`/`M204`/`M205`/`M501` — plus `M220 S100` / `M211 S1` / `M85 S0` for feedrate scale, soft endstops, idle timeout). Per-family `QUIRKS` footer surfaces operator notes (e.g. Smartto's `M503` no-op, `G1 X Y` silent acceptance, `G28 Z` dive). Replaces `tools/smartto_probe.py`.
 - **Test coverage** — `tests/tools/test_gantry_repl_cli.py` and `tests/tools/test_gantry_probe_cli.py` (12 in-process CLI tests). `tests/test_devices.py` extended with safe_home / polled-Z descent coverage (~10 new tests + Hypothesis property test on M115 parsing). Total suite: 121 passed, 6 skipped.
+- **ADR 0005 — PC-as-host** (`docs/adr/0005-pc-as-host.md`). Formalizes the existing "no firmware modifications in v0" policy with the full Stage 0-2c escalation path and trigger conditions for each stage. Unblocks Stage 1+ firmware issues, which require an ADR to exist before merging per `AGENTS.md` rule 4.
+- **Pi 3 B+ deploy infrastructure**: `tools/deploy/bootstrap.sh`, `tools/deploy/deploy.sh`, `tools/deploy/orchestrator.service`, `tools/deploy/99-pipettebot.rules` (udev), and a new `make check_deploy` target (shellcheck + bats + `systemd-analyze verify` + best-effort `udevadm`). Both scripts support `--dry-run`. Documents the CP2102N VID:PID collision between i3 Mega and dPette as a known limitation requiring per-unit `ATTRS{serial}` rules.
+- **`_ArmController` Protocol** in `src/pipettebot/so101/orchestrator.py` — decouples type-checking from the optional `[orchestrator]` extra; the real `so101.arms` import now only happens at runtime inside `load_so101_controller()`.
+- **Slicer tooling**: `make slice PART=<name>` (STL -> tracked `hardware/bgcode/<area>/<part>.bgcode` via named Input Shaper presets), `make setup_prusa_presets` (extracts MK4 IS presets from the system PrusaSlicer bundle into `~/.config/PrusaSlicer/`), `make dev_diagram` (wraps the diagramforge dev server).
+- **`tools/cad/i3/carriage_dpette_mount_frictionfit.py`** — a self-contained, clearly-labeled (`parts.json` `"status": "testing"`) preservation of an abandoned carriage-mount design iteration (glue/friction-fit upper clamp, J-hook lower clamp) reached through real physical dry-fit testing on a since-diverged branch. Kept as reference/testing material, not a production candidate — see issue #75 for why it was abandoned.
+- **`tools/cad/view.py`** — push a named part to the ocp-vscode browser viewer for design review. **`tools/slicer/upload_to_prusalink.py`** — PrusaLink HTTP upload with credentials read from `~/.cloud-credentials` (permission-checked, never committed). **`tools/slicer/print_carriage_assembly.py`** — batch-prints the friction-fit testing mount's 4 main pieces as one pre-arranged bed layout.
+- **`COLUMN_PITCH_MM = 9.0`** constant in `src/pipettebot/bot.py` (re-exported from `pipettebot`) — the dPette+ 8-channel's SBS-matching row pitch, for callers computing column XY offsets by hand. Documents the physical constraint that all 8 channels share one piston bar (no independent per-channel volume).
+- **Hypothesis property test** (`tests/test_gantry.py`) asserting `GcodeGantry.move_to()` emits well-formed `G1` lines (field order, 3-decimal precision, feedrate, single terminating newline) across the full float domain.
+- **Pre-push validate guidance** in `CONTRIBUTING.md`: an optional three-line `.git/hooks/pre-push` snippet running `make validate`, plus a `--no-verify` emergency-skip note.
+- `scriv` added to the `dev` extra — the `[tool.scriv]` config and `changelog.d/` fragment directory existed already but the CLI itself was never added as a dependency.
+- **`tools/motion_profile_plot.py`** (closes #116) — renders three design-review SVGs to `hardware/svg/motion-profile/`: per-axis kinematics under the active `MotionProfile`'s M203/M201/M205 caps, a three-view path plot, and a deck-layout top view replacing the ASCII sketch in `docs/sketches/deck-layout-rows-script.md`. Deck geometry is read from `examples/showcase_v0_i3_full_pipettebot_rows.py` via reflection so the plot can't drift from what the gantry actually receives. New optional `viz` extra (`matplotlib`) and `viz` pytest marker; `make render_motion_profile MOTION_PROFILE=slow|mid|fast` (default `mid`).
+- **`tools/cad/util/theme_svgs.py`** now content-sniffs matplotlib vs. build123d SVGs and applies the right dark-mode CSS for each dialect — matplotlib's inline `style=` attributes and unstyled vector-glyph text need different selectors than build123d's bare `stroke="rgb(...)"` output. Verified against a real `polyfetch --color-scheme dark` screenshot, not just code review.
+
+### Fixed
+
+- **`tests/tools/cad/test_parts_smoke.py`** referenced two CAD files (`labware/tip_rack_holder.py`, `labware/plate_holder.py`) removed months earlier when they were consolidated into `labware/deck_plate.py`'s combined assembly. Replaced with the part that's actually registered in `tools/cad/parts.json`.
+- **`.gitignore`** was missing `hardware/step/` despite STEP export existing since the original deck-plate PR — generated STEP files were untracked-but-visible in every `git status` since.
 
 ### Removed
 
