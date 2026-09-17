@@ -55,6 +55,23 @@ class ExperimentProfile:
         return len(self.volumes_ul)
 
 
+def _resolve_per_cycle_volumes(per_cycle: object, path: Path) -> tuple[float, ...]:
+    if not isinstance(per_cycle, list) or not per_cycle:
+        raise ValueError(f"{path}: volumes.per_cycle_ul must be a non-empty list")
+    return tuple(float(v) for v in per_cycle)
+
+
+def _resolve_constant_volumes(
+    constant: float, num_cycles: object, path: Path
+) -> tuple[float, ...]:
+    if not isinstance(num_cycles, int) or num_cycles <= 0:
+        raise ValueError(
+            f"{path}: volumes.num_cycles must be a positive int when "
+            "volumes.constant_ul is set"
+        )
+    return (constant,) * num_cycles
+
+
 def _resolve_volumes(data: dict[str, Any], path: Path) -> tuple[float, ...]:
     volumes_block = data.get("volumes") or {}
     per_cycle = volumes_block.get("per_cycle_ul")
@@ -69,18 +86,12 @@ def _resolve_volumes(data: dict[str, Any], path: Path) -> tuple[float, ...]:
         raise ValueError(
             f"{path}: must set one of volumes.per_cycle_ul or volumes.constant_ul"
         )
+
     if per_cycle is not None:
-        if not isinstance(per_cycle, list) or not per_cycle:
-            raise ValueError(f"{path}: volumes.per_cycle_ul must be a non-empty list")
-        volumes = tuple(float(v) for v in per_cycle)
+        volumes = _resolve_per_cycle_volumes(per_cycle, path)
     else:
         assert constant is not None, "narrowed by (None, None) check above"  # noqa: S101
-        if not isinstance(num_cycles, int) or num_cycles <= 0:
-            raise ValueError(
-                f"{path}: volumes.num_cycles must be a positive int when "
-                "volumes.constant_ul is set"
-            )
-        volumes = (float(constant),) * num_cycles
+        volumes = _resolve_constant_volumes(float(constant), num_cycles, path)
 
     if any(v <= 0 for v in volumes):
         raise ValueError(f"{path}: all volumes must be > 0 uL")
