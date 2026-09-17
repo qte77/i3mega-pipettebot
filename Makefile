@@ -32,6 +32,15 @@
 
 .SILENT:
 .ONESHELL:
+SHELL := bash
+# -e: stop the recipe at the first failing command (without this, .ONESHELL
+#     runs every recipe line as one script and only the LAST line's exit
+#     code reaches make — an earlier failure, e.g. a real `ruff format
+#     --check` violation in `validate`, is silently swallowed as long as a
+#     later line like `pytest` still exits 0). -u: catch unset-variable
+#     typos. -o pipefail: a failing command before a `|` isn't hidden by
+#     the pipe's last stage succeeding. See issue #222.
+.SHELLFLAGS := -eu -o pipefail -c
 
 # Pin diagramforge (TypeScript/Node draw.io bridge) to a known-good commit.
 # diagramforge is a dev-time visualisation tool, not a runtime dep, so we
@@ -97,13 +106,17 @@ setup_viz:  ## uv sync --extra viz (matplotlib for tools/motion_profile_plot.py)
 	uv sync --inexact --extra viz
 
 setup_slicer:  ## Probe for OrcaSlicer (preferred) or PrusaSlicer (fallback)
+	# `set +o pipefail` inside each $$(...) subshell only: a truncating filter
+	# (head/grep -m1) closing its end of the pipe early makes the producer
+	# exit via SIGPIPE, which pipefail would otherwise treat as pipeline
+	# failure even though the filter itself matched fine.
 	if command -v orca-slicer > /dev/null 2>&1; then
-		echo "orca-slicer already installed: $$(orca-slicer --version 2>&1 | head -1)"
+		echo "orca-slicer already installed: $$(set +o pipefail; orca-slicer --version 2>&1 | head -1)"
 	elif command -v OrcaSlicer > /dev/null 2>&1; then
-		echo "OrcaSlicer already installed: $$(OrcaSlicer --version 2>&1 | head -1)"
+		echo "OrcaSlicer already installed: $$(set +o pipefail; OrcaSlicer --version 2>&1 | head -1)"
 	elif command -v prusa-slicer > /dev/null 2>&1; then
 		# PrusaSlicer has no --version flag; the banner line lives in --help output.
-		echo "prusa-slicer already installed (fallback): $$(prusa-slicer --help 2>&1 | grep -m1 '^PrusaSlicer-' || echo 'version unknown')"
+		echo "prusa-slicer already installed (fallback): $$(set +o pipefail; prusa-slicer --help 2>&1 | grep -m1 '^PrusaSlicer-' || echo 'version unknown')"
 	else
 		echo "No slicer found. Install one of:"
 		echo "  - OrcaSlicer (preferred): https://github.com/SoftFever/OrcaSlicer/releases"
@@ -120,10 +133,11 @@ setup_prusa_presets:  ## Extract MK4 Input-Shaper presets from the system PrusaS
 	$(PY) tools/slicer/resolve_presets.py $(if $(PRUSA_USER_DIR),--user-dir "$(PRUSA_USER_DIR)")
 
 setup_freecad:  ## Probe for FreeCAD (optional — inspect generated STEP files)
+	# See the `set +o pipefail` note in setup_slicer above — same SIGPIPE risk.
 	if command -v freecad > /dev/null 2>&1; then
-		echo "freecad already installed: $$(freecad --version 2>&1 | head -1)"
+		echo "freecad already installed: $$(set +o pipefail; freecad --version 2>&1 | head -1)"
 	elif command -v FreeCAD > /dev/null 2>&1; then
-		echo "FreeCAD already installed: $$(FreeCAD --version 2>&1 | head -1)"
+		echo "FreeCAD already installed: $$(set +o pipefail; FreeCAD --version 2>&1 | head -1)"
 	else
 		echo "FreeCAD not found. Optional — used to inspect STEP files in hardware/step/."
 		echo ""
@@ -144,7 +158,7 @@ setup_diagramforge:  ## Clone diagramforge at $(DIAGRAMFORGE_SHA) if .gitmodules
 	elif [ ! -f .gitmodules ]; then
 		echo "WARN: .gitmodules missing — skipping"
 	else
-		url=$$(git config --file .gitmodules submodule.diagramforge.url 2>/dev/null)
+		url=$$(git config --file .gitmodules submodule.diagramforge.url 2>/dev/null) || true
 		if [ -z "$$url" ]; then
 			echo "WARN: submodule.diagramforge.url not set in .gitmodules — skipping"
 		else
@@ -155,10 +169,13 @@ setup_diagramforge:  ## Clone diagramforge at $(DIAGRAMFORGE_SHA) if .gitmodules
 	fi
 
 setup_all: setup_dev setup_cad  ## setup_dev + setup_cad + best-effort slicer/freecad/diagramforge
-	# -s on sub-make suppresses both recipe echo and the auto "Entering directory" chatter
-	-$(MAKE) -s setup_slicer
-	-$(MAKE) -s setup_freecad
-	-$(MAKE) -s setup_diagramforge
+	# -s on sub-make suppresses both recipe echo and the auto "Entering directory" chatter.
+	# `|| true` (not a leading `-`) makes each probe genuinely best-effort under
+	# .ONESHELL + `set -e` — a leading `-` recipe-prefix only suppresses errors
+	# on a recipe's first line once the whole recipe runs as one shell script.
+	$(MAKE) -s setup_slicer || true
+	$(MAKE) -s setup_freecad || true
+	$(MAKE) -s setup_diagramforge || true
 
 
 # MARK: LINT
